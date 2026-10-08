@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { SocialLinksConfig } from '@/types';
 import { getActiveSocialPlatforms } from '@/lib/social';
+import { SiteLogo } from '@/components/SiteLogo';
 import {
   MapPin,
   Phone,
@@ -24,14 +24,12 @@ import {
 export const Footer: React.FC = () => {
   const { language, t } = useLanguage();
   const currentYear = new Date().getFullYear();
-  const [logoUrl, setLogoUrl] = useState<string>('');
   const [socialLinks, setSocialLinks] = useState<SocialLinksConfig | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     supabaseStore.getSettings().then((s) => {
       if (isMounted && s) {
-        if (s.logo_url) setLogoUrl(s.logo_url);
         if (s.social_links) setSocialLinks(s.social_links);
       }
     });
@@ -68,25 +66,7 @@ export const Footer: React.FC = () => {
           {/* Column 1: Organization identity */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              {logoUrl ? (
-                <div className="w-11 h-11 rounded-full border-2 border-[#FF8C00] bg-white p-0.5 shadow-sm overflow-hidden flex items-center justify-center shrink-0 relative">
-                  <div className="w-full h-full rounded-full overflow-hidden relative flex items-center justify-center">
-                    <Image
-                      src={logoUrl}
-                      alt="APS-BÉNIN Logo Officiel"
-                      fill
-                      sizes="44px"
-                      className="object-contain p-0.5"
-                      referrerPolicy="no-referrer"
-                      unoptimized={Boolean(logoUrl.startsWith('data:'))}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-[#92278F] flex items-center justify-center text-white font-extrabold text-lg border-2 border-[#FF8C00] shrink-0">
-                  APS
-                </div>
-              )}
+              <SiteLogo variant="footer" />
               <div>
                 <span className="font-extrabold text-lg text-white tracking-tight font-heading">
                   APS-BÉNIN

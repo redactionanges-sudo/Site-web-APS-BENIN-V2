@@ -285,6 +285,12 @@ export const supabaseStore = {
     return local;
   },
 
+  getCachedSettings(): SiteSettings | null {
+    const mem = getCachedData<SiteSettings>('settings');
+    if (mem) return mem;
+    return getStoredItem<SiteSettings | null>('settings', null);
+  },
+
   async updateSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
     const current = await this.getSettings();
     const updatedSocialLinks = settings.social_links !== undefined
@@ -301,6 +307,18 @@ export const supabaseStore = {
     invalidateCache('settings');
     setStoredItem('settings', updated);
     setCachedData('settings', updated);
+
+    // Notify all active components and tabs immediately in real-time
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(
+          new CustomEvent('aps_site_settings_changed', { detail: updated })
+        );
+      } catch (evErr) {
+        console.warn('Failed to dispatch settings event:', evErr);
+      }
+    }
+
     return updated;
   },
 

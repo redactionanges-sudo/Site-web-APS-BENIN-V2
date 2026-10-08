@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import Image from 'next/image';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { supabaseStore } from '@/lib/supabase';
 import { useLanguage } from '@/lib/i18n';
 import { SiteSettings } from '@/types';
+import { SiteLogo } from '@/components/SiteLogo';
 import {
   SOCIAL_PLATFORMS,
   SocialPlatformId,
@@ -209,8 +209,6 @@ export default function AdminParametresPage() {
     );
   }
 
-  const currentDisplayLogo = logoPreviewUrl || settings.logo_url || '/favicon.ico';
-
   return (
     <AdminAuthGuard requireSuperAdmin>
       <AdminHeader
@@ -226,7 +224,7 @@ export default function AdminParametresPage() {
           </div>
         )}
 
-        {/* SECTION DÉDIÉE : LOGO OFFICIEL DU SITE (DESIGN CIRCULAIRE HARMONISÉ) */}
+        {/* SECTION DÉDIÉE : LOGO OFFICIEL DU SITE (FORMAT LIBRE & RATIO PRÉSERVÉ) */}
         <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-xs space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
             <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
@@ -234,43 +232,37 @@ export default function AdminParametresPage() {
               <span>{t('settings.logo_title')}</span>
             </h2>
             <span className="text-[10px] font-bold text-[#FF8C00] bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-100 w-fit">
-              Format Circulaire APS-BÉNIN
+              Tous Formats (Horizontal, Carré ou Circulaire) • Ratio Préservé
             </span>
           </div>
 
-          {/* Structure harmonisée en 3 blocs : [ Logo compact ] [ Description & informations ] [ Actions ] */}
+          {/* Structure harmonisée en 3 blocs : [ Aperçu proportionnel ] [ Description & informations ] [ Actions ] */}
           <div className="flex flex-col sm:flex-row items-center sm:items-center justify-between gap-5 sm:gap-6">
-            {/* 1. GAUCHE : Aperçu compact du logo */}
+            {/* 1. GAUCHE : Aperçu avec ratio d'origine préservé (aucun rognage circulaire forcé) */}
             <div className="relative group shrink-0">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-[#92278F]/25 bg-white p-1 shadow-xs hover:border-[#92278F] transition-colors flex items-center justify-center relative overflow-hidden">
-                <div className="w-full h-full rounded-full overflow-hidden bg-white relative flex items-center justify-center">
-                  <Image
-                    src={currentDisplayLogo}
-                    alt="Logo officiel APS-BÉNIN"
-                    fill
-                    sizes="96px"
-                    className="object-contain p-1"
-                    referrerPolicy="no-referrer"
-                    unoptimized={Boolean(currentDisplayLogo.startsWith('blob:') || currentDisplayLogo.startsWith('data:'))}
-                  />
-                </div>
+              <div className="relative rounded-2xl border-2 border-[#92278F]/25 bg-white p-2 shadow-xs hover:border-[#92278F] transition-colors flex items-center justify-center overflow-hidden">
+                <SiteLogo
+                  variant="preview"
+                  overrideUrl={logoPreviewUrl || settings.logo_url}
+                  alt="Aperçu Logo officiel APS-BÉNIN"
+                />
 
                 {/* Overlay de modification au survol */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingLogo}
-                  className="absolute inset-0 rounded-full bg-black/40 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-2xs cursor-pointer"
+                  className="absolute inset-0 bg-black/45 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-2xs cursor-pointer rounded-2xl"
                   title={t('settings.logo_change')}
                 >
-                  <Upload className="w-4 h-4 text-[#FF8C00] mb-0.5" />
-                  <span className="text-[9px] font-bold">Changer</span>
+                  <Upload className="w-5 h-5 text-[#FF8C00] mb-0.5" />
+                  <span className="text-[10px] font-bold">Remplacer</span>
                 </button>
               </div>
 
               {/* Indicateur de validation discret */}
               <span
-                className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow-2xs flex items-center justify-center"
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-green-500 border-2 border-white shadow-2xs flex items-center justify-center"
                 title="Logo officiel actif"
               >
                 <CheckCircle2 className="w-3 h-3 text-white" />
@@ -281,18 +273,18 @@ export default function AdminParametresPage() {
             <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
                 <h3 className="text-xs font-bold text-gray-900">
-                  {selectedLogoFile ? 'Aperçu de la nouvelle image' : 'Emblème officiel de l’organisation'}
+                  {selectedLogoFile ? 'Aperçu du nouveau fichier' : 'Emblème institutionnel officiel'}
                 </h3>
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
                   <CheckCircle2 className="w-3 h-3 text-green-600" />
-                  <span>Configuré</span>
+                  <span>Source Unique</span>
                 </span>
               </div>
               <p className="text-xs text-gray-600 leading-relaxed max-w-xl">
-                {t('settings.logo_hint')}
+                Logo officiel unique utilisé sur tout le site : en-tête public, pied de page, portail de connexion et administration. Les logos horizontaux, carrés ou verticaux conservent automatiquement leurs proportions d'origine sans déformation.
               </p>
               <p className="text-[11px] text-gray-400">
-                Formats : PNG, JPG, WEBP, SVG • Max 5 Mo • Stockage dans <span className="text-[#92278F] font-medium">logos</span>
+                Formats acceptés : PNG, JPG, WEBP, SVG • Max 5 Mo • Stockage bucket <span className="text-[#92278F] font-medium">logos</span>
               </p>
             </div>
 

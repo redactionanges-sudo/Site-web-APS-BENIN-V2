@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth';
-import { supabaseStore } from '@/lib/supabase';
+import { SiteLogo } from '@/components/SiteLogo';
 import {
   Menu,
   X,
@@ -27,19 +26,6 @@ export const Navbar: React.FC = () => {
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [mediaDropdownOpen, setMediaDropdownOpen] = useState(false);
   const [oppDropdownOpen, setOppDropdownOpen] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string>('');
-
-  useEffect(() => {
-    let isMounted = true;
-    supabaseStore.getSettings().then((s) => {
-      if (isMounted && s?.logo_url) {
-        setLogoUrl(s.logo_url);
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -117,27 +103,9 @@ export const Navbar: React.FC = () => {
 
       {/* Main Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        {/* Brand identity with circular official logo */}
+        {/* Brand identity with institutional official logo */}
         <Link href="/" className="flex items-center gap-3 group">
-          {logoUrl ? (
-            <div className="w-11 h-11 rounded-full border-2 border-[#FF8C00] bg-white p-0.5 shadow-sm overflow-hidden flex items-center justify-center shrink-0 relative group-hover:scale-105 transition-transform">
-              <div className="w-full h-full rounded-full overflow-hidden relative flex items-center justify-center">
-                <Image
-                  src={logoUrl}
-                  alt="APS-BÉNIN Logo Officiel"
-                  fill
-                  sizes="44px"
-                  className="object-contain p-0.5"
-                  referrerPolicy="no-referrer"
-                  unoptimized={Boolean(logoUrl.startsWith('data:'))}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="w-11 h-11 rounded-full bg-[#92278F] flex items-center justify-center text-white font-extrabold text-base shadow-sm border-2 border-[#FF8C00] shrink-0 group-hover:scale-105 transition-transform">
-              APS
-            </div>
-          )}
+          <SiteLogo variant="header" priority />
           <div>
             <div className="flex items-baseline gap-2">
               <span className="font-extrabold text-xl text-[#92278F] tracking-tight font-heading">

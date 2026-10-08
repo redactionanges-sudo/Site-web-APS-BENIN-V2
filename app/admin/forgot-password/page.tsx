@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
+import { SiteLogo } from '@/components/SiteLogo';
 import {
   Mail,
   ArrowRight,
@@ -46,9 +47,7 @@ export default function AdminForgotPasswordPage() {
       <div className="relative max-w-md w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100 z-10">
         {/* Header */}
         <div className="bg-[#92278F] p-6 text-center text-white relative">
-          <div className="w-14 h-14 mx-auto rounded-xl bg-white text-[#92278F] flex items-center justify-center font-extrabold text-2xl border-2 border-[#FF8C00] shadow-md mb-3">
-            APS
-          </div>
+          <SiteLogo variant="auth" priority />
           <h1 className="text-xl font-extrabold tracking-tight font-heading">
             AGISSONS POUR SAUVER
           </h1>

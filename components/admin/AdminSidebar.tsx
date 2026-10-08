@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { supabaseStore } from '@/lib/supabase';
+import { SiteLogo } from '@/components/SiteLogo';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -32,18 +32,11 @@ export const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout, isSuperAdmin } = useAuth();
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
-  const [logoUrl, setLogoUrl] = useState<string>('');
 
   useEffect(() => {
     let isMounted = true;
     supabaseStore.getUnreadMessagesCount().then((count) => {
       if (isMounted) setUnreadMsgCount(count);
-    });
-
-    supabaseStore.getSettings().then((s) => {
-      if (isMounted && s?.logo_url) {
-        setLogoUrl(s.logo_url);
-      }
     });
 
     // Rafraîchissement périodique (toutes les 5 minutes) plutôt qu'à chaque clic de navigation
@@ -97,25 +90,7 @@ export const AdminSidebar: React.FC = () => {
       <div>
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <Link href="/admin" className="flex items-center gap-3">
-            {logoUrl ? (
-              <div className="w-9 h-9 rounded-full border-2 border-[#FF8C00] bg-white p-0.5 shadow-sm overflow-hidden flex items-center justify-center shrink-0 relative">
-                <div className="w-full h-full rounded-full overflow-hidden relative flex items-center justify-center">
-                  <Image
-                    src={logoUrl}
-                    alt="APS-BÉNIN Logo"
-                    fill
-                    sizes="36px"
-                    className="object-contain p-0.5"
-                    referrerPolicy="no-referrer"
-                    unoptimized={Boolean(logoUrl.startsWith('data:'))}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-[#92278F] text-white flex items-center justify-center font-extrabold text-sm border-2 border-[#FF8C00] shrink-0">
-                APS
-              </div>
-            )}
+            <SiteLogo variant="sidebar" />
             <div>
               <span className="font-extrabold text-sm text-white tracking-wide block font-heading">
                 APS-BÉNIN
