@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { SiteLogo } from '@/components/SiteLogo';
+import { CallHeadquartersCTA } from '@/components/CallHeadquartersCTA';
 import {
   Menu,
   X,
@@ -22,6 +24,16 @@ export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
   const { user } = useAuth();
+  const {
+    orgName,
+    orgNameShort,
+    addressLocality,
+    addressLocation,
+    email,
+    primaryPhoneTelHref,
+    validPhones,
+  } = useSiteSettings();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [mediaDropdownOpen, setMediaDropdownOpen] = useState(false);
@@ -40,25 +52,35 @@ export const Navbar: React.FC = () => {
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-purple-100">
             <span className="flex items-center gap-1.5 hover:text-white transition-colors">
               <MapPin className="w-3.5 h-3.5 text-[#FF8C00]" />
-              <span>Djacoṭé-Comè, Mono, Bénin</span>
+              <span>{addressLocality || addressLocation}</span>
             </span>
-            <a
-              href="tel:+22952948323"
-              className="flex items-center gap-1.5 hover:text-white transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5 text-[#FF8C00]" />
-              <span>+229 52 94 83 23 / 96 44 83 62</span>
-            </a>
-            <a
-              href="mailto:agissonspoursauver@gmail.com"
-              className="hidden md:flex items-center gap-1.5 hover:text-white transition-colors"
-            >
-              <Mail className="w-3.5 h-3.5 text-[#FF8C00]" />
-              <span>agissonspoursauver@gmail.com</span>
-            </a>
+
+            {primaryPhoneTelHref && validPhones.length > 0 && (
+              <a
+                href={primaryPhoneTelHref}
+                className="flex items-center gap-1.5 hover:text-white transition-colors"
+                title="Numéro direct du siège"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#FF8C00]" />
+                <span>{validPhones.join(' / ')}</span>
+              </a>
+            )}
+
+            {email && (
+              <a
+                href={`mailto:${email}`}
+                className="hidden md:flex items-center gap-1.5 hover:text-white transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5 text-[#FF8C00]" />
+                <span>{email}</span>
+              </a>
+            )}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Direct Call Headquarters CTA */}
+            <CallHeadquartersCTA variant="header" className="hidden lg:inline-flex" />
+
             {/* Bilingual Language Switcher */}
             <div className="flex items-center bg-black/20 rounded px-2 py-0.5 border border-white/20">
               <Globe className="w-3 h-3 text-[#FF8C00] mr-1.5" />
@@ -109,14 +131,14 @@ export const Navbar: React.FC = () => {
           <div>
             <div className="flex items-baseline gap-2">
               <span className="font-extrabold text-xl text-[#92278F] tracking-tight font-heading">
-                APS-BÉNIN
+                {orgNameShort}
               </span>
               <span className="hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-[#92278F] border border-purple-200">
                 ONG
               </span>
             </div>
             <p className="text-[11px] font-medium text-gray-500 tracking-wide line-clamp-1">
-              AGISSONS POUR SAUVER
+              {orgName}
             </p>
           </div>
         </Link>
@@ -522,6 +544,12 @@ export const Navbar: React.FC = () => {
             >
               {t('nav.contact')}
             </Link>
+
+            {primaryPhoneTelHref && (
+              <div className="pt-2 px-1">
+                <CallHeadquartersCTA variant="primary" className="w-full justify-center" />
+              </div>
+            )}
 
             <div className="pt-4 border-t border-gray-200">
               <Link

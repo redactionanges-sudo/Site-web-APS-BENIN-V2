@@ -8,6 +8,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { MediaItem, BannerAnnouncement } from '@/types';
 import { initialMedia, initialSiteSettings } from '@/lib/initial-data';
+import { CallHeadquartersCTA } from '@/components/CallHeadquartersCTA';
 import {
   ArrowRight,
   ShieldCheck,
@@ -255,15 +256,8 @@ export const HeroBanner: React.FC = () => {
               <span>{t('hero.cta_contact')}</span>
             </Link>
 
-            {/* Direct Line Badge */}
-            <a
-              href="tel:+22997123456"
-              className="hidden xl:inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-black/50 hover:bg-black/70 backdrop-blur-md text-xs font-semibold text-gray-200 border border-white/15 transition-colors"
-              title="Ligne directe de permanence"
-            >
-              <Phone className="w-3.5 h-3.5 text-[#FF8C00]" />
-              <span className="font-bold">(+229) 97 12 34 56</span>
-            </a>
+            {/* Direct Line Headquarters CTA */}
+            <CallHeadquartersCTA variant="hero" />
           </motion.div>
         </div>
 
