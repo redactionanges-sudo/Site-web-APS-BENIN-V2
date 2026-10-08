@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <style>
+      .stroke-primary {
+        stroke: #92278F;
+        stroke-width: 1.85;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+      }
+      .stroke-secondary {
+        stroke: #92278F;
+        stroke-width: 1.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+      }
+      .stroke-dashed {
+        stroke: #92278F;
+        stroke-width: 1.25;
+        stroke-dasharray: 3.5 4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+      }
+      .dot-purple {
+        fill: #92278F;
+      }
+      .dot-accent {
+        fill: #FF8C00;
+      }
+    </style>
+  </defs>
+
+  <!-- 1. LOSANGE CENTRAL MAJEUR (Symbole de protection, féminité et dignité) -->
+  <path class="stroke-primary" d="M 80 36 L 124 80 L 80 124 L 36 80 Z" />
+  <path class="stroke-secondary" d="M 80 50 L 110 80 L 80 110 L 50 80 Z" />
+  <path class="stroke-dashed" d="M 80 64 L 96 80 L 80 96 L 64 80 Z" />
+
+  <!-- Point focal central (Accent orange APS discret évoquant la vie et l'espoir) -->
+  <circle cx="80" cy="80" r="3.2" class="dot-accent" />
+
+  <!-- Constellation des 4 directions de solidarité -->
+  <circle cx="80" cy="71" r="2.0" class="dot-purple" />
+  <circle cx="89" cy="80" r="2.0" class="dot-purple" />
+  <circle cx="80" cy="89" r="2.0" class="dot-purple" />
+  <circle cx="71" cy="80" r="2.0" class="dot-purple" />
+
+  <!-- 2. LOSANGES D'ANGLE ENTRELACÉS (Répétition continue sur les tuiles adjacentes) -->
+  <!-- Angle Haut-Gauche (0, 0) -->
+  <path class="stroke-primary" d="M 0 44 L 44 0" />
+  <path class="stroke-secondary" d="M 0 30 L 30 0" />
+  <path class="stroke-dashed" d="M 0 16 L 16 0" />
+  <circle cx="0" cy="0" r="2.5" class="dot-purple" />
+
+  <!-- Angle Haut-Droite (160, 0) -->
+  <path class="stroke-primary" d="M 116 0 L 160 44" />
+  <path class="stroke-secondary" d="M 130 0 L 160 30" />
+  <path class="stroke-dashed" d="M 144 0 L 160 16" />
+  <circle cx="160" cy="0" r="2.5" class="dot-purple" />
+
+  <!-- Angle Bas-Gauche (0, 160) -->
+  <path class="stroke-primary" d="M 0 116 L 44 160" />
+  <path class="stroke-secondary" d="M 0 130 L 30 160" />
+  <path class="stroke-dashed" d="M 0 144 L 16 160" />
+  <circle cx="0" cy="160" r="2.5" class="dot-purple" />
+
+  <!-- Angle Bas-Droite (160, 160) -->
+  <path class="stroke-primary" d="M 116 160 L 160 116" />
+  <path class="stroke-secondary" d="M 130 160 L 160 130" />
+  <path class="stroke-dashed" d="M 144 160 L 160 144" />
+  <circle cx="160" cy="160" r="2.5" class="dot-purple" />
+
+  <!-- 3. AXES ET CHEVRONS DE MOUVEMENT COLLECTIF ("Agissons") -->
+  <!-- Axe vertical supérieur -->
+  <path class="stroke-primary" d="M 80 0 L 80 36" />
+  <path class="stroke-secondary" d="M 72 16 L 80 8 L 88 16" />
+  <path class="stroke-secondary" d="M 72 26 L 80 18 L 88 26" />
+
+  <!-- Axe vertical inférieur -->
+  <path class="stroke-primary" d="M 80 124 L 80 160" />
+  <path class="stroke-secondary" d="M 72 144 L 80 152 L 88 144" />
+  <path class="stroke-secondary" d="M 72 134 L 80 142 L 88 134" />
+
+  <!-- Axe horizontal gauche -->
+  <path class="stroke-primary" d="M 0 80 L 36 80" />
+  <path class="stroke-secondary" d="M 16 72 L 8 80 L 16 88" />
+  <path class="stroke-secondary" d="M 26 72 L 18 80 L 26 88" />
+
+  <!-- Axe horizontal droit -->
+  <path class="stroke-primary" d="M 124 80 L 160 80" />
+  <path class="stroke-secondary" d="M 144 72 L 152 80 L 144 88" />
+  <path class="stroke-secondary" d="M 134 72 L 142 80 L 134 88" />
+
+  <!-- 4. DIAGONALES ET NŒUDS DE TISSAGE GÉOMÉTRIQUE -->
+  <path class="stroke-secondary" d="M 24 56 L 56 24" />
+  <circle cx="40" cy="40" r="2.5" class="dot-accent" />
+
+  <path class="stroke-secondary" d="M 136 56 L 104 24" />
+  <circle cx="120" cy="40" r="2.5" class="dot-accent" />
+
+  <path class="stroke-secondary" d="M 24 104 L 56 136" />
+  <circle cx="40" cy="120" r="2.5" class="dot-accent" />
+
+  <path class="stroke-secondary" d="M 136 104 L 104 136" />
+  <circle cx="120" cy="120" r="2.5" class="dot-accent" />
+
+  <!-- 5. ARCS DE CERCLE ET LIGNES DE RASSEMBLEMENT (Féminité et cohésion communautaire) -->
+  <path class="stroke-dashed" d="M 68 36 A 14 14 0 0 1 92 36" />
+  <path class="stroke-dashed" d="M 68 124 A 14 14 0 0 0 92 124" />
+  <path class="stroke-dashed" d="M 36 68 A 14 14 0 0 1 36 92" />
+  <path class="stroke-dashed" d="M 124 68 A 14 14 0 0 0 124 92" />
+</svg>

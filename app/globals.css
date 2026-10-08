@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-primary: #92278F;
+    --color-primary-dark: #741772;
+    --color-primary-light: #fbf2fb;
+    --color-accent: #FF8C00;
+    --color-accent-dark: #d97500;
+    --color-accent-light: #fff7ed;
+  }
+
+  body {
+    font-family: var(--font-opensans), Open Sans, Verdana, Arial, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: var(--font-montserrat), Montserrat, Verdana, Arial, sans-serif;
+  }
+}
+
+/* Custom styling helpers */
+.bg-brand-purple {
+  background-color: #92278F;
+}
+.text-brand-purple {
+  color: #92278F;
+}
+.border-brand-purple {
+  border-color: #92278F;
+}
+
+.bg-brand-orange {
+  background-color: #FF8C00;
+}
+.text-brand-orange {
+  color: #FF8C00;
+}
+.border-brand-orange {
+  border-color: #FF8C00;
+}
+
+/* Smooth transitions */
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   TEXTURE ET MOTIF AFRICAIN CONTEMPORAIN GLOBAL (APS-BÉNIN)
+   ========================================================================== */
+
+/* 
+  Architecture de couches :
+  1. Motif africain vectoriel (#92278F)
+  2. Voile blanc semi-opaque
+  3. Contenu et respiration dans les marges / entre-sections
+  4. Cartes, formulaires et blocs de lecture 100% opaques (protection de contraste)
+*/
+
+.min-h-screen.bg-white,
+div.min-h-screen.bg-white,
+main {
+  background-color: transparent !important;
+}
+
+/* 
+  Sections publiques claires :
+  Translucides (72% - 76%) avec léger voile institutionnel
+  qui laisse clairement transparaître le motif géométrique africain sous le blanc.
+*/
+section.bg-white {
+  background-color: rgba(255, 255, 255, 0.74) !important;
+}
+
+section.bg-gray-50 {
+  background-color: rgba(250, 247, 252, 0.70) !important;
+}
+
+/* 
+  Zones de protection et de lisibilité prioritaire :
+  Les cartes d'articles, projets, formulaires, tables et encadrés
+  conservent un blanc 100% opaque (#ffffff) avec bordures nettes
+  pour garantir un confort de lecture et un contraste WCAG AA parfait.
+*/
+.bg-white.rounded-2xl,
+.bg-white.rounded-xl,
+.bg-white.rounded-lg,
+.bg-white.shadow-xs,
+.bg-white.shadow-sm,
+.bg-white.shadow-md,
+.bg-white.shadow-lg,
+article.bg-white,
+article.rounded-xl,
+article.rounded-2xl,
+form.bg-white,
+.card-opaque {
+  background-color: #ffffff !important;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 35s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

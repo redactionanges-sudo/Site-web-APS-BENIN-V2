@@ -1,0 +1,6 @@
+{
+  "name": "APS-BÉNIN | Agissons Pour Sauver - Site Institutionnel Officiel",
+  "description": "Site web institutionnel officiel de l'organisation AGISSONS POUR SAUVER (APS-BÉNIN), engagée pour les droits humains, l'égalité du genre, la santé reproductive et l'autonomisation des communautés vulnérables à Comè et au Bénin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
