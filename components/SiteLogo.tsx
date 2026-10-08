@@ -149,16 +149,21 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
       // S'intègre naturellement avec le nom "APS-BÉNIN".
       return (
         <div
+          suppressHydrationWarning
           className={`inline-flex items-center justify-center shrink-0 transition-transform group-hover:scale-[1.02] ${className}`}
         >
           {hasValidLogo ? (
-            <div className="flex items-center justify-center p-0.5 rounded-lg max-h-11 sm:max-h-12 max-w-[160px] sm:max-w-[200px]">
+            <div
+              suppressHydrationWarning
+              className="flex items-center justify-center p-0.5 rounded-lg max-h-11 sm:max-h-12 max-w-[160px] sm:max-w-[200px]"
+            >
               <img
                 src={logoUrl}
                 alt={effectiveAlt}
                 loading={priority ? 'eager' : 'lazy'}
                 referrerPolicy="no-referrer"
                 onError={() => setLoadError(true)}
+                suppressHydrationWarning
                 className={`max-h-10 sm:max-h-11 max-w-[150px] sm:max-w-[190px] w-auto h-auto object-contain select-none transition-all ${imgClassName}`}
               />
             </div>
@@ -173,15 +178,22 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
       // Pages d'authentification (/admin/login, /admin/forgot-password, /admin/reset-password)
       // Placé dans l'en-tête de la carte auth. Conteneur blanc propre pour assurer 100% de lisibilité.
       return (
-        <div className={`flex items-center justify-center mx-auto mb-3.5 ${className}`}>
+        <div
+          suppressHydrationWarning
+          className={`flex items-center justify-center mx-auto mb-3.5 ${className}`}
+        >
           {hasValidLogo ? (
-            <div className="bg-white p-2 rounded-xl shadow-md border-2 border-[#FF8C00]/80 inline-flex items-center justify-center max-w-[220px] max-h-16 sm:max-h-20 min-w-[56px] min-h-[56px]">
+            <div
+              suppressHydrationWarning
+              className="bg-white p-2 rounded-xl shadow-md border-2 border-[#FF8C00]/80 inline-flex items-center justify-center max-w-[220px] max-h-16 sm:max-h-20 min-w-[56px] min-h-[56px]"
+            >
               <img
                 src={logoUrl}
                 alt={effectiveAlt}
                 loading="eager"
                 referrerPolicy="no-referrer"
                 onError={() => setLoadError(true)}
+                suppressHydrationWarning
                 className={`max-h-12 sm:max-h-14 max-w-[180px] sm:max-w-[200px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
             </div>
@@ -198,15 +210,22 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
       // Pied de page public : S'affiche sur le fond sombre gray-950.
       // Conteneur blanc protecteur propre garantissant le contraste quel que soit le logo.
       return (
-        <div className={`inline-flex items-center justify-center shrink-0 ${className}`}>
+        <div
+          suppressHydrationWarning
+          className={`inline-flex items-center justify-center shrink-0 ${className}`}
+        >
           {hasValidLogo ? (
-            <div className="bg-white p-1 rounded-lg border border-purple-300/40 shadow-xs inline-flex items-center justify-center max-w-[160px] max-h-11 min-w-[42px] min-h-[42px]">
+            <div
+              suppressHydrationWarning
+              className="bg-white p-1 rounded-lg border border-purple-300/40 shadow-xs inline-flex items-center justify-center max-w-[160px] max-h-11 min-w-[42px] min-h-[42px]"
+            >
               <img
                 src={logoUrl}
                 alt={effectiveAlt}
                 loading="lazy"
                 referrerPolicy="no-referrer"
                 onError={() => setLoadError(true)}
+                suppressHydrationWarning
                 className={`max-h-9 sm:max-h-10 max-w-[140px] sm:max-w-[150px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
             </div>
@@ -222,15 +241,22 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
     case 'sidebar': {
       // Barre latérale d'administration : Compact, s'intègre sur le fond sombre de la sidebar.
       return (
-        <div className={`inline-flex items-center justify-center shrink-0 ${className}`}>
+        <div
+          suppressHydrationWarning
+          className={`inline-flex items-center justify-center shrink-0 ${className}`}
+        >
           {hasValidLogo ? (
-            <div className="bg-white p-1 rounded-lg border border-[#FF8C00]/60 inline-flex items-center justify-center max-w-[100px] max-h-10 min-w-[36px] min-h-[36px] shadow-2xs">
+            <div
+              suppressHydrationWarning
+              className="bg-white p-1 rounded-lg border border-[#FF8C00]/60 inline-flex items-center justify-center max-w-[100px] max-h-10 min-w-[36px] min-h-[36px] shadow-2xs"
+            >
               <img
                 src={logoUrl}
                 alt={effectiveAlt}
                 loading="eager"
                 referrerPolicy="no-referrer"
                 onError={() => setLoadError(true)}
+                suppressHydrationWarning
                 className={`max-h-8 max-w-[88px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
             </div>
@@ -248,6 +274,7 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
       // Cadre généreux permettant de voir les vraies proportions (horizontal, carré, etc.)
       return (
         <div
+          suppressHydrationWarning
           className={`relative inline-flex items-center justify-center rounded-2xl border-2 border-dashed border-[#92278F]/30 bg-white p-2 sm:p-3 shadow-xs min-w-[80px] min-h-[80px] max-w-[260px] max-h-28 overflow-hidden ${className}`}
         >
           {hasValidLogo ? (
@@ -257,6 +284,7 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               loading="eager"
               referrerPolicy="no-referrer"
               onError={() => setLoadError(true)}
+              suppressHydrationWarning
               className={`max-h-20 sm:max-h-24 max-w-[220px] sm:max-w-[240px] w-auto h-auto object-contain select-none transition-all ${imgClassName}`}
             />
           ) : (
@@ -269,7 +297,10 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
     case 'compact':
     default: {
       return (
-        <div className={`inline-flex items-center justify-center shrink-0 ${className}`}>
+        <div
+          suppressHydrationWarning
+          className={`inline-flex items-center justify-center shrink-0 ${className}`}
+        >
           {hasValidLogo ? (
             <img
               src={logoUrl}
@@ -277,6 +308,7 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               loading="lazy"
               referrerPolicy="no-referrer"
               onError={() => setLoadError(true)}
+              suppressHydrationWarning
               className={`max-h-8 max-w-[120px] w-auto h-auto object-contain select-none ${imgClassName}`}
             />
           ) : (

@@ -30,6 +30,39 @@ const AuthContext = createContext<AuthContextType>({
   canAccessBackOffice: false,
 });
 
+/**
+ * Dynamic resolution of Auth redirect URL.
+ * Supports:
+ * - Production: https://www.apsbeninong.org/admin/reset-password
+ * - Local development: http://localhost:3000/admin/reset-password
+ * - AI Studio / Cloud Run previews: current origin
+ * - Vercel previews: current origin
+ */
+export function getAuthRedirectUrl(path: string = '/admin/reset-password'): string {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const origin = window.location.origin;
+
+    // Production domain (with or without www)
+    if (hostname === 'www.apsbeninong.org' || hostname === 'apsbeninong.org') {
+      return `https://www.apsbeninong.org${path}`;
+    }
+
+    // Localhost or preview origin
+    return `${origin}${path}`;
+  }
+
+  // Server-side fallback: check APP_URL environment variable
+  const serverUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (serverUrl) {
+    const clean = serverUrl.replace(/\/$/, '');
+    return `${clean}${path}`;
+  }
+
+  // Canonical production fallback
+  return `https://www.apsbeninong.org${path}`;
+}
+
 const AUTH_STORAGE_KEY = 'aps_admin_session';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -37,8 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   // Helper to fetch profile from Supabase with user JWT
-  const fetchProfile = async (userId: string, email: string): Promise<UserProfile | null> => {
-    if (!supabase) return null;
+  const fetchProfile = async (
+    userId: string,
+    email: string
+  ): Promise<{ profile: UserProfile | null; error?: string }> => {
+    if (!supabase) return { profile: null, error: 'Supabase non configuré' };
     try {
       // 1. By primary key (UUID)
       const { data, error } = await supabase
@@ -48,7 +84,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (!error && data) {
-        return data as UserProfile;
+        return { profile: data as UserProfile };
+      }
+
+      if (error) {
+        console.warn('Error fetching Supabase profile by ID:', error);
+        if (error.message?.includes('permission denied')) {
+          return {
+            profile: null,
+            error: `Erreur de permissions base de données : ${error.message} (vérifiez les privilèges de is_admin).`,
+          };
+        }
       }
 
       // 2. By email fallback
@@ -60,13 +106,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .maybeSingle();
 
         if (!emailErr && byEmail) {
-          return byEmail as UserProfile;
+          return { profile: byEmail as UserProfile };
+        }
+
+        if (emailErr && emailErr.message?.includes('permission denied')) {
+          return {
+            profile: null,
+            error: `Erreur de permissions base de données : ${emailErr.message} (vérifiez les privilèges de is_admin).`,
+          };
         }
       }
-    } catch (e) {
-      console.warn('Error fetching Supabase profile:', e);
+    } catch (e: any) {
+      console.warn('Exception fetching Supabase profile:', e);
+      return { profile: null, error: e?.message || 'Erreur inattendue de profil' };
     }
-    return null;
+    return { profile: null };
   };
 
   useEffect(() => {
@@ -77,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isSupabaseConfigured && supabase) {
           const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
           if (session?.user && !sessionErr) {
-            const profile = await fetchProfile(session.user.id, session.user.email || '');
+            const { profile } = await fetchProfile(session.user.id, session.user.email || '');
             if (profile) {
               if (profile.is_active === false) {
                 console.warn('Compte administrateur désactivé.');
@@ -122,7 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const client = supabase;
       const { data } = client.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          const profile = await fetchProfile(session.user.id, session.user.email || '');
+          const { profile } = await fetchProfile(session.user.id, session.user.email || '');
           if (profile && mounted) {
             if (profile.is_active === false) {
               await client.auth.signOut();
@@ -169,39 +223,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: pass,
       });
 
-      // Generic error message for security - prevents username enumeration & internal leak
+      // Handle real auth credential / rate limit errors
       if (error || !data.user) {
-        return { success: false, error: 'Adresse email ou mot de passe incorrect.' };
+        const msg = error?.message || '';
+        if (msg.includes('Invalid login credentials')) {
+          return { success: false, error: 'Adresse email ou mot de passe incorrect.' };
+        }
+        if (msg.includes('Email not confirmed')) {
+          return { success: false, error: 'Veuillez confirmer votre adresse email avant de vous connecter.' };
+        }
+        if (msg.toLowerCase().includes('rate limit')) {
+          return { success: false, error: 'Trop de tentatives consécutives. Veuillez patienter un instant.' };
+        }
+        return { success: false, error: msg || 'Adresse email ou mot de passe incorrect.' };
       }
 
       // Retrieve associated profile from profiles table via authenticated client
-      let profile = await fetchProfile(data.user.id, cleanEmail);
+      const { profile, error: profileErr } = await fetchProfile(data.user.id, cleanEmail);
 
-      // If user row does not yet exist in profiles, bootstrap it with lowest role 'editor'
-      if (!profile) {
-        const fallbackProfile: UserProfile = {
-          id: data.user.id,
-          email: cleanEmail,
-          full_name: data.user.user_metadata?.full_name || 'Utilisateur APS',
-          role: 'editor',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          last_sign_in: new Date().toISOString(),
+      if (profileErr) {
+        await client.auth.signOut();
+        return {
+          success: false,
+          error: profileErr,
         };
-
-        const { error: insertErr } = await client.from('profiles').insert(fallbackProfile);
-        if (!insertErr) {
-          profile = fallbackProfile;
-        } else {
-          // If insert fails due to existing email or PK constraint, re-fetch
-          profile = await fetchProfile(data.user.id, cleanEmail);
-        }
       }
 
       if (!profile) {
+        await client.auth.signOut();
         return {
           success: false,
-          error: 'Adresse email ou mot de passe incorrect.',
+          error: 'Ce compte utilisateur n’est associé à aucun profil d’administration configuré. Veuillez contacter le Super Administrateur.',
         };
       }
 
@@ -273,9 +325,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (isSupabaseConfigured && supabase) {
       try {
-        const redirectUrl = typeof window !== 'undefined'
-          ? `${window.location.origin}/admin/reset-password`
-          : undefined;
+        const redirectUrl = getAuthRedirectUrl('/admin/reset-password');
 
         const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
           redirectTo: redirectUrl,

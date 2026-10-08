@@ -74,8 +74,99 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const trimmedName = formData.name.trim();
+    const trimmedFirstname = formData.firstname.trim();
+    const trimmedEmail = formData.email.trim();
+    const trimmedPhone = formData.phone.trim();
+    const trimmedSubject = formData.subject.trim();
+    const trimmedMessage = formData.message.trim();
+
+    // 1. Validation du nom
+    if (!trimmedName || trimmedName.length > 150) {
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'Please enter a valid last name (maximum 150 characters).'
+          : 'Veuillez renseigner un nom valide (150 caractères maximum).'
+      );
+      return;
+    }
+
+    // 2. Validation du prénom
+    if (!trimmedFirstname || trimmedFirstname.length > 150) {
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'Please enter a valid first name (maximum 150 characters).'
+          : 'Veuillez renseigner un prénom valide (150 caractères maximum).'
+      );
+      return;
+    }
+
+    // 3. Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail) || trimmedEmail.length > 255) {
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'Please enter a valid email address (maximum 255 characters).'
+          : 'Veuillez renseigner une adresse email valide (255 caractères maximum).'
+      );
+      return;
+    }
+
+    // 4. Validation du téléphone (optionnel)
+    if (trimmedPhone && trimmedPhone.length > 50) {
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'Phone number cannot exceed 50 characters.'
+          : 'Le numéro de téléphone ne doit pas dépasser 50 caractères.'
+      );
+      return;
+    }
+
+    // 5. Validation de l'objet
+    if (!trimmedSubject || trimmedSubject.length > 300) {
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'Please enter a subject (maximum 300 characters).'
+          : "Veuillez renseigner l'objet de votre message (300 caractères maximum)."
+      );
+      return;
+    }
+
+    // 6. Validation du message
+    if (trimmedMessage.length < 5) {
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'Your message must be at least 5 characters long.'
+          : 'Votre message doit comporter au moins 5 caractères.'
+      );
+      return;
+    }
+
+    if (trimmedMessage.length > 5000) {
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'Your message cannot exceed 5000 characters.'
+          : 'Votre message ne doit pas dépasser 5000 caractères.'
+      );
+      return;
+    }
+
+    // 7. Validation du consentement
     if (!formData.consent) {
-      alert('Veuillez accepter le traitement de vos données pour soumettre le formulaire.');
+      setStatus('error');
+      setErrorMessage(
+        language === 'en'
+          ? 'You must consent to data processing to submit this form.'
+          : 'Veuillez accepter le traitement de vos données pour soumettre le formulaire.'
+      );
       return;
     }
 
@@ -84,16 +175,17 @@ export default function ContactPage() {
 
     try {
       await supabaseStore.sendMessage({
-        name: formData.name,
-        firstname: formData.firstname,
-        email: formData.email,
-        phone: formData.phone,
-        subject: formData.subject,
-        message: formData.message,
-        consent: formData.consent,
+        name: trimmedName,
+        firstname: trimmedFirstname,
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        subject: trimmedSubject,
+        message: trimmedMessage,
+        consent: true,
       });
 
       setStatus('success');
+      // Réinitialiser le formulaire uniquement en cas de succès confirmé
       setFormData({
         name: '',
         firstname: '',
@@ -104,9 +196,10 @@ export default function ContactPage() {
         consent: false,
       });
     } catch (err: any) {
-      console.error(err);
+      console.error('Erreur transmission message contact :', err);
       setStatus('error');
-      setErrorMessage(err.message || 'Erreur lors de la transmission du message.');
+      setErrorMessage(err.message || (language === 'en' ? 'Error sending message.' : 'Erreur lors de la transmission du message.'));
+      // Les données saisies par l'utilisateur sont conservées en cas d'erreur
     }
   };
 
@@ -287,6 +380,7 @@ export default function ContactPage() {
                         <input
                           type="text"
                           required
+                          maxLength={150}
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#92278F] bg-white text-gray-900"
@@ -300,6 +394,7 @@ export default function ContactPage() {
                         <input
                           type="text"
                           required
+                          maxLength={150}
                           value={formData.firstname}
                           onChange={(e) => setFormData({ ...formData, firstname: e.target.value })}
                           className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#92278F] bg-white text-gray-900"
@@ -315,6 +410,7 @@ export default function ContactPage() {
                         <input
                           type="email"
                           required
+                          maxLength={255}
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#92278F] bg-white text-gray-900"
@@ -327,6 +423,7 @@ export default function ContactPage() {
                         </label>
                         <input
                           type="tel"
+                          maxLength={50}
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           placeholder="+229 ..."
@@ -342,6 +439,7 @@ export default function ContactPage() {
                       <input
                         type="text"
                         required
+                        maxLength={300}
                         value={formData.subject}
                         onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                         placeholder="Partenariat, information, signalement..."
@@ -350,12 +448,18 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">
-                        {t('contact.form_message')} *
-                      </label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold text-gray-700">
+                          {t('contact.form_message')} *
+                        </label>
+                        <span className="text-[10px] text-gray-400">
+                          {formData.message.length} / 5000 caractères
+                        </span>
+                      </div>
                       <textarea
                         required
                         rows={5}
+                        maxLength={5000}
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                         className="w-full px-3.5 py-2.5 text-xs rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#92278F] bg-white text-gray-900"

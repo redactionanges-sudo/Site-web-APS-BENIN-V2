@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabaseStore } from '@/lib/supabase';
 import { SiteSettings } from '@/types';
+import { initialSiteSettings } from '@/lib/initial-data';
 
 export interface UseSiteLogoResult {
   logoUrl: string;
@@ -16,7 +17,7 @@ export interface UseSiteLogoResult {
  * pour le logo institutionnel APS-BÉNIN à travers toute l'application.
  *
  * Fonctionnalités :
- * - Lecture synchrone immédiate depuis le cache mémoire / localStorage (aucun scintillement)
+ * - État initial déterministe pour éviter toute disparité d'hydratation (SSR / Client)
  * - Récupération asynchrone sécurisée depuis site_settings
  * - Écoute temps-réel de l'événement 'aps_site_settings_changed' (mise à jour instantanée sans rechargement)
  * - Écoute inter-onglets via 'storage'
@@ -25,16 +26,12 @@ export interface UseSiteLogoResult {
 export function useSiteLogo(overrideUrl?: string | null): UseSiteLogoResult {
   const [logoUrl, setLogoUrl] = useState<string>(() => {
     if (overrideUrl) return overrideUrl;
-    if (typeof window === 'undefined') return '';
-    const cached = supabaseStore.getCachedSettings();
-    return cached?.logo_url || '';
+    return initialSiteSettings.logo_url || '';
   });
 
-  const [orgName, setOrgName] = useState<string>(() => {
-    if (typeof window === 'undefined') return 'APS-BÉNIN';
-    const cached = supabaseStore.getCachedSettings();
-    return cached?.org_name_short || 'APS-BÉNIN';
-  });
+  const [orgName, setOrgName] = useState<string>(
+    initialSiteSettings.org_name_short || 'APS-BÉNIN'
+  );
 
   const [loading, setLoading] = useState<boolean>(!logoUrl && !overrideUrl);
 

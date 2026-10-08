@@ -59,10 +59,31 @@ export default function AdminResetPasswordPage() {
         if (typeof window !== 'undefined') {
           const hash = window.location.hash;
           const search = window.location.search;
+
+          // Support PKCE flow with authorization code
+          if (search.includes('code=')) {
+            try {
+              const urlParams = new URLSearchParams(search);
+              const code = urlParams.get('code');
+              if (code) {
+                const { data: codeData, error: codeErr } = await supabase!.auth.exchangeCodeForSession(code);
+                if (!codeErr && codeData?.session?.user) {
+                  if (mounted) {
+                    setHasValidSession(true);
+                    setUserEmail(codeData.session.user.email || null);
+                    setCheckingSession(false);
+                  }
+                  return;
+                }
+              }
+            } catch (pkceErr) {
+              console.warn('PKCE exchange notice:', pkceErr);
+            }
+          }
+
           if (
             hash.includes('access_token') ||
             hash.includes('type=recovery') ||
-            search.includes('code=') ||
             search.includes('token=')
           ) {
             // Give Supabase client a moment to exchange code or hash

@@ -341,15 +341,17 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('aps_language') as Language;
-        if (saved === 'fr' || saved === 'en') return saved;
-      } catch {}
-    }
-    return 'fr';
-  });
+  const [language, setLanguageState] = useState<Language>('fr');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('aps_language') as Language;
+      if (saved === 'fr' || saved === 'en') {
+        setLanguageState(saved);
+        document.documentElement.lang = saved;
+      }
+    } catch {}
+  }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

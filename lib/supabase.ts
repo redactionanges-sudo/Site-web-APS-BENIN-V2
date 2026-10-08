@@ -990,16 +990,91 @@ export const supabaseStore = {
     return list.filter(m => m.status === 'unread').length;
   },
 
-  async sendMessage(msg: Omit<ContactMessage, 'id' | 'created_at' | 'status'>): Promise<ContactMessage> {
-    const newMsg: ContactMessage = {
-      ...msg,
-      id: 'msg-' + Date.now(),
+  async sendMessage(msg: {
+    name: string;
+    firstname: string;
+    email: string;
+    phone?: string;
+    subject: string;
+    message: string;
+    consent: boolean;
+  }): Promise<ContactMessage> {
+    // 1. Normalisation des données
+    const trimmedName = (msg.name || '').trim();
+    const trimmedFirstname = (msg.firstname || '').trim();
+    const trimmedEmail = (msg.email || '').trim().toLowerCase();
+    const trimmedPhone = msg.phone ? msg.phone.trim() : '';
+    const trimmedSubject = (msg.subject || '').trim();
+    const trimmedMessage = (msg.message || '').trim();
+
+    // 2. Validations strictes (compatibles avec la RLS)
+    if (!trimmedName || trimmedName.length > 150) {
+      throw new Error('Le nom est requis et ne doit pas dépasser 150 caractères.');
+    }
+    if (!trimmedFirstname || trimmedFirstname.length > 150) {
+      throw new Error('Le prénom est requis et ne doit pas dépasser 150 caractères.');
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail) || trimmedEmail.length > 255) {
+      throw new Error('Une adresse email valide est requise (maximum 255 caractères).');
+    }
+    if (trimmedPhone && trimmedPhone.length > 50) {
+      throw new Error('Le numéro de téléphone ne doit pas dépasser 50 caractères.');
+    }
+    if (!trimmedSubject || trimmedSubject.length > 300) {
+      throw new Error("L'objet du message est requis et ne doit pas dépasser 300 caractères.");
+    }
+    if (trimmedMessage.length < 5 || trimmedMessage.length > 5000) {
+      throw new Error('Le message doit comporter entre 5 et 5000 caractères.');
+    }
+    if (msg.consent !== true) {
+      throw new Error('Le consentement au traitement des données est obligatoire.');
+    }
+
+    // 3. Génération d'un identifiant unique (UUID ou fallback horodaté)
+    const id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    // 4. Payload autorisé strictement conforme (AUCUN champ notes envoyé)
+    const payload = {
+      id,
+      name: trimmedName,
+      firstname: trimmedFirstname,
+      email: trimmedEmail,
+      phone: trimmedPhone || null,
+      subject: trimmedSubject,
+      message: trimmedMessage,
+      consent: true,
+      status: 'unread' as const,
       created_at: new Date().toISOString(),
-      status: 'unread',
     };
-    await mutateTable('contact_messages', 'upsert', newMsg);
+
+    // 5. Insertion directe via le client Supabase public (rôle anonyme) et politique RLS INSERT
+    if (supabase) {
+      const { error } = await supabase
+        .from('contact_messages')
+        .insert(payload);
+
+      if (error) {
+        console.error('Erreur Supabase insertion contact_messages :', error);
+        throw new Error(error.message || "Erreur lors de l'enregistrement de votre message.");
+      }
+    }
+
+    // 6. Mise à jour du cache local et invalidation pour la réactivité
+    const savedRecord: ContactMessage = {
+      ...payload,
+      phone: payload.phone || '',
+    };
+
+    try {
+      const localList = getStoredItem<ContactMessage[]>('messages', []);
+      setStoredItem('messages', [savedRecord, ...localList]);
+    } catch {}
     invalidateCache('messages');
-    return newMsg;
+
+    return savedRecord;
   },
 
   async updateMessageStatus(id: string, status: 'unread' | 'read' | 'replied', notes?: string): Promise<ContactMessage[]> {
