@@ -5,10 +5,12 @@ import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 import { UserProfile, UserRole } from '@/types';
 import { Plus, Edit, Trash2, UserCog, ShieldCheck, X } from 'lucide-react';
 
 export default function AdminUtilisateursPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -65,7 +67,31 @@ export default function AdminUtilisateursPage() {
       last_sign_in: editingUser?.last_sign_in,
     };
 
+    const isNew = !editingUser;
     await supabaseStore.saveUser(payload);
+
+    try {
+      await supabaseStore.recordAuditLog({
+        user_id: currentUser?.id,
+        user_email: currentUser?.email,
+        user_name: currentUser?.full_name,
+        user_role: currentUser?.role,
+        action_type: isNew ? 'creation' : 'modification',
+        module: 'utilisateurs',
+        target_id: payload.id,
+        target_title: `${payload.full_name} (${payload.email})`,
+        summary: isNew
+          ? `Création du compte utilisateur « ${payload.full_name} » avec le rôle ${payload.role}`
+          : `Modification des permissions / rôle de « ${payload.full_name} » (${payload.role})`,
+        changes: {
+          role: { old: editingUser?.role, new: payload.role },
+          is_active: { old: editingUser?.is_active, new: payload.is_active },
+        },
+      });
+    } catch (auditErr) {
+      console.warn('Erreur non-bloquante audit utilisateur:', auditErr);
+    }
+
     await loadData();
     setModalOpen(false);
   };
@@ -73,6 +99,23 @@ export default function AdminUtilisateursPage() {
   const confirmDelete = async () => {
     if (!userToDelete) return;
     await supabaseStore.deleteUser(userToDelete.id);
+
+    try {
+      await supabaseStore.recordAuditLog({
+        user_id: currentUser?.id,
+        user_email: currentUser?.email,
+        user_name: currentUser?.full_name,
+        user_role: currentUser?.role,
+        action_type: 'suppression',
+        module: 'utilisateurs',
+        target_id: userToDelete.id,
+        target_title: `${userToDelete.full_name} (${userToDelete.email})`,
+        summary: `Suppression définitive du compte utilisateur « ${userToDelete.full_name} »`,
+      });
+    } catch (auditErr) {
+      console.warn('Erreur non-bloquante audit suppression utilisateur:', auditErr);
+    }
+
     await loadData();
     setDeleteConfirmOpen(false);
     setUserToDelete(null);

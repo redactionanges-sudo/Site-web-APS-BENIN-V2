@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n';
-import { supabaseStore } from '@/lib/supabase';
-import { SocialLinksConfig } from '@/types';
-import { getActiveSocialPlatforms } from '@/lib/social';
+import { useSiteSettings, sanitizePhoneForTel } from '@/hooks/useSiteSettings';
 import { SiteLogo } from '@/components/SiteLogo';
 import {
   MapPin,
@@ -24,29 +22,26 @@ import {
 export const Footer: React.FC = () => {
   const { language, t } = useLanguage();
   const currentYear = new Date().getFullYear();
-  const [socialLinks, setSocialLinks] = useState<SocialLinksConfig | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    supabaseStore.getSettings().then((s) => {
-      if (isMounted && s) {
-        if (s.social_links) setSocialLinks(s.social_links);
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const activeSocials = useMemo(() => {
-    return getActiveSocialPlatforms(socialLinks);
-  }, [socialLinks]);
+  const {
+    orgName,
+    orgNameShort,
+    sloganFr,
+    sloganEn,
+    addressLocation,
+    addressLocality,
+    postalBox,
+    validPhones,
+    email,
+    activeSocials,
+    settings,
+  } = useSiteSettings();
 
   const renderSocialIcon = (id: string, badge: string) => {
     switch (id) {
       case 'facebook':
         return <Facebook className="w-4 h-4" />;
       case 'twitter':
+      case 'x':
         return <Twitter className="w-4 h-4" />;
       case 'linkedin':
         return <Linkedin className="w-4 h-4" />;
@@ -59,6 +54,8 @@ export const Footer: React.FC = () => {
     }
   };
 
+  const currentSlogan = language === 'en' ? (sloganEn || sloganFr) : (sloganFr || sloganEn);
+
   return (
     <footer className="bg-gray-950 text-gray-300 pt-16 pb-12 border-t-4 border-[#92278F]">
       <div className="max-w-7xl mx-auto px-4 sm:px-8">
@@ -69,22 +66,24 @@ export const Footer: React.FC = () => {
               <SiteLogo variant="footer" />
               <div>
                 <span className="font-extrabold text-lg text-white tracking-tight font-heading">
-                  APS-BÉNIN
+                  {orgNameShort || 'APS-BÉNIN'}
                 </span>
                 <p className="text-[10px] text-gray-400 font-medium tracking-wider">
-                  AGISSONS POUR SAUVER
+                  {orgName || 'AGISSONS POUR SAUVER'}
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-gray-300 italic font-medium border-l-2 border-[#FF8C00] pl-3 py-1">
-              « {language === 'en' ? 'For a more just and egalitarian world' : 'Pour un monde plus juste et égalitaire'} »
-            </p>
+            {currentSlogan && (
+              <p className="text-sm text-gray-300 italic font-medium border-l-2 border-[#FF8C00] pl-3 py-1">
+                « {currentSlogan} »
+              </p>
+            )}
 
             <p className="text-xs text-gray-400 leading-relaxed">
               {language === 'en'
-                ? 'Non-Governmental Organization committed to human rights, gender equality, sexual and reproductive health, and grassroots community empowerment across Benin.'
-                : "Organisation Non Gouvernementale engagée dans la défense des droits humains, la promotion de l'égalité de genre, la santé reproductive et l'autonomisation des communautés vulnérables au Bénin."}
+                ? (settings.description_en || 'Non-Governmental Organization committed to human rights, gender equality, sexual and reproductive health, and grassroots community empowerment across Benin.')
+                : (settings.description_fr || "Organisation Non Gouvernementale engagée dans la défense des droits humains, la promotion de l'égalité de genre, la santé reproductive et l'autonomisation des communautés vulnérables au Bénin.")}
             </p>
 
             {/* Social links */}
@@ -179,37 +178,55 @@ export const Footer: React.FC = () => {
               {t('footer.headquarters')}
             </h4>
             <div className="space-y-3 text-xs text-gray-300">
-              <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-white">Djacoṭé-Comè</p>
-                  <p className="text-gray-400">Département du Mono</p>
-                  <p className="text-gray-400">République du Bénin</p>
-                  <p className="text-gray-400 mt-1">BP : 69 Comè – Rép. du Bénin</p>
+              {(addressLocation || addressLocality || postalBox) && (
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
+                  <div>
+                    {(addressLocation || addressLocality) && (
+                      <p className="font-semibold text-white leading-relaxed">
+                        {addressLocation || addressLocality}
+                      </p>
+                    )}
+                    {postalBox && (
+                      <p className="text-gray-400 mt-1 leading-relaxed">
+                        {postalBox}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-2.5 pt-1">
-                <Phone className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
-                <div>
-                  <a href="tel:+22952948323" className="block hover:text-white transition-colors">
-                    +229 52 94 83 23
-                  </a>
-                  <a href="tel:+22996448362" className="block hover:text-white transition-colors">
-                    +229 96 44 83 62
+              {validPhones.length > 0 && (
+                <div className="flex items-start gap-2.5 pt-1">
+                  <Phone className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    {validPhones.map((phone, idx) => {
+                      const telHref = `tel:${sanitizePhoneForTel(phone)}`;
+                      return (
+                        <a
+                          key={idx}
+                          href={telHref}
+                          className="block hover:text-white transition-colors"
+                        >
+                          {phone}
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {email && (
+                <div className="flex items-start gap-2.5 pt-1">
+                  <Mail className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
+                  <a
+                    href={`mailto:${email}`}
+                    className="hover:text-white transition-colors break-all"
+                  >
+                    {email}
                   </a>
                 </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 pt-1">
-                <Mail className="w-4 h-4 text-[#FF8C00] shrink-0 mt-0.5" />
-                <a
-                  href="mailto:agissonspoursauver@gmail.com"
-                  className="hover:text-white transition-colors break-all"
-                >
-                  agissonspoursauver@gmail.com
-                </a>
-              </div>
+              )}
             </div>
           </div>
 
@@ -220,28 +237,36 @@ export const Footer: React.FC = () => {
               {t('footer.legal_title')}
             </h4>
             <div className="space-y-2.5 text-xs text-gray-400">
-              <div className="p-2.5 rounded bg-gray-900 border border-gray-800">
-                <p className="text-gray-300 font-semibold mb-1 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#FF8C00]" />
-                  Enregistrement Officiel
-                </p>
-                <p className="text-[11px] leading-tight text-gray-400">
-                  N°9/040PDM/SG/STCCD- du 20 septembre 2017
-                </p>
-                <p className="text-[11px] leading-tight text-gray-400 mt-1">
-                  Journal Officiel N°21 du 1er Novembre 2017
-                </p>
-              </div>
+              {(settings.registration_reference || settings.jo_reference) && (
+                <div className="p-2.5 rounded bg-gray-900 border border-gray-800">
+                  <p className="text-gray-300 font-semibold mb-1 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#FF8C00]" />
+                    Enregistrement Officiel
+                  </p>
+                  {settings.registration_reference && (
+                    <p className="text-[11px] leading-tight text-gray-400">
+                      {settings.registration_reference}
+                    </p>
+                  )}
+                  {settings.jo_reference && (
+                    <p className="text-[11px] leading-tight text-gray-400 mt-1">
+                      {settings.jo_reference}
+                    </p>
+                  )}
+                </div>
+              )}
 
-              <div className="p-2.5 rounded bg-gray-900 border border-gray-800">
-                <p className="text-gray-300 font-semibold mb-1 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-[#FF8C00]" />
-                  Identifiant Fiscal Unique (IFU)
-                </p>
-                <p className="text-sm font-mono font-bold text-white tracking-wider">
-                  6 2022 1407 5648
-                </p>
-              </div>
+              {settings.ifu_number && (
+                <div className="p-2.5 rounded bg-gray-900 border border-gray-800">
+                  <p className="text-gray-300 font-semibold mb-1 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-[#FF8C00]" />
+                    Identifiant Fiscal Unique (IFU)
+                  </p>
+                  <p className="text-sm font-mono font-bold text-white tracking-wider">
+                    {settings.ifu_number}
+                  </p>
+                </div>
+              )}
 
               <div className="pt-2">
                 <Link
@@ -259,7 +284,7 @@ export const Footer: React.FC = () => {
         {/* Bottom bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
           <p>
-            © {currentYear} AGISSONS POUR SAUVER (APS-BÉNIN). {t('footer.rights')}
+            © {currentYear} {orgName || 'AGISSONS POUR SAUVER (APS-BÉNIN)'}. {t('footer.rights')}
           </p>
 
           <div className="flex items-center gap-4">

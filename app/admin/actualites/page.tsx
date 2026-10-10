@@ -580,8 +580,9 @@ export default function AdminNewsPage() {
         {/* Delete Confirmation Modal */}
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer cet article ?"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement l’article « ${newsToDelete?.title_fr} » ?`}
+          title="Placer cette actualité dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer l’article « ${newsToDelete?.title_fr} » dans la corbeille ? Vous pourrez le restaurer à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => {
             setDeleteConfirmOpen(false);

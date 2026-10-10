@@ -268,8 +268,9 @@ export default function AdminGouvernancePage() {
 
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer ce membre ?"
-          message={`Êtes-vous sûr de vouloir supprimer « ${memberToDelete?.name} » ?`}
+          title="Placer ce membre dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer « ${memberToDelete?.name} » dans la corbeille ? Vous pourrez le restaurer à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteConfirmOpen(false)}
         />

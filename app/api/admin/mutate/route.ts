@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateServerRequest, checkTablePermission } from '@/lib/server-auth';
+import { authenticateServerRequest, checkTablePermission, adminSupabase } from '@/lib/server-auth';
+import { unpackMedia } from '@/lib/supabase';
 
 const ALLOWED_TABLES = new Set([
   'site_settings',
@@ -16,7 +17,9 @@ const ALLOWED_TABLES = new Set([
   'media',
   'history_milestones',
   'contact_messages',
-  'profiles'
+  'profiles',
+  'audit_logs',
+  'trash_items'
 ]);
 
 const TABLE_COLUMNS: Record<string, string[]> = {
@@ -96,8 +99,129 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   ],
   contact_messages: [
     'id', 'name', 'email', 'phone', 'subject', 'message', 'status', 'created_at'
+  ],
+  audit_logs: [
+    'id', 'created_at', 'user_id', 'user_email', 'user_name', 'user_role',
+    'action_type', 'module', 'module_label', 'target_id', 'target_title',
+    'summary', 'changes', 'metadata'
+  ],
+  trash_items: [
+    'id', 'original_id', 'module', 'table_name', 'title', 'data',
+    'previous_status', 'deleted_at', 'deleted_by_id', 'deleted_by_email', 'deleted_by_name'
   ]
 };
+
+const TABLE_TO_MODULE_MAP: Record<string, { module: string; label: string }> = {
+  projects: { module: 'projets', label: 'Projets' },
+  news: { module: 'actualites', label: 'Actualités' },
+  opportunities: { module: 'opportunites', label: 'Opportunités' },
+  partners: { module: 'partenaires', label: 'Partenaires' },
+  team_members: { module: 'equipe', label: 'Équipe' },
+  governance: { module: 'gouvernance', label: 'Gouvernance' },
+  documents: { module: 'documents', label: 'Documents & Rapports' },
+  media: { module: 'mediatheque', label: 'Médiathèque' },
+  albums: { module: 'mediatheque', label: 'Albums Photo' },
+  domains: { module: 'domaines', label: "Domaines d'action" },
+  statistics: { module: 'statistiques', label: 'Chiffres Clés' },
+  site_settings: { module: 'parametres', label: 'Paramètres du Site' },
+  history_milestones: { module: 'parametres', label: 'Historique & Jalons' },
+  contact_messages: { module: 'messages', label: 'Messages Reçus' },
+  profiles: { module: 'utilisateurs', label: 'Utilisateurs & Rôles' },
+  trash_items: { module: 'corbeille', label: 'Corbeille' },
+};
+
+async function logMutationEvent(
+  client: any,
+  user: any,
+  table: string,
+  action: 'upsert' | 'delete',
+  dataOrId: any,
+  ip?: string,
+  userAgent?: string
+) {
+  if (table === 'audit_logs') return;
+  try {
+    const meta = TABLE_TO_MODULE_MAP[table] || { module: 'systeme', label: table };
+    let actionType = 'modification';
+    let targetTitle = '';
+    let targetId = '';
+    let summary = '';
+    let changes: any = undefined;
+
+    if (action === 'delete') {
+      actionType = 'suppression';
+      targetId = typeof dataOrId === 'string' ? dataOrId : dataOrId?.id || '';
+      targetTitle = dataOrId?.title_fr || dataOrId?.title_en || dataOrId?.full_name || dataOrId?.name || targetId;
+      summary = `Suppression dans le module ${meta.label}`;
+    } else {
+      const data = dataOrId;
+      targetId = data?.id || '';
+      targetTitle =
+        data?.title_fr ||
+        data?.title_en ||
+        data?.full_name ||
+        data?.name ||
+        data?.org_name ||
+        data?.label_fr ||
+        data?.subject ||
+        targetId;
+
+      if (data?.status === 'published') {
+        actionType = 'publication';
+      } else if (data?.status === 'draft' || data?.status === 'archived') {
+        actionType = 'depublication';
+      } else if (!data?.created_at || new Date(data?.created_at).getTime() > Date.now() - 5000) {
+        actionType = 'creation';
+      }
+
+      summary = `${actionType === 'creation' ? 'Création' : actionType === 'publication' ? 'Publication' : 'Mise à jour'} de « ${targetTitle || 'élément'} » (${meta.label})`;
+
+      const sanitizedChanges: Record<string, any> = {};
+      for (const [k, v] of Object.entries(data || {})) {
+        if (
+          !['password', 'password_hash', 'token', 'secret'].includes(k.toLowerCase()) &&
+          v !== undefined
+        ) {
+          sanitizedChanges[k] = typeof v === 'object' && v !== null ? JSON.stringify(v).slice(0, 200) : v;
+        }
+      }
+      changes = sanitizedChanges;
+    }
+
+    const logEntry = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      created_at: new Date().toISOString(),
+      user_id: user?.id,
+      user_email: user?.email,
+      user_name: user?.full_name || user?.email || 'Utilisateur non identifié',
+      user_role: user?.role,
+      action_type: actionType,
+      module: meta.module,
+      module_label: meta.label,
+      target_id: targetId,
+      target_title: String(targetTitle).slice(0, 180),
+      summary: summary.slice(0, 300),
+      changes: changes ? (typeof changes === 'object' ? changes : undefined) : undefined,
+      metadata: {
+        table,
+        ip: ip ? ip.replace(/(\d+)\.(\d+)\.(\d+)\.(\d+)/, '$1.$2.xxx.xxx') : undefined,
+        user_agent: userAgent ? userAgent.slice(0, 150) : undefined,
+      },
+    };
+
+    const targetClient = adminSupabase || client;
+    if (targetClient) {
+      const { error: insErr } = await targetClient.from('audit_logs').insert([logEntry]);
+      if (insErr) {
+        console.error('Audit logging failed on Supabase in mutate route:', insErr.message);
+      }
+    }
+    return logEntry;
+  } catch (err) {
+    console.error('Audit logging error in mutate route:', err);
+    return null;
+  }
+}
 
 function sanitizeRow(table: string, raw: any): any {
   if (!raw || typeof raw !== 'object') return raw;
@@ -111,8 +235,45 @@ function sanitizeRow(table: string, raw: any): any {
     }
   }
   // Ensure required non-null fields
-  if (table === 'media' && !clean.title_en) {
-    clean.title_en = clean.title_fr || 'Untitled';
+  if (table === 'media') {
+    if (!clean.title_en) {
+      clean.title_en = clean.title_fr || 'Untitled';
+    }
+
+    let is_active = raw.is_active;
+    let show_in_hero = raw.show_in_hero;
+    let hero_order = raw.hero_order;
+    let desc_en = clean.description_en || raw.description_en || '';
+
+    if (typeof desc_en === 'string' && desc_en.trim().startsWith('{')) {
+      try {
+        const parsed = JSON.parse(desc_en);
+        if (show_in_hero === undefined && parsed.show_in_hero !== undefined) {
+          show_in_hero = parsed.show_in_hero;
+        }
+        if (hero_order === undefined && parsed.hero_order !== undefined) {
+          hero_order = parsed.hero_order;
+        }
+        if (is_active === undefined && parsed.is_active !== undefined) {
+          is_active = parsed.is_active;
+        }
+        desc_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
+      } catch {
+        // ignore
+      }
+    }
+
+    const final_show_in_hero = Boolean(show_in_hero);
+    const final_hero_order = Number(hero_order) || 1;
+    const final_is_active = is_active !== false;
+
+    clean.description_en = JSON.stringify({
+      desc_en,
+      show_in_hero: final_show_in_hero,
+      hero_order: final_hero_order,
+      is_active: final_is_active,
+      updated_at: new Date().toISOString(),
+    });
   }
 
   // Ensure opportunities visual assets are preserved in database via external_link
@@ -186,7 +347,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client = auth.client;
+    // Use privileged service client if available on verified server route, otherwise authenticated client
+    const client = adminSupabase || auth.client;
 
     if (action === 'upsert') {
       if (!data) {
@@ -258,7 +420,18 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return NextResponse.json({ success: true, data: result });
+      const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined;
+      const ua = req.headers.get('user-agent') || undefined;
+      const auditLog = await logMutationEvent(client, auth.user, table, 'upsert', sanitizedData, ip, ua);
+
+      if (table === 'media' && result) {
+        const unpackedResult = Array.isArray(result)
+          ? result.map(unpackMedia)
+          : unpackMedia(result);
+        return NextResponse.json({ success: true, data: unpackedResult, auditLog });
+      }
+
+      return NextResponse.json({ success: true, data: result, auditLog });
     }
 
     if (action === 'delete') {
@@ -278,7 +451,11 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      return NextResponse.json({ success: true });
+      const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined;
+      const ua = req.headers.get('user-agent') || undefined;
+      const auditLog = await logMutationEvent(client, auth.user, table, 'delete', { id }, ip, ua);
+
+      return NextResponse.json({ success: true, auditLog });
     }
 
     return NextResponse.json(

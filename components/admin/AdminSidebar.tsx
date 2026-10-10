@@ -23,6 +23,9 @@ import {
   Settings,
   UserCog,
   Database,
+  History,
+  Trash2,
+  TrendingUp,
   ExternalLink,
   LogOut,
   ChevronRight,
@@ -30,7 +33,7 @@ import {
 
 export const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
-  const { user, logout, isSuperAdmin } = useAuth();
+  const { user, logout, isSuperAdmin, isAdmin } = useAuth();
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
 
   useEffect(() => {
@@ -75,11 +78,14 @@ export const AdminSidebar: React.FC = () => {
       badge: unreadMsgCount > 0 ? unreadMsgCount : undefined,
     },
     { href: '/admin/statistiques', label: 'Chiffres Clés', icon: <BarChart3 className="w-4 h-4" /> },
+    { href: '/admin/analytics', label: 'Statistiques du Site', icon: <TrendingUp className="w-4 h-4 text-emerald-400" /> },
     { href: '/admin/bandeau', label: 'Bandeau Hero', icon: <Bell className="w-4 h-4 text-[#FF8C00]" /> },
+    { href: '/admin/corbeille', label: 'Corbeille', icon: <Trash2 className="w-4 h-4 text-rose-400" /> },
   ];
 
   const adminOnlyItems = [
     { href: '/admin/parametres', label: 'Paramètres du Site', icon: <Settings className="w-4 h-4" /> },
+    { href: '/admin/journal', label: "Journal d'Activité", icon: <History className="w-4 h-4" /> },
     { href: '/admin/utilisateurs', label: 'Utilisateurs & Rôles', icon: <UserCog className="w-4 h-4" /> },
     { href: '/admin/database', label: 'Base de Données & SQL', icon: <Database className="w-4 h-4" /> },
   ];
@@ -154,8 +160,8 @@ export const AdminSidebar: React.FC = () => {
             </Link>
           ))}
 
-          {/* Super Admin Section */}
-          {isSuperAdmin && (
+          {/* Administration Globale */}
+          {(isSuperAdmin || isAdmin) && (
             <div className="pt-4 mt-2 border-t border-gray-800 space-y-1">
               <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-purple-400 block mb-1">
                 Administration Globale

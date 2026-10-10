@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabaseStore } from '@/lib/supabase';
 import { MediaItem, PhotoAlbum } from '@/types';
+import { UploadProgressBar, UploadProgressData } from '@/components/admin/UploadProgressBar';
 import {
   Image as ImageIcon,
   Upload,
@@ -65,6 +66,7 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
   // Upload state
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [uploadData, setUploadData] = useState<UploadProgressData | null>(null);
 
   // Stable key for allowed types to avoid reference instability on re-renders
   const allowedTypesKey = (allowedTypes || DEFAULT_ALLOWED_TYPES).join(',');
@@ -138,9 +140,19 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
 
     setUploading(true);
     setUploadError('');
+    setUploadData({
+      phase: 'preparing',
+      percent: 0,
+      fileName: file.name,
+      totalBytes: file.size,
+      loadedBytes: 0,
+      message: 'Préparation du visuel...',
+    });
 
     try {
-      const result = await supabaseStore.uploadFile(file, 'images');
+      const result = await supabaseStore.uploadFile(file, 'images', 'uploads', (progress) => {
+        setUploadData(progress);
+      });
       if (!result.success || !result.publicUrl) {
         throw new Error(result.error || 'Erreur lors du téléversement vers Supabase Storage.');
       }
@@ -190,11 +202,20 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
         });
       }
 
-      // Switch back to browse tab with new item selected
-      setActiveTab('browse');
+      // Switch back to browse tab with new item selected after brief pause
+      setTimeout(() => {
+        setActiveTab('browse');
+        setUploadData(null);
+      }, 700);
     } catch (err: any) {
       console.error('Upload failed:', err);
       setUploadError(err.message || 'Échec du téléversement vers Supabase Storage.');
+      setUploadData({
+        phase: 'error',
+        percent: 0,
+        fileName: file.name,
+        error: err.message || 'Échec du téléversement vers Supabase Storage.',
+      });
     } finally {
       setUploading(false);
     }
@@ -429,9 +450,21 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
                   Formats acceptés : PNG, JPG, WebP, GIF. Le fichier sera hébergé directement sur Supabase Storage.
                 </p>
 
-                {uploadError && (
+                {uploadError && !uploadData && (
                   <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs text-left">
                     {uploadError}
+                  </div>
+                )}
+
+                {uploadData && (
+                  <div className="mb-4 text-left">
+                    <UploadProgressBar
+                      data={uploadData}
+                      onReset={() => {
+                        setUploadData(null);
+                        setUploadError('');
+                      }}
+                    />
                   </div>
                 )}
 

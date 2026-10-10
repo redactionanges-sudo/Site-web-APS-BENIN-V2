@@ -587,3 +587,149 @@ USING (
     AND public.is_editor()
 );
 
+-- ==============================================================================
+-- 15. AUDIT LOGS & JOURNAL D'ACTIVITÉS (LOT 6.2)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    user_id TEXT,
+    user_email TEXT,
+    user_name TEXT,
+    user_role TEXT,
+    action_type TEXT NOT NULL,
+    module TEXT NOT NULL,
+    module_label TEXT,
+    target_id TEXT,
+    target_title TEXT,
+    summary TEXT NOT NULL,
+    changes JSONB,
+    metadata JSONB
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON public.audit_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_module ON public.audit_logs (module);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON public.audit_logs (action_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_email ON public.audit_logs (user_email);
+
+-- Enable RLS
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- RLS: Only authenticated users with admin/super_admin role or service role can select
+DROP POLICY IF EXISTS "Admins can view audit logs" ON public.audit_logs;
+CREATE POLICY "Admins can view audit logs"
+ON public.audit_logs FOR SELECT
+TO authenticated
+USING (public.is_admin());
+
+-- RLS: Authenticated users can insert their own actions
+DROP POLICY IF EXISTS "Authenticated users can insert audit logs" ON public.audit_logs;
+CREATE POLICY "Authenticated users can insert audit logs"
+ON public.audit_logs FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Disallow public access entirely
+REVOKE ALL ON public.audit_logs FROM anon;
+GRANT SELECT, INSERT ON public.audit_logs TO authenticated;
+GRANT ALL ON public.audit_logs TO service_role;
+
+-- ==============================================================================
+-- 16. CORBEILLE & RESTAURATION (LOT 6.3)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.trash_items (
+    id TEXT PRIMARY KEY,
+    original_id TEXT NOT NULL,
+    module TEXT NOT NULL,
+    table_name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    data JSONB NOT NULL,
+    previous_status TEXT,
+    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    deleted_by_id TEXT,
+    deleted_by_email TEXT,
+    deleted_by_name TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_trash_items_deleted_at ON public.trash_items (deleted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trash_items_module ON public.trash_items (module);
+CREATE INDEX IF NOT EXISTS idx_trash_items_table_name ON public.trash_items (table_name);
+CREATE INDEX IF NOT EXISTS idx_trash_items_original_id ON public.trash_items (original_id);
+
+ALTER TABLE public.trash_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users can view trash items" ON public.trash_items;
+CREATE POLICY "Authenticated users can view trash items"
+ON public.trash_items FOR SELECT
+TO authenticated
+USING (public.is_editor());
+
+DROP POLICY IF EXISTS "Authenticated users can insert trash items" ON public.trash_items;
+CREATE POLICY "Authenticated users can insert trash items"
+ON public.trash_items FOR INSERT
+TO authenticated
+WITH CHECK (public.is_editor());
+
+DROP POLICY IF EXISTS "Authenticated users can delete trash items" ON public.trash_items;
+CREATE POLICY "Authenticated users can delete trash items"
+ON public.trash_items FOR DELETE
+TO authenticated
+USING (public.is_editor());
+
+REVOKE ALL ON public.trash_items FROM anon;
+GRANT SELECT, INSERT, DELETE, UPDATE ON public.trash_items TO authenticated;
+GRANT ALL ON public.trash_items TO service_role;
+
+-- ==============================================================================
+-- 17. ANALYTICS & STATISTIQUES DU SITE (LOT 6.5)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.analytics_events (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    session_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    path TEXT NOT NULL,
+    page_title TEXT,
+    referrer TEXT,
+    device_type TEXT DEFAULT 'desktop',
+    browser TEXT,
+    country TEXT DEFAULT 'BJ',
+    target_id TEXT,
+    target_title TEXT,
+    metadata JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON public.analytics_events (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON public.analytics_events (event_type);
+CREATE INDEX IF NOT EXISTS idx_analytics_path ON public.analytics_events (path);
+CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON public.analytics_events (session_id);
+
+ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can record analytics events" ON public.analytics_events;
+CREATE POLICY "Public can record analytics events"
+ON public.analytics_events FOR INSERT
+TO anon, authenticated
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Admins can view analytics" ON public.analytics_events;
+CREATE POLICY "Admins can view analytics"
+ON public.analytics_events FOR SELECT
+TO authenticated
+USING (public.is_editor());
+
+DROP POLICY IF EXISTS "Admins can delete analytics" ON public.analytics_events;
+CREATE POLICY "Admins can delete analytics"
+ON public.analytics_events FOR DELETE
+TO authenticated
+USING (public.is_admin());
+
+REVOKE ALL ON public.analytics_events FROM anon;
+GRANT INSERT ON public.analytics_events TO anon;
+GRANT SELECT, INSERT, DELETE ON public.analytics_events TO authenticated;
+GRANT ALL ON public.analytics_events TO service_role;
+
+
+
+

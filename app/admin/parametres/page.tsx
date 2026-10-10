@@ -32,6 +32,7 @@ import {
 export default function AdminParametresPage() {
   const { t } = useLanguage();
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [phonesRawText, setPhonesRawText] = useState<string>('');
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [savingSocialOnly, setSavingSocialOnly] = useState(false);
@@ -191,7 +192,22 @@ export default function AdminParametresPage() {
 
     setSavingGeneral(true);
     try {
-      await supabaseStore.updateSettings(settings);
+      // Clean phones: trim and filter out completely empty entries
+      const cleanedPhones = Array.isArray(settings.phones)
+        ? settings.phones.map(s => (typeof s === 'string' ? s.trim() : '')).filter(Boolean)
+        : [];
+
+      const payloadToSave: SiteSettings = {
+        ...settings,
+        phones: cleanedPhones,
+        email: (settings.email || '').trim(),
+        address_location: (settings.address_location || '').trim(),
+        address_locality: (settings.address_locality || '').trim(),
+        postal_box: (settings.postal_box || '').trim(),
+      };
+
+      await supabaseStore.updateSettings(payloadToSave);
+      setSettings(payloadToSave);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err: any) {
@@ -479,16 +495,30 @@ export default function AdminParametresPage() {
               Coordonnées Institutionnelles
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   Adresse complète du Siège
                 </label>
                 <input
                   type="text"
-                  value={settings.address_location}
+                  value={settings.address_location || ''}
                   onChange={(e) => setSettings({ ...settings, address_location: e.target.value })}
                   className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 outline-none"
+                  placeholder="ex: Djacoṭé-Comè, Département du Mono, République du Bénin"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Localité / Ville (Bandeau supérieur)
+                </label>
+                <input
+                  type="text"
+                  value={settings.address_locality || ''}
+                  onChange={(e) => setSettings({ ...settings, address_locality: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 outline-none"
+                  placeholder="ex: Comè, Département du Mono"
                 />
               </div>
 
@@ -498,9 +528,10 @@ export default function AdminParametresPage() {
                 </label>
                 <input
                   type="text"
-                  value={settings.postal_box}
+                  value={settings.postal_box || ''}
                   onChange={(e) => setSettings({ ...settings, postal_box: e.target.value })}
                   className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 outline-none"
+                  placeholder="ex: BP 69 Comè – République du Bénin"
                 />
               </div>
             </div>

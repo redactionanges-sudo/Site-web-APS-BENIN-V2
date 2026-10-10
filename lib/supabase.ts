@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { normalizeSocialLinks } from '@/lib/social';
+import type { UploadProgressData } from '@/components/admin/UploadProgressBar';
 import {
   SiteSettings,
   BannerAnnouncement,
@@ -17,7 +18,13 @@ import {
   HistoryMilestone,
   ContactMessage,
   UserProfile,
+  AuditLog,
+  AuditActionType,
+  AuditModule,
+  TrashItem,
+  TrashModule,
 } from '@/types';
+import { getAuditLogs, recordAuditLog } from './audit';
 import {
   initialSiteSettings,
   initialStatistics,
@@ -167,8 +174,289 @@ export function packStatistic(stat: KeyStatistic): any {
   };
 }
 
+export function unpackMedia(row: any): MediaItem {
+  if (!row) return row;
+  let description_en = row.description_en || '';
+
+  // 1. Seed fallback for initial hero items
+  const seedItem = initialMedia.find((m) => m.id === row.id);
+  let show_in_hero = seedItem?.show_in_hero ?? false;
+  let hero_order = seedItem?.hero_order ?? 1;
+  let is_active = seedItem?.is_active ?? true;
+
+  // 2. Parse encapsulated metadata if present in description_en
+  if (typeof description_en === 'string' && description_en.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(description_en);
+      description_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
+      if (parsed.show_in_hero !== undefined) show_in_hero = Boolean(parsed.show_in_hero);
+      if (parsed.hero_order !== undefined) hero_order = Number(parsed.hero_order) || 1;
+      if (parsed.is_active !== undefined) is_active = Boolean(parsed.is_active);
+    } catch {
+      // keep raw string if parsing fails
+    }
+  } else {
+    if (row.show_in_hero !== undefined) show_in_hero = Boolean(row.show_in_hero);
+    if (row.hero_order !== undefined) hero_order = Number(row.hero_order) || 1;
+    if (row.is_active !== undefined) is_active = row.is_active !== false;
+  }
+
+  return {
+    id: row.id,
+    title_fr: row.title_fr || '',
+    title_en: row.title_en || row.title_fr || '',
+    type: row.type || 'photo',
+    url: row.url || '',
+    thumbnail_url: row.thumbnail_url || row.url || '',
+    album_id: row.album_id || undefined,
+    project_id: row.project_id || undefined,
+    category: row.category || 'Médiathèque',
+    date: row.date || new Date().toISOString().split('T')[0],
+    location: row.location || 'APS-BÉNIN',
+    alt_fr: row.alt_fr || row.title_fr || '',
+    alt_en: row.alt_en || row.title_en || row.title_fr || '',
+    description_fr: row.description_fr || '',
+    description_en,
+    video_platform: row.video_platform,
+    show_in_hero,
+    hero_order,
+    is_active,
+  };
+}
+
+export function packMedia(item: any): any {
+  let original_desc_en = item.description_en || '';
+  let show_in_hero = item.show_in_hero;
+  let hero_order = item.hero_order;
+  let is_active = item.is_active;
+
+  // If description_en is already packed JSON, extract any existing fields if not explicitly passed
+  if (typeof original_desc_en === 'string' && original_desc_en.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(original_desc_en);
+      if (show_in_hero === undefined && parsed.show_in_hero !== undefined) {
+        show_in_hero = parsed.show_in_hero;
+      }
+      if (hero_order === undefined && parsed.hero_order !== undefined) {
+        hero_order = parsed.hero_order;
+      }
+      if (is_active === undefined && parsed.is_active !== undefined) {
+        is_active = parsed.is_active;
+      }
+      original_desc_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
+    } catch {
+      // ignore
+    }
+  }
+
+  const final_show_in_hero = Boolean(show_in_hero);
+  const final_hero_order = Number(hero_order) || 1;
+  const final_is_active = is_active !== false;
+
+  const packedMeta = JSON.stringify({
+    desc_en: original_desc_en,
+    show_in_hero: final_show_in_hero,
+    hero_order: final_hero_order,
+    is_active: final_is_active,
+    updated_at: new Date().toISOString(),
+  });
+
+  return {
+    ...item,
+    show_in_hero: final_show_in_hero,
+    hero_order: final_hero_order,
+    is_active: final_is_active,
+    description_en: packedMeta,
+  };
+}
+
+function mutateLocalStorageTable(table: string, action: 'upsert' | 'delete', dataOrId: any): void {
+  const map: Record<string, { key: string; initial: any[] }> = {
+    projects: { key: 'projects', initial: initialProjects },
+    news: { key: 'news', initial: initialNews },
+    opportunities: { key: 'opportunities', initial: initialOpportunities },
+    partners: { key: 'partners', initial: initialPartners },
+    team: { key: 'team', initial: initialTeam },
+    governance: { key: 'governance', initial: initialGovernance },
+    documents: { key: 'documents', initial: initialDocuments },
+    media: { key: 'media', initial: initialMedia },
+    albums: { key: 'albums', initial: initialAlbums },
+    domains: { key: 'domains', initial: initialDomains },
+    statistics: { key: 'statistics', initial: initialStatistics },
+    history_milestones: { key: 'history', initial: initialHistory },
+    profiles: { key: 'users', initial: initialAdminUsers },
+    contact_messages: { key: 'contact_messages', initial: [] },
+  };
+
+  const entry = map[table];
+  if (!entry) return;
+
+  const currentList = getStoredItem<any[]>(entry.key, entry.initial);
+  let updatedList: any[];
+
+  if (action === 'delete') {
+    const idToDelete = typeof dataOrId === 'string' ? dataOrId : dataOrId?.id;
+    updatedList = currentList.filter((item) => item.id !== idToDelete);
+  } else {
+    const payload = dataOrId;
+    const idx = currentList.findIndex((item) => item.id === payload.id);
+    if (idx >= 0) {
+      updatedList = currentList.map((item) => (item.id === payload.id ? { ...item, ...payload } : item));
+    } else {
+      updatedList = [payload, ...currentList];
+    }
+  }
+
+  setStoredItem(entry.key, updatedList);
+  setCachedData(entry.key, updatedList);
+  invalidateCache(entry.key);
+}
+
+async function logTableMutation(
+  table: string,
+  action: 'upsert' | 'delete',
+  dataOrId: any
+): Promise<void> {
+  if (table === 'audit_logs') return;
+
+  const TABLE_MODULES: Record<string, { module: AuditModule; label: string }> = {
+    projects: { module: 'projets', label: 'Projets' },
+    news: { module: 'actualites', label: 'Actualités' },
+    opportunities: { module: 'opportunites', label: 'Opportunités' },
+    partners: { module: 'partenaires', label: 'Partenaires' },
+    team: { module: 'equipe', label: 'Équipe' },
+    team_members: { module: 'equipe', label: 'Équipe' },
+    governance: { module: 'gouvernance', label: 'Gouvernance' },
+    documents: { module: 'documents', label: 'Documents & Rapports' },
+    media: { module: 'mediatheque', label: 'Médiathèque' },
+    albums: { module: 'mediatheque', label: 'Albums Photo' },
+    domains: { module: 'domaines', label: "Domaines d'action" },
+    statistics: { module: 'statistiques', label: 'Chiffres Clés' },
+    site_settings: { module: 'parametres', label: 'Paramètres du Site' },
+    history_milestones: { module: 'parametres', label: 'Historique & Jalons' },
+    contact_messages: { module: 'messages', label: 'Messages Reçus' },
+    profiles: { module: 'utilisateurs', label: 'Utilisateurs & Rôles' },
+    trash_items: { module: 'corbeille', label: 'Corbeille' },
+  };
+
+  const meta = TABLE_MODULES[table] || { module: 'systeme' as AuditModule, label: table };
+  let actionType: AuditActionType = 'modification';
+  let targetId = '';
+  let targetTitle = '';
+  let summary = '';
+  let changes: any = undefined;
+
+  if (action === 'delete') {
+    actionType = 'suppression';
+    targetId = typeof dataOrId === 'string' ? dataOrId : dataOrId?.id || '';
+    targetTitle = dataOrId?.title_fr || dataOrId?.title_en || dataOrId?.name || dataOrId?.full_name || targetId;
+    summary = `Suppression de « ${targetTitle || 'élément'} » (${meta.label})`;
+  } else {
+    const data = dataOrId;
+    targetId = data?.id ? String(data.id) : '';
+    targetTitle =
+      data?.title_fr ||
+      data?.title_en ||
+      data?.name ||
+      data?.full_name ||
+      data?.org_name ||
+      data?.label_fr ||
+      data?.subject ||
+      (table === 'site_settings' ? 'Paramètres généraux du site' : '') ||
+      (table === 'history_milestones' ? (data?.title_fr || `Jalon ${data?.year || ''}`) : '') ||
+      (targetId ? `Élément #${targetId}` : 'Contenu éditorial');
+
+    if (data?.status === 'published') {
+      actionType = 'publication';
+    } else if (data?.status === 'draft' || data?.status === 'archived') {
+      actionType = 'depublication';
+    } else if (!data?.created_at || new Date(data?.created_at).getTime() > Date.now() - 5000) {
+      actionType = 'creation';
+    } else {
+      actionType = 'modification';
+    }
+
+    const actionVerb =
+      actionType === 'creation'
+        ? 'Création'
+        : actionType === 'publication'
+        ? 'Publication'
+        : actionType === 'depublication'
+        ? 'Dépublication'
+        : 'Mise à jour';
+
+    summary = `${actionVerb} de « ${targetTitle} » (${meta.label})`;
+
+    if (data && typeof data === 'object') {
+      const sanitized: Record<string, any> = {};
+      for (const [k, v] of Object.entries(data)) {
+        if (!['password', 'password_hash', 'token', 'secret'].includes(k.toLowerCase()) && v !== undefined) {
+          sanitized[k] = typeof v === 'object' && v !== null ? JSON.stringify(v).slice(0, 180) : v;
+        }
+      }
+      changes = sanitized;
+    }
+  }
+
+  // Retrieve authenticated admin user identity
+  let userId: string | undefined = undefined;
+  let userEmail: string | undefined = undefined;
+  let userName: string | undefined = undefined;
+  let userRole: string | undefined = undefined;
+
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('aps_admin_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        userId = parsed.id;
+        userEmail = parsed.email;
+        userName = parsed.full_name;
+        userRole = parsed.role;
+      }
+    } catch {}
+
+    if (supabase && (!userId || !userEmail)) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          if (!userId) userId = session.user.id;
+          if (!userEmail) userEmail = session.user.email;
+          if (!userName) userName = session.user.user_metadata?.full_name;
+        }
+      } catch {}
+    }
+  }
+
+  // Strictly enforce real identity or « Utilisateur non identifié »
+  if (!userName) {
+    userName = userEmail || 'Utilisateur non identifié';
+  }
+
+  try {
+    await recordAuditLog({
+      user_id: userId,
+      user_email: userEmail,
+      user_name: userName,
+      user_role: userRole,
+      action_type: actionType,
+      module: meta.module,
+      module_label: meta.label,
+      target_id: targetId,
+      target_title: targetTitle,
+      summary,
+      changes,
+      metadata: { source: 'Back-Office CMS', table },
+    });
+  } catch (logErr) {
+    console.warn('Logging mutation non-bloquant:', logErr);
+  }
+}
+
 async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId: any): Promise<void> {
-  // 1. Direct Supabase operation using the authenticated browser client session
+  let directSuccess = false;
+
+  // 1. Direct Supabase operation using authenticated browser client session
   if (typeof window !== 'undefined' && supabase) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -191,20 +479,32 @@ async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId:
             }
           }
 
+          if (table === 'media') {
+            const packed = packMedia(dataOrId);
+            const { show_in_hero: _, hero_order: __, is_active: ___, ...sqlPayload } = packed;
+            upsertPayload = sqlPayload;
+          }
+
           let { error } = await supabase.from(table).upsert(upsertPayload);
-          // If column missing on opportunities, retry direct upsert with external_link only
+          // Retry for opportunities if image columns differ
           if (error && table === 'opportunities' && error.message?.includes('column') && (error.message?.includes('main_image') || error.message?.includes('gallery'))) {
             const { main_image, gallery, ...safePayload } = upsertPayload;
             const retryDirect = await supabase.from(table).upsert(safePayload);
-            if (!retryDirect.error) return;
-            error = retryDirect.error;
+            if (!retryDirect.error) error = null;
           }
-          if (!error) return;
-          console.warn(`Direct client upsert failed on ${table}, trying server bridge:`, error.message);
+
+          if (!error) {
+            directSuccess = true;
+          } else {
+            console.warn(`Direct client upsert failed on ${table}, trying server bridge:`, error.message);
+          }
         } else {
           const { error } = await supabase.from(table).delete().eq('id', dataOrId);
-          if (!error) return;
-          console.warn(`Direct client delete failed on ${table}, trying server bridge:`, error.message);
+          if (!error) {
+            directSuccess = true;
+          } else {
+            console.warn(`Direct client delete failed on ${table}, trying server bridge:`, error.message);
+          }
         }
       }
     } catch (directErr) {
@@ -212,10 +512,17 @@ async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId:
     }
   }
 
+  // If direct Supabase mutation succeeded, record audit log immediately and return!
+  if (directSuccess) {
+    await logTableMutation(table, action, dataOrId);
+    return;
+  }
+
   // 2. Server API bridge (/api/admin/mutate)
   if (typeof window !== 'undefined') {
+    const sendData = (action === 'upsert' && table === 'media') ? packMedia(dataOrId) : dataOrId;
     const payload = action === 'upsert'
-      ? { table, action, data: dataOrId }
+      ? { table, action, data: sendData }
       : { table, action, id: dataOrId };
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -228,29 +535,92 @@ async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId:
       } catch {}
     }
 
-    const res = await fetch('/api/admin/mutate', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
+    try {
+      const res = await fetch('/api/admin/mutate', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
 
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || json.error) {
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && !json.error) {
+        if (json?.auditLog) {
+          try {
+            const stored = localStorage.getItem('aps_audit_logs_v1');
+            const parsed = stored ? JSON.parse(stored) : [];
+            const updated = [json.auditLog, ...parsed.filter((item: any) => item.id !== json.auditLog.id)].slice(0, 300);
+            localStorage.setItem('aps_audit_logs_v1', JSON.stringify(updated));
+            window.dispatchEvent(new CustomEvent('aps_audit_log_created', { detail: json.auditLog }));
+          } catch {}
+        } else {
+          await logTableMutation(table, action, dataOrId);
+        }
+        return;
+      }
+
+      if (!isSupabaseConfigured) {
+        // Local mode fallback
+        mutateLocalStorageTable(table, action, dataOrId);
+        await logTableMutation(table, action, dataOrId);
+        return;
+      }
+
       throw new Error(json.error || `Erreur Supabase lors de l'enregistrement (${table})`);
+    } catch (bridgeErr: any) {
+      if (!isSupabaseConfigured) {
+        mutateLocalStorageTable(table, action, dataOrId);
+        await logTableMutation(table, action, dataOrId);
+        return;
+      }
+      throw bridgeErr;
     }
-    return;
   }
 
   // 3. Server runtime fallback
   if (supabase) {
     if (action === 'upsert') {
-      const { error } = await supabase.from(table).upsert(dataOrId);
+      let sendData = dataOrId;
+      if (table === 'media') {
+        const packed = packMedia(dataOrId);
+        const { show_in_hero: _, hero_order: __, is_active: ___, ...sqlPayload } = packed;
+        sendData = sqlPayload;
+      }
+      const { error } = await supabase.from(table).upsert(sendData);
       if (error) throw new Error(`Erreur Supabase (${table}): ${error.message}`);
     } else {
       const { error } = await supabase.from(table).delete().eq('id', dataOrId);
       if (error) throw new Error(`Erreur Supabase (${table}): ${error.message}`);
     }
+    await logTableMutation(table, action, dataOrId);
   }
+}
+
+export interface DashboardStatsData {
+  projectsTotal: number;
+  projectsPublished: number;
+  newsTotal: number;
+  newsPublished: number;
+  newsDrafts: number;
+  oppsTotal: number;
+  oppsPublished: number;
+  oppsClosed: number;
+  mediaTotal: number;
+  photosCount: number;
+  videosCount: number;
+  partnersCount: number;
+  canAccessMessages: boolean;
+  messagesTotal: number | null;
+  unreadMessages: number | null;
+  recentNews: any[];
+  recentMessages: any[];
+  lastUpdated: string;
+
+  // Backward compatibility aliases
+  projectsCount: number;
+  newsCount: number;
+  oppCount: number;
+  messagesCount: number;
+  draftsCount: number;
 }
 
 // Unified Store with real Supabase bridge + reactive local fallback + In-Memory Cache
@@ -433,9 +803,14 @@ export const supabaseStore = {
   },
 
   async deleteStatistic(id: string): Promise<void> {
-    await mutateTable('statistics', 'delete', id);
-    invalidateCache('statistics');
     const all = await this.getStatistics();
+    const target = all.find((s) => s.id === id);
+    if (target) {
+      await this.moveToTrash('statistiques', target);
+    } else {
+      await mutateTable('statistics', 'delete', id);
+    }
+    invalidateCache('statistics');
     const filtered = all.filter((s) => s.id !== id);
     setStoredItem('statistics', filtered);
     setCachedData('statistics', filtered);
@@ -471,7 +846,13 @@ export const supabaseStore = {
   },
 
   async deleteDomain(id: string): Promise<DomainOfIntervention[]> {
-    await mutateTable('domains', 'delete', id);
+    const list = await this.getDomains();
+    const target = list.find((d) => d.id === id);
+    if (target) {
+      await this.moveToTrash('domaines', target);
+    } else {
+      await mutateTable('domains', 'delete', id);
+    }
     invalidateCache('domains');
     return await this.getDomains();
   },
@@ -511,7 +892,13 @@ export const supabaseStore = {
   },
 
   async deleteProject(id: string): Promise<ProjectItem[]> {
-    await mutateTable('projects', 'delete', id);
+    const list = await this.getProjects();
+    const target = list.find((p) => p.id === id);
+    if (target) {
+      await this.moveToTrash('projets', target);
+    } else {
+      await mutateTable('projects', 'delete', id);
+    }
     invalidateCache('projects');
     return await this.getProjects();
   },
@@ -551,7 +938,13 @@ export const supabaseStore = {
   },
 
   async deleteNews(id: string): Promise<NewsItem[]> {
-    await mutateTable('news', 'delete', id);
+    const list = await this.getNews();
+    const target = list.find((n) => n.id === id);
+    if (target) {
+      await this.moveToTrash('actualites', target);
+    } else {
+      await mutateTable('news', 'delete', id);
+    }
     invalidateCache('news');
     return await this.getNews();
   },
@@ -654,7 +1047,13 @@ export const supabaseStore = {
   },
 
   async deleteOpportunity(id: string): Promise<OpportunityItem[]> {
-    await mutateTable('opportunities', 'delete', id);
+    const list = await this.getOpportunities();
+    const target = list.find((o) => o.id === id);
+    if (target) {
+      await this.moveToTrash('opportunites', target);
+    } else {
+      await mutateTable('opportunities', 'delete', id);
+    }
     invalidateCache('opportunities');
     return await this.getOpportunities();
   },
@@ -689,7 +1088,13 @@ export const supabaseStore = {
   },
 
   async deletePartner(id: string): Promise<PartnerItem[]> {
-    await mutateTable('partners', 'delete', id);
+    const list = await this.getPartners();
+    const target = list.find((p) => p.id === id);
+    if (target) {
+      await this.moveToTrash('partenaires', target);
+    } else {
+      await mutateTable('partners', 'delete', id);
+    }
     invalidateCache('partners');
     return await this.getPartners();
   },
@@ -724,7 +1129,13 @@ export const supabaseStore = {
   },
 
   async deleteTeamMember(id: string): Promise<TeamMember[]> {
-    await mutateTable('team_members', 'delete', id);
+    const list = await this.getTeam();
+    const target = list.find((t) => t.id === id);
+    if (target) {
+      await this.moveToTrash('equipe', target);
+    } else {
+      await mutateTable('team_members', 'delete', id);
+    }
     invalidateCache('team');
     return await this.getTeam();
   },
@@ -759,7 +1170,13 @@ export const supabaseStore = {
   },
 
   async deleteGovernanceMember(id: string): Promise<GovernanceMember[]> {
-    await mutateTable('governance', 'delete', id);
+    const list = await this.getGovernance();
+    const target = list.find((g) => g.id === id);
+    if (target) {
+      await this.moveToTrash('gouvernance', target);
+    } else {
+      await mutateTable('governance', 'delete', id);
+    }
     invalidateCache('governance');
     return await this.getGovernance();
   },
@@ -794,7 +1211,13 @@ export const supabaseStore = {
   },
 
   async deleteDocument(id: string): Promise<InstitutionalDoc[]> {
-    await mutateTable('documents', 'delete', id);
+    const list = await this.getDocuments();
+    const target = list.find((d) => d.id === id);
+    if (target) {
+      await this.moveToTrash('documents', target);
+    } else {
+      await mutateTable('documents', 'delete', id);
+    }
     invalidateCache('documents');
     return await this.getDocuments();
   },
@@ -829,7 +1252,13 @@ export const supabaseStore = {
   },
 
   async deleteAlbum(id: string): Promise<PhotoAlbum[]> {
-    await mutateTable('albums', 'delete', id);
+    const list = await this.getAlbums();
+    const target = list.find((a) => a.id === id);
+    if (target) {
+      await this.moveToTrash('mediatheque', target);
+    } else {
+      await mutateTable('albums', 'delete', id);
+    }
     invalidateCache('albums');
     return await this.getAlbums();
   },
@@ -842,7 +1271,7 @@ export const supabaseStore = {
       try {
         const { data, error } = await supabase.from('media').select('*').order('date', { ascending: false });
         if (!error && data) {
-          const res = data as MediaItem[];
+          const res = (data as any[]).map(unpackMedia);
           setCachedData('media', res);
           setStoredItem('media', res);
           return res;
@@ -851,7 +1280,7 @@ export const supabaseStore = {
         console.warn('Supabase media fallback:', e);
       }
     }
-    const local = getStoredItem('media', initialMedia);
+    const local = getStoredItem<any[]>('media', initialMedia).map(unpackMedia);
     setCachedData('media', local);
     return local;
   },
@@ -859,37 +1288,72 @@ export const supabaseStore = {
   async getHeroPhotos(): Promise<MediaItem[]> {
     const allMedia = await this.getMedia();
     const heroPhotos = allMedia
-      .filter(m => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
-      .sort((a, b) => (a.hero_order || 99) - (b.hero_order || 99));
+      .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
+      .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
 
     if (heroPhotos.length > 0) {
       return heroPhotos;
     }
 
-    // Fallback to active photos
-    return allMedia
-      .filter(m => m.type === 'photo' && m.is_active !== false)
+    // Clean fallback to active photos if none explicitly marked for Hero
+    const activePhotos = allMedia
+      .filter((m) => m.type === 'photo' && m.is_active !== false)
       .slice(0, 5);
+
+    if (activePhotos.length > 0) {
+      return activePhotos;
+    }
+
+    // Ultimate fallback to initial hero photos
+    return initialMedia
+      .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
+      .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
   },
 
   async saveMedia(item: MediaItem): Promise<MediaItem[]> {
-    await mutateTable('media', 'upsert', item);
+    const packed = packMedia(item);
+    await mutateTable('media', 'upsert', packed);
     invalidateCache('media');
+
+    // Immediately synchronize local storage and session cache
+    if (typeof window !== 'undefined') {
+      try {
+        const existingList = getStoredItem<any[]>('media', initialMedia).map(unpackMedia);
+        const idx = existingList.findIndex((m) => m.id === item.id);
+        const updatedItem = unpackMedia(packed);
+        let newList: MediaItem[];
+        if (idx >= 0) {
+          newList = [...existingList];
+          newList[idx] = updatedItem;
+        } else {
+          newList = [updatedItem, ...existingList];
+        }
+        setStoredItem('media', newList);
+        setCachedData('media', newList);
+
+        window.dispatchEvent(new Event('aps_media_changed'));
+        localStorage.setItem('aps_media_last_updated', Date.now().toString());
+      } catch {}
+    }
     return await this.getMedia();
   },
 
   async deleteMedia(id: string): Promise<MediaItem[]> {
-    try {
-      const allMedia = await this.getMedia();
-      const target = allMedia.find(m => m.id === id);
-      if (target?.url) {
-        await deleteFileFromStorage(target.url, target.type === 'video' ? 'videos' : 'images');
-      }
-    } catch (cleanErr) {
-      console.warn('Storage file cleanup on deleteMedia notice:', cleanErr);
+    const allMedia = await this.getMedia();
+    const target = allMedia.find(m => m.id === id);
+    if (target) {
+      // NOTE: File in storage is PRESERVED so that media can be restored from trash!
+      await this.moveToTrash('mediatheque', target);
+    } else {
+      await mutateTable('media', 'delete', id);
     }
-    await mutateTable('media', 'delete', id);
     invalidateCache('media');
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new Event('aps_media_changed'));
+        localStorage.setItem('aps_media_last_updated', Date.now().toString());
+      } catch {}
+    }
     return await this.getMedia();
   },
 
@@ -1093,53 +1557,176 @@ export const supabaseStore = {
     return await this.getMessages();
   },
 
-  // Optimized Dashboard KPI metrics fetcher
-  async getDashboardStats() {
-    const cachedProjects = getCachedData<ProjectItem[]>('projects');
-    const cachedNews = getCachedData<NewsItem[]>('news');
-    const cachedOpps = getCachedData<OpportunityItem[]>('opportunities');
-    const cachedMedia = getCachedData<MediaItem[]>('media');
-    const cachedPartners = getCachedData<PartnerItem[]>('partners');
-    const cachedMessages = getCachedData<ContactMessage[]>('messages');
-
-    if (cachedProjects && cachedNews && cachedOpps && cachedMedia && cachedPartners && cachedMessages) {
-      return {
-        projectsCount: cachedProjects.length,
-        newsCount: cachedNews.length,
-        oppCount: cachedOpps.length,
-        photosCount: cachedMedia.filter(m => m.type === 'photo').length,
-        videosCount: cachedMedia.filter(m => m.type === 'video').length,
-        partnersCount: cachedPartners.length,
-        messagesCount: cachedMessages.length,
-        unreadMessages: cachedMessages.filter(m => m.status === 'unread').length,
-        draftsCount: cachedNews.filter(n => n.status === 'draft').length,
-        recentNews: cachedNews.slice(0, 4),
-        recentMessages: cachedMessages.slice(0, 4),
-      };
+  // Optimized Dashboard KPI metrics fetcher with direct count queries and role security
+  async getDashboardStats(userRole?: string, forceRefresh: boolean = false): Promise<DashboardStatsData> {
+    const cacheKey = `dashboard_stats_${userRole || 'all'}`;
+    if (!forceRefresh) {
+      const cached = getCachedData<DashboardStatsData>(cacheKey);
+      if (cached) return cached;
     }
 
+    // 1. Direct Supabase count queries using head: true to avoid fetching unnecessary rows
+    if (supabase) {
+      try {
+        const canAccessMessages = userRole === 'admin' || userRole === 'super_admin';
+
+        const [
+          pTotalRes,
+          nTotalRes,
+          nPubRes,
+          nDraftRes,
+          oTotalRes,
+          oPubRes,
+          mTotalRes,
+          mPhotosRes,
+          mVideosRes,
+          partRes,
+          recentNewsRes,
+        ] = await Promise.all([
+          supabase.from('projects').select('*', { count: 'exact', head: true }),
+          supabase.from('news').select('*', { count: 'exact', head: true }),
+          supabase.from('news').select('*', { count: 'exact', head: true }).eq('status', 'published'),
+          supabase.from('news').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
+          supabase.from('opportunities').select('*', { count: 'exact', head: true }),
+          supabase.from('opportunities').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+          supabase.from('media').select('*', { count: 'exact', head: true }),
+          supabase.from('media').select('*', { count: 'exact', head: true }).eq('type', 'photo'),
+          supabase.from('media').select('*', { count: 'exact', head: true }).eq('type', 'video'),
+          supabase.from('partners').select('*', { count: 'exact', head: true }),
+          supabase.from('news').select('id, slug, title_fr, published_at, category_fr, status').order('published_at', { ascending: false }).limit(4),
+        ]);
+
+        let messagesTotal: number | null = null;
+        let unreadMessages: number | null = null;
+        let recentMessages: any[] = [];
+        let hasMessageAccess = canAccessMessages;
+
+        if (canAccessMessages) {
+          try {
+            const [mTotal, mUnread, mRecent] = await Promise.all([
+              supabase.from('contact_messages').select('*', { count: 'exact', head: true }),
+              supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('status', 'unread'),
+              supabase.from('contact_messages').select('id, firstname, name, subject, message, status, created_at').order('created_at', { ascending: false }).limit(4),
+            ]);
+
+            if (!mTotal.error) {
+              messagesTotal = mTotal.count ?? 0;
+              unreadMessages = mUnread.count ?? 0;
+              recentMessages = mRecent.data ?? [];
+            } else {
+              hasMessageAccess = false;
+            }
+          } catch {
+            hasMessageAccess = false;
+          }
+        }
+
+        if (pTotalRes.count !== null && pTotalRes.count !== undefined) {
+          const projectsTotal = pTotalRes.count ?? 0;
+          const projectsPublished = projectsTotal;
+          const newsTotal = nTotalRes.count ?? 0;
+          const newsPublished = nPubRes.count ?? 0;
+          const newsDrafts = nDraftRes.count ?? 0;
+          const oppsTotal = oTotalRes.count ?? 0;
+          const oppsPublished = oPubRes.count ?? 0;
+          const oppsClosed = Math.max(0, oppsTotal - oppsPublished);
+          const mediaTotal = mTotalRes.count ?? 0;
+          const photosCount = mPhotosRes.count ?? 0;
+          const videosCount = mVideosRes.count ?? 0;
+          const partnersCount = partRes.count ?? 0;
+          const recentNews = recentNewsRes.data ?? [];
+
+          const result: DashboardStatsData = {
+            projectsTotal,
+            projectsPublished,
+            newsTotal,
+            newsPublished,
+            newsDrafts,
+            oppsTotal,
+            oppsPublished,
+            oppsClosed,
+            mediaTotal,
+            photosCount,
+            videosCount,
+            partnersCount,
+            canAccessMessages: hasMessageAccess,
+            messagesTotal,
+            unreadMessages,
+            recentNews,
+            recentMessages,
+            lastUpdated: new Date().toISOString(),
+
+            // Backward compatibility
+            projectsCount: projectsTotal,
+            newsCount: newsTotal,
+            oppCount: oppsTotal,
+            messagesCount: messagesTotal ?? 0,
+            draftsCount: newsDrafts,
+          };
+
+          setCachedData(cacheKey, result);
+          return result;
+        }
+      } catch (e) {
+        console.warn('Direct count queries failed, falling back to cached or local store:', e);
+      }
+    }
+
+    // 2. Fallback to store arrays if direct queries failed or offline
     const [projects, news, opps, media, partners, msgs] = await Promise.all([
       this.getProjects(),
       this.getNews(),
       this.getOpportunities(),
       this.getMedia(),
       this.getPartners(),
-      this.getMessages(),
+      (userRole === 'admin' || userRole === 'super_admin') ? this.getMessages() : Promise.resolve([]),
     ]);
 
-    return {
-      projectsCount: projects.length,
-      newsCount: news.length,
-      oppCount: opps.length,
-      photosCount: media.filter(m => m.type === 'photo').length,
-      videosCount: media.filter(m => m.type === 'video').length,
-      partnersCount: partners.length,
-      messagesCount: msgs.length,
-      unreadMessages: msgs.filter(m => m.status === 'unread').length,
-      draftsCount: news.filter(n => n.status === 'draft').length,
+    const canAccessMessages = userRole === 'admin' || userRole === 'super_admin';
+    const projectsTotal = projects.length;
+    const projectsPublished = projects.length;
+    const newsTotal = news.length;
+    const newsPublished = news.filter((n) => n.status === 'published').length;
+    const newsDrafts = news.filter((n) => n.status === 'draft').length;
+    const oppsTotal = opps.length;
+    const oppsPublished = opps.filter((o) => o.status === 'open').length;
+    const oppsClosed = opps.filter((o) => o.status !== 'open').length;
+    const mediaTotal = media.length;
+    const photosCount = media.filter((m) => m.type === 'photo').length;
+    const videosCount = media.filter((m) => m.type === 'video').length;
+    const partnersCount = partners.length;
+    const messagesTotal = canAccessMessages ? msgs.length : null;
+    const unreadMessages = canAccessMessages ? msgs.filter((m) => m.status === 'unread').length : null;
+
+    const fallbackResult: DashboardStatsData = {
+      projectsTotal,
+      projectsPublished,
+      newsTotal,
+      newsPublished,
+      newsDrafts,
+      oppsTotal,
+      oppsPublished,
+      oppsClosed,
+      mediaTotal,
+      photosCount,
+      videosCount,
+      partnersCount,
+      canAccessMessages,
+      messagesTotal,
+      unreadMessages,
       recentNews: news.slice(0, 4),
-      recentMessages: msgs.slice(0, 4),
+      recentMessages: canAccessMessages ? msgs.slice(0, 4) : [],
+      lastUpdated: new Date().toISOString(),
+
+      projectsCount: projectsTotal,
+      newsCount: newsTotal,
+      oppCount: oppsTotal,
+      messagesCount: messagesTotal ?? 0,
+      draftsCount: newsDrafts,
     };
+
+    setCachedData(cacheKey, fallbackResult);
+    return fallbackResult;
   },
 
   // Admin Users & Auth
@@ -1208,13 +1795,507 @@ export const supabaseStore = {
     return await this.getUsers();
   },
 
+  // Audit Logs (Historique & Journal d'activités)
+  async getAuditLogs(): Promise<AuditLog[]> {
+    return await getAuditLogs();
+  },
+
+  async recordAuditLog(
+    log: Omit<AuditLog, 'id' | 'created_at'> & { id?: string; created_at?: string }
+  ): Promise<AuditLog> {
+    return await recordAuditLog(log);
+  },
+
+  // ==========================================
+  // Corbeille & Restauration (Trash Management)
+  // ==========================================
+  async getTrashItems(): Promise<TrashItem[]> {
+    if (typeof window !== 'undefined') {
+      const cached = getCachedData<TrashItem[]>('trash_items');
+      if (cached) return cached;
+    }
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('trash_items')
+          .select('*')
+          .order('deleted_at', { ascending: false });
+
+        if (!error && Array.isArray(data)) {
+          const res = data as TrashItem[];
+          setCachedData('trash_items', res);
+          setStoredItem('trash_items', res);
+          return res;
+        }
+      } catch (e) {
+        console.warn('Supabase getTrashItems fallback:', e);
+      }
+    }
+
+    // Try API route fallback
+    if (typeof window !== 'undefined') {
+      try {
+        const headers: Record<string, string> = {};
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+          }
+        }
+        const res = await fetch('/api/admin/trash', { headers }).catch(() => null);
+        if (res && res.ok) {
+          const json = await res.json().catch(() => null);
+          if (json?.trash && Array.isArray(json.trash)) {
+            setCachedData('trash_items', json.trash);
+            setStoredItem('trash_items', json.trash);
+            return json.trash;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('API fallback getTrashItems error:', apiErr);
+      }
+    }
+
+    const local = getStoredItem<TrashItem[]>('trash_items', []);
+    setCachedData('trash_items', local);
+    return local;
+  },
+
+  async moveToTrash(module: TrashModule, itemOrId: any): Promise<TrashItem> {
+    const MODULE_TABLE_CONFIG: Record<TrashModule, { table: string }> = {
+      projets: { table: 'projects' },
+      actualites: { table: 'news' },
+      opportunites: { table: 'opportunities' },
+      partenaires: { table: 'partners' },
+      equipe: { table: 'team_members' },
+      gouvernance: { table: 'governance' },
+      documents: { table: 'documents' },
+      mediatheque: { table: 'media' },
+      domaines: { table: 'domains' },
+      statistiques: { table: 'statistics' },
+    };
+
+    const cfg = MODULE_TABLE_CONFIG[module] || { table: 'projects' };
+    let itemData: any = null;
+    let itemId: string = '';
+
+    if (typeof itemOrId === 'object' && itemOrId !== null) {
+      itemData = itemOrId;
+      itemId = String(itemOrId.id);
+    } else {
+      itemId = String(itemOrId);
+      if (module === 'projets') {
+        const list = await this.getProjects();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'actualites') {
+        const list = await this.getNews();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'opportunites') {
+        const list = await this.getOpportunities();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'partenaires') {
+        const list = await this.getPartners();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'equipe') {
+        const list = await this.getTeam();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'gouvernance') {
+        const list = await this.getGovernance();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'documents') {
+        const list = await this.getDocuments();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'mediatheque') {
+        const list = await this.getMedia();
+        itemData = list.find((x) => x.id === itemId);
+        if (!itemData) {
+          const albums = await this.getAlbums();
+          itemData = albums.find((x) => x.id === itemId);
+          if (itemData) cfg.table = 'albums';
+        }
+      } else if (module === 'domaines') {
+        const list = await this.getDomains();
+        itemData = list.find((x) => x.id === itemId);
+      } else if (module === 'statistiques') {
+        const list = await this.getStatistics();
+        itemData = list.find((x) => x.id === itemId);
+      }
+    }
+
+    if (!itemData) {
+      itemData = { id: itemId };
+    }
+
+    const itemTitle =
+      itemData.title_fr ||
+      itemData.title_en ||
+      itemData.name ||
+      itemData.label_fr ||
+      itemData.label_en ||
+      itemData.key ||
+      itemId;
+
+    let prevStatus = itemData.status;
+    if (prevStatus === undefined) {
+      if (typeof itemData.is_active === 'boolean') {
+        prevStatus = itemData.is_active ? 'active' : 'inactive';
+      } else if (typeof itemData.is_public === 'boolean') {
+        prevStatus = itemData.is_public ? 'public' : 'private';
+      }
+    }
+
+    let userId: string | undefined = undefined;
+    let userEmail: string | undefined = undefined;
+    let userName: string | undefined = undefined;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aps_admin_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          userId = parsed.id;
+          userEmail = parsed.email;
+          userName = parsed.full_name;
+        }
+      } catch {}
+    }
+
+    if (!userName && userEmail) userName = userEmail;
+    if (!userName) userName = 'Utilisateur non identifié';
+
+    const trashEntry: TrashItem = {
+      id: `trash-${cfg.table}-${itemId}-${Date.now()}`,
+      original_id: itemId,
+      module,
+      table_name: cfg.table,
+      title: itemTitle,
+      data: itemData,
+      previous_status: prevStatus,
+      deleted_at: new Date().toISOString(),
+      deleted_by_id: userId,
+      deleted_by_email: userEmail,
+      deleted_by_name: userName,
+    };
+
+    // 1. Direct Supabase insertion or API
+    let savedToTrash = false;
+    if (supabase) {
+      try {
+        const { error } = await supabase.from('trash_items').insert([trashEntry]);
+        if (!error) savedToTrash = true;
+      } catch (err) {
+        console.warn('Supabase direct trash insert note:', err);
+      }
+    }
+
+    if (!savedToTrash && typeof window !== 'undefined') {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        await fetch('/api/admin/trash', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ action: 'move_to_trash', trashItem: trashEntry }),
+        });
+        savedToTrash = true;
+      } catch (apiErr) {
+        console.warn('API route move_to_trash note:', apiErr);
+      }
+    }
+
+    // 2. Persist in local storage
+    if (typeof window !== 'undefined') {
+      try {
+        const currentTrash = getStoredItem<TrashItem[]>('trash_items', []);
+        const updatedTrash = [trashEntry, ...currentTrash.filter((t) => t.id !== trashEntry.id)];
+        setStoredItem('trash_items', updatedTrash);
+        setCachedData('trash_items', updatedTrash);
+      } catch {}
+    }
+
+    // 3. Remove from original table in database & cache
+    await mutateTable(cfg.table, 'delete', itemId);
+
+    // 4. Log audit event
+    await recordAuditLog({
+      user_id: userId,
+      user_email: userEmail,
+      user_name: userName,
+      action_type: 'corbeille',
+      module,
+      target_id: itemId,
+      target_title: itemTitle,
+      summary: `Mise en corbeille de « ${itemTitle} » (${module})`,
+      metadata: { source: 'Back-Office CMS', table: cfg.table },
+    });
+
+    // 5. Invalidate caches and broadcast event
+    invalidateCache('trash_items');
+    invalidateCache(cfg.table);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('aps_trash_changed', { detail: { action: 'move_to_trash', item: trashEntry } }));
+    }
+
+    return trashEntry;
+  },
+
+  async restoreTrashItem(trashId: string): Promise<any> {
+    const trashList = await this.getTrashItems();
+    const item = trashList.find((t) => t.id === trashId);
+    if (!item) {
+      throw new Error("Élément introuvable dans la corbeille");
+    }
+
+    const restorePayload = { ...(item.data || {}) };
+    restorePayload.id = item.original_id;
+
+    if (item.previous_status) {
+      if (['projects', 'news', 'opportunities'].includes(item.table_name)) {
+        restorePayload.status = item.previous_status;
+      } else if (['team_members', 'partners', 'domains'].includes(item.table_name)) {
+        restorePayload.is_active = item.previous_status === 'active';
+      } else if (item.table_name === 'documents') {
+        restorePayload.is_public = item.previous_status === 'public';
+      }
+    } else {
+      if (item.table_name === 'news') {
+        restorePayload.status = 'draft';
+      } else if (item.table_name === 'projects') {
+        restorePayload.status = 'in_progress';
+      } else if (item.table_name === 'opportunities') {
+        restorePayload.status = 'closed';
+      }
+    }
+
+    // 1. Put back into original table
+    await mutateTable(item.table_name, 'upsert', restorePayload);
+
+    // 2. Remove from trash_items in Supabase / API
+    if (supabase) {
+      try {
+        await supabase.from('trash_items').delete().eq('id', trashId);
+      } catch (e) {
+        console.warn('Supabase delete trash item note:', e);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        await fetch('/api/admin/trash', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ action: 'restore', id: trashId, trashItem: item }),
+        }).catch(() => null);
+      } catch {}
+
+      const currentTrash = getStoredItem<TrashItem[]>('trash_items', []);
+      const filtered = currentTrash.filter((t) => t.id !== trashId);
+      setStoredItem('trash_items', filtered);
+      setCachedData('trash_items', filtered);
+    }
+
+    // 3. User identity for log
+    let userName = 'Utilisateur non identifié';
+    let userEmail: string | undefined = undefined;
+    let userId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aps_admin_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          userId = parsed.id;
+          userEmail = parsed.email;
+          userName = parsed.full_name || parsed.email || userName;
+        }
+      } catch {}
+    }
+
+    // 4. Record audit log
+    await recordAuditLog({
+      user_id: userId,
+      user_email: userEmail,
+      user_name: userName,
+      action_type: 'restauration',
+      module: item.module,
+      target_id: item.original_id,
+      target_title: item.title,
+      summary: `Restauration de « ${item.title} » depuis la corbeille vers le module ${item.module}`,
+      metadata: { source: 'Back-Office CMS', table: item.table_name },
+    });
+
+    // 5. Invalidate caches and broadcast event
+    invalidateCache('trash_items');
+    invalidateCache(item.table_name);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('aps_trash_changed', { detail: { action: 'restore', item } }));
+    }
+
+    return restorePayload;
+  },
+
+  async deletePermanentlyTrashItem(trashId: string): Promise<void> {
+    const trashList = await this.getTrashItems();
+    const item = trashList.find((t) => t.id === trashId);
+
+    // 1. Storage media safe check: if media item, only clean if not referenced anywhere
+    if (item && item.module === 'mediatheque' && item.table_name === 'media' && item.data?.url) {
+      try {
+        const mediaUrl = item.data.url;
+        const projects = await this.getProjects();
+        const news = await this.getNews();
+        const isReferencedInProjects = projects.some(p => p.main_image === mediaUrl || p.photos?.includes(mediaUrl));
+        const isReferencedInNews = news.some(n => n.main_image === mediaUrl || n.gallery?.includes(mediaUrl));
+
+        if (!isReferencedInProjects && !isReferencedInNews) {
+          await deleteFileFromStorage(mediaUrl, item.data.type === 'video' ? 'videos' : 'images');
+        }
+      } catch (mediaErr) {
+        console.warn('Storage safe check error:', mediaErr);
+      }
+    }
+
+    // 2. Remove from trash_items in Supabase
+    if (supabase) {
+      try {
+        await supabase.from('trash_items').delete().eq('id', trashId);
+      } catch (e) {
+        console.warn('Supabase delete trash item note:', e);
+      }
+    }
+
+    // 3. API route delete
+    if (typeof window !== 'undefined') {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        await fetch('/api/admin/trash', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ action: 'delete_permanent', id: trashId }),
+        }).catch(() => null);
+      } catch {}
+
+      const currentTrash = getStoredItem<TrashItem[]>('trash_items', []);
+      const filtered = currentTrash.filter((t) => t.id !== trashId);
+      setStoredItem('trash_items', filtered);
+      setCachedData('trash_items', filtered);
+    }
+
+    // 4. Log audit
+    let userName = 'Utilisateur non identifié';
+    let userEmail: string | undefined = undefined;
+    let userId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aps_admin_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          userId = parsed.id;
+          userEmail = parsed.email;
+          userName = parsed.full_name || parsed.email || userName;
+        }
+      } catch {}
+    }
+
+    await recordAuditLog({
+      user_id: userId,
+      user_email: userEmail,
+      user_name: userName,
+      action_type: 'suppression_definitive',
+      module: item?.module || 'corbeille',
+      target_id: item?.original_id || trashId,
+      target_title: item?.title || 'Élément corbeille',
+      summary: `Suppression définitive de « ${item?.title || 'Élément'} » de la corbeille`,
+      metadata: { source: 'Back-Office CMS' },
+    });
+
+    invalidateCache('trash_items');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('aps_trash_changed', { detail: { action: 'delete_permanent', id: trashId } }));
+    }
+  },
+
+  async emptyTrash(): Promise<void> {
+    const trashList = await this.getTrashItems();
+    const count = trashList.length;
+
+    if (supabase) {
+      try {
+        await supabase.from('trash_items').delete().neq('id', 'keep_all_guard');
+      } catch (e) {
+        console.warn('Supabase empty trash note:', e);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+          if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        await fetch('/api/admin/trash', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ action: 'empty' }),
+        }).catch(() => null);
+      } catch {}
+
+      setStoredItem('trash_items', []);
+      setCachedData('trash_items', []);
+    }
+
+    let userName = 'Utilisateur non identifié';
+    let userEmail: string | undefined = undefined;
+    let userId: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aps_admin_session');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          userId = parsed.id;
+          userEmail = parsed.email;
+          userName = parsed.full_name || parsed.email || userName;
+        }
+      } catch {}
+    }
+
+    await recordAuditLog({
+      user_id: userId,
+      user_email: userEmail,
+      user_name: userName,
+      action_type: 'suppression_definitive',
+      module: 'corbeille',
+      summary: `Vidage complet de la corbeille (${count} éléments purgés définitivement)`,
+      metadata: { source: 'Back-Office CMS' },
+    });
+
+    invalidateCache('trash_items');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('aps_trash_changed', { detail: { action: 'empty' } }));
+    }
+  },
+
   // Storage file operations
   async uploadFile(
     file: File,
     bucket: 'images' | 'videos' | 'documents' | 'logos' = 'images',
-    folder: string = 'uploads'
+    folder: string = 'uploads',
+    onProgress?: UploadProgressCallback
   ) {
-    return await uploadFileToStorage(file, bucket, folder);
+    return await uploadFileToStorage(file, bucket, folder, onProgress);
   },
 
   async deleteFile(
@@ -1259,245 +2340,212 @@ export const supabaseStore = {
 
 export type StorageBucket = 'images' | 'videos' | 'documents' | 'logos';
 
+export type UploadProgressCallback = (data: UploadProgressData) => void;
+
 /**
- * Uploads a file directly via authenticated Supabase client,
- * with seamless fallback to /api/admin/upload if needed.
+ * Téléverse un fichier via l'API serveur sécurisée (/api/admin/upload)
+ * en utilisant XMLHttpRequest côté navigateur pour mesurer la progression réelle du transfert réseau (octets et pourcentage).
  */
 export async function uploadFileToStorage(
   file: File,
   bucket: StorageBucket = 'images',
-  folder: string = 'uploads'
+  folder: string = 'uploads',
+  onProgress?: UploadProgressCallback
 ): Promise<{ success: boolean; publicUrl: string; path: string; error?: string }> {
   const cleanName = file.name
     .replace(/[^a-zA-Z0-9.-]/g, '_')
     .toLowerCase();
   const filePath = `${folder}/${Date.now()}_${cleanName}`;
 
-  // =========================================================================
-  // [DIAGNOSTIC TEMPORAIRE UPLOAD STORAGE] DÉBUT
-  // =========================================================================
-  console.debug('[DIAGNOSTIC UPLOAD] ========== DÉBUT FLUX TÉLÉVERSEMENT ==========');
-  console.debug('[DIAGNOSTIC UPLOAD] 3. Bucket cible :', bucket, '(exactement "images" ? :', bucket === 'images', ')');
-  console.debug('[DIAGNOSTIC UPLOAD] 4. Chemin Storage généré :', filePath);
-  console.debug('[DIAGNOSTIC UPLOAD] Fichier source :', {
-    name: file.name,
-    size: `${(file.size / 1024).toFixed(1)} Ko`,
-    type: file.type || 'non défini',
+  onProgress?.({
+    phase: 'preparing',
+    percent: 0,
+    fileName: file.name,
+    totalBytes: file.size,
+    loadedBytes: 0,
+    message: 'Préparation du fichier...',
   });
 
-  // 1. Direct client upload using the user's Supabase Auth session
-  if (supabase) {
-    try {
-      // 1. & 2. Vérification getSession()
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      const currentSession = sessionData?.session;
+  // 1. Environnement navigateur avec XMLHttpRequest pour mesure de progression réelle
+  if (typeof window !== 'undefined' && typeof XMLHttpRequest !== 'undefined') {
+    return new Promise(async (resolve) => {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('bucket', bucket);
+        formData.append('folder', folder);
 
-      // Vérification getUser()
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      const currentUser = userData?.user;
+        let token = '';
+        if (supabase) {
+          try {
+            const { data } = await supabase.auth.getSession();
+            if (data?.session?.access_token) {
+              token = data.session.access_token;
+            }
+          } catch {}
+        }
 
-      // Exécution temporaire de is_editor() via RPC avec le client et la session actuelle
-      const { data: editorCheck, error: editorCheckError } = await supabase.rpc('is_editor');
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/admin/upload');
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
 
-      console.debug('[DIAGNOSTIC UPLOAD STORAGE] is_editor result', {
-        'session présente': Boolean(currentSession),
-        'session.user.id': currentSession?.user?.id || null,
-        'session.user.email': currentSession?.user?.email || null,
-        'getUser user.id': currentUser?.id || null,
-        'getUser user.email': currentUser?.email || null,
-        'getUser error': userError ? userError.message : null,
-        'editorCheck': editorCheck,
-        'editorCheckError.message': editorCheckError ? editorCheckError.message : null,
-        'editorCheckError.code': editorCheckError ? (editorCheckError as any).code : null,
-      });
+        if (xhr.upload) {
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && event.total > 0) {
+              const percent = Math.min(99, Math.round((event.loaded / event.total) * 100));
+              onProgress?.({
+                phase: 'uploading',
+                percent,
+                loadedBytes: event.loaded,
+                totalBytes: event.total,
+                fileName: file.name,
+                message: `Téléversement (${percent}%)...`,
+              });
+            } else {
+              onProgress?.({
+                phase: 'uploading',
+                percent: 50,
+                fileName: file.name,
+                message: 'Téléversement en cours...',
+              });
+            }
+          };
 
-      console.debug('[DIAGNOSTIC UPLOAD] 1. & 2. supabase.auth.getSession() ->', {
-        'session présente': Boolean(currentSession),
-        'session.user.id': currentSession?.user?.id || null,
-        'session.user.email': currentSession?.user?.email || null,
-        'présence access_token': Boolean(currentSession?.access_token),
-        'erreur session': sessionError ? sessionError.message : null,
-      });
-
-      console.debug('[DIAGNOSTIC UPLOAD] 5. & 6. supabase.auth.getUser() ->', {
-        'user présent': Boolean(currentUser),
-        'user.id': currentUser?.id || null,
-        'user.email': currentUser?.email || null,
-        'éventuelle erreur': userError ? userError.message : null,
-      });
-
-      // Diagnostic PostgreSQL SECURITY DEFINER : vérification du contexte exact vu par la session
-      console.debug('[DIAGNOSTIC AUTH CONTEXT] APPEL RPC DEBUG');
-      const { data: authContext, error: authContextError } = await supabase.rpc('debug_current_auth_context');
-      console.debug('[DIAGNOSTIC AUTH CONTEXT] RESULTAT', {
-        data: authContext ?? null,
-        error: authContextError ? authContextError.message : null,
-      });
-
-      console.debug('[DIAGNOSTIC AUTH CONTEXT]', {
-        uid: authContext?.uid ?? null,
-        role: authContext?.role ?? null,
-        is_active: authContext?.is_active ?? null,
-        is_editor: authContext?.is_editor ?? null,
-        error: authContextError ? (authContextError.message || String(authContextError)) : null,
-      });
-
-      // 7. Effectuer l'upload normal avec supabase.storage.from(bucket).upload(...)
-      console.debug(`[DIAGNOSTIC UPLOAD] 7. Appel supabase.storage.from('${bucket}').upload('${filePath}', ...)`);
-
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      // 8. Vérification du résultat
-      if (error) {
-        console.error('[DIAGNOSTIC UPLOAD] 8. ❌ ÉCHEC DE L\'UPLOAD STORAGE :', {
-          'error.message': error.message,
-          'error.name': error.name,
-          'error.statusCode': (error as any).statusCode || (error as any).status || null,
-          'bucket': bucket,
-          'chemin du fichier': filePath,
-        });
-      } else if (data) {
-        console.debug('[DIAGNOSTIC UPLOAD] ✅ SUCCÈS DE L\'UPLOAD STORAGE :', {
-          'path': data.path,
-          'id': (data as any).id || null,
-          'bucket': bucket,
-        });
-
-        const { data: { publicUrl } } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(filePath);
-
-        console.debug('[DIAGNOSTIC UPLOAD] URL publique générée :', publicUrl);
-        console.debug('[DIAGNOSTIC UPLOAD] ========== FIN FLUX TÉLÉVERSEMENT ==========');
-
-        return {
-          success: true,
-          publicUrl,
-          path: filePath,
-        };
-      }
-    } catch (directErr: any) {
-      console.error('[DIAGNOSTIC UPLOAD] ❌ Exception inattendue lors de l\'upload direct :', {
-        'error.message': directErr?.message || String(directErr),
-        'error.name': directErr?.name || 'Error',
-        'bucket': bucket,
-        'chemin du fichier': filePath,
-      });
-    }
-  } else {
-    console.warn('[DIAGNOSTIC UPLOAD] Instance supabase non disponible côté client');
-  }
-  console.debug('[DIAGNOSTIC UPLOAD] ========== FIN FLUX CLIENT (Passage éventuel au fallback) ==========');
-  // =========================================================================
-  // [DIAGNOSTIC TEMPORAIRE UPLOAD STORAGE] FIN
-  // =========================================================================
-
-  // 2. Server API fallback (/api/admin/upload) with Bearer token
-  if (typeof window !== 'undefined') {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('bucket', bucket);
-      formData.append('folder', folder);
-
-      const headers: Record<string, string> = {};
-      if (supabase) {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            headers['Authorization'] = `Bearer ${session.access_token}`;
-          }
-        } catch {}
-      }
-
-      const res = await fetch('/api/admin/upload', {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      const contentType = res.headers.get('content-type') || '';
-      let resData: any = null;
-
-      if (contentType.includes('application/json')) {
-        try {
-          resData = await res.json();
-        } catch (jsonErr: any) {
-          const rawText = await res.text().catch(() => '');
-          console.error('[API UPLOAD FALLBACK] Erreur parsing JSON :', {
-            status: res.status,
-            rawText,
-            jsonErr,
-          });
-          return {
-            success: false,
-            publicUrl: '',
-            path: '',
-            error: `Réponse serveur non-JSON (HTTP ${res.status}) : ${rawText || jsonErr.message}`,
+          xhr.upload.onload = () => {
+            // Le flux d'octets a été intégralement envoyé au serveur
+            onProgress?.({
+              phase: 'processing',
+              percent: 100,
+              fileName: file.name,
+              totalBytes: file.size,
+              loadedBytes: file.size,
+              message: 'Enregistrement sur Supabase Storage...',
+            });
           };
         }
-      } else {
-        // En cas de réponse non-JSON (ex: HTTP 413 "Request Entity Too Large" renvoyé par Vercel)
-        const rawText = await res.text().catch(() => '');
-        console.error('[API UPLOAD FALLBACK] Réponse serveur non-JSON reçue :', {
-          status: res.status,
-          statusText: res.statusText,
-          contentType,
-          rawText,
-        });
 
-        const isEntityTooLarge =
-          res.status === 413 ||
-          rawText.toLowerCase().includes('request entity') ||
-          rawText.toLowerCase().includes('too large');
+        xhr.onload = () => {
+          const contentType = xhr.getResponseHeader('content-type') || '';
+          let resData: any = null;
 
-        const message = isEntityTooLarge
-          ? `Le fichier sélectionné dépasse la taille maximale autorisée par le serveur Vercel (limite 4.5 Mo). Détail serveur : ${rawText || 'Request Entity Too Large (HTTP 413)'}`
-          : `Réponse serveur non-JSON (HTTP ${res.status} ${res.statusText}) : ${rawText.slice(0, 300)}`;
+          if (contentType.includes('application/json')) {
+            try {
+              resData = JSON.parse(xhr.responseText);
+            } catch (jsonErr: any) {
+              const errMsg = `Réponse serveur non-JSON (HTTP ${xhr.status})`;
+              onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: errMsg });
+              return resolve({ success: false, publicUrl: '', path: '', error: errMsg });
+            }
+          } else {
+            const isEntityTooLarge =
+              xhr.status === 413 ||
+              xhr.responseText.toLowerCase().includes('request entity') ||
+              xhr.responseText.toLowerCase().includes('too large');
 
-        return {
-          success: false,
-          publicUrl: '',
-          path: '',
-          error: message,
+            const message = isEntityTooLarge
+              ? 'Le fichier sélectionné dépasse la taille maximale autorisée par le serveur (limite 4.5 Mo).'
+              : `Réponse serveur invalide (HTTP ${xhr.status} ${xhr.statusText})`;
+
+            onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: message });
+            return resolve({ success: false, publicUrl: '', path: '', error: message });
+          }
+
+          if (xhr.status >= 200 && xhr.status < 300 && resData?.success) {
+            const publicUrl = resData.publicUrl || resData.url || '';
+            const path = resData.path || filePath;
+            onProgress?.({
+              phase: 'success',
+              percent: 100,
+              fileName: file.name,
+              totalBytes: file.size,
+              loadedBytes: file.size,
+              message: 'Téléversement réussi et fichier enregistré !',
+            });
+            return resolve({ success: true, publicUrl, path });
+          }
+
+          const errMsg = resData?.error || `Erreur serveur (HTTP ${xhr.status}) lors du téléversement.`;
+          onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: errMsg });
+          return resolve({ success: false, publicUrl: '', path: '', error: errMsg });
         };
-      }
 
-      if (res.ok && resData?.success) {
-        return {
-          success: true,
-          publicUrl: resData.publicUrl || resData.url,
-          path: resData.path || filePath,
+        xhr.onerror = () => {
+          const errMsg = 'Erreur réseau lors du téléversement vers le serveur.';
+          onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: errMsg });
+          resolve({ success: false, publicUrl: '', path: '', error: errMsg });
         };
-      }
 
-      return {
-        success: false,
-        publicUrl: '',
-        path: '',
-        error: resData?.error || `Erreur serveur (HTTP ${res.status}) lors du téléversement vers Supabase Storage.`,
-      };
-    } catch (err: any) {
-      return {
-        success: false,
-        publicUrl: '',
-        path: '',
-        error: err.message || 'Erreur réseau lors du téléversement.',
-      };
-    }
+        xhr.ontimeout = () => {
+          const errMsg = 'Délai d’attente dépassé (timeout) lors du téléversement.';
+          onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: errMsg });
+          resolve({ success: false, publicUrl: '', path: '', error: errMsg });
+        };
+
+        xhr.send(formData);
+      } catch (err: any) {
+        const errMsg = err?.message || 'Erreur inattendue lors de l’envoi.';
+        onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: errMsg });
+        resolve({ success: false, publicUrl: '', path: '', error: errMsg });
+      }
+    });
   }
 
-  return {
-    success: false,
-    publicUrl: '',
-    path: '',
-    error: 'Environnement de téléversement non disponible.',
-  };
+  // 2. Fallback pour environnement sans XHR (ex: tests côté serveur)
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('bucket', bucket);
+    formData.append('folder', folder);
+
+    onProgress?.({
+      phase: 'uploading',
+      percent: 50,
+      fileName: file.name,
+      message: 'Téléversement en cours...',
+    });
+
+    const headers: Record<string, string> = {};
+    if (supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      } catch {}
+    }
+
+    const res = await fetch('/api/admin/upload', {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const resData = await res.json().catch(() => null);
+
+    if (res.ok && resData?.success) {
+      onProgress?.({
+        phase: 'success',
+        percent: 100,
+        fileName: file.name,
+        message: 'Téléversement réussi !',
+      });
+      return {
+        success: true,
+        publicUrl: resData.publicUrl || resData.url,
+        path: resData.path || filePath,
+      };
+    }
+
+    const errMsg = resData?.error || `Erreur serveur (HTTP ${res.status})`;
+    onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: errMsg });
+    return { success: false, publicUrl: '', path: '', error: errMsg };
+  } catch (err: any) {
+    const errMsg = err?.message || 'Erreur réseau';
+    onProgress?.({ phase: 'error', percent: 0, fileName: file.name, error: errMsg });
+    return { success: false, publicUrl: '', path: '', error: errMsg };
+  }
 }
 
 /**

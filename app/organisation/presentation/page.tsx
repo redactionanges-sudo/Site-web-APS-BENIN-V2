@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import {
   ShieldCheck,
   FileCheck2,
@@ -18,6 +19,7 @@ import {
 
 export default function PresentationPage() {
   const { language } = useLanguage();
+  const { orgName, addressLocation, postalBox, settings } = useSiteSettings();
 
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
@@ -176,52 +178,66 @@ export default function PresentationPage() {
                     <dl className="space-y-3.5 text-xs">
                       <div>
                         <dt className="text-gray-500 font-medium">Nom officiel</dt>
-                        <dd className="font-bold text-gray-900 mt-0.5">AGISSONS POUR SAUVER – APS-BÉNIN</dd>
+                        <dd className="font-bold text-gray-900 mt-0.5">{orgName || 'AGISSONS POUR SAUVER – APS-BÉNIN'}</dd>
                       </div>
 
-                      <div>
-                        <dt className="text-gray-500 font-medium">Date de création</dt>
-                        <dd className="font-semibold text-gray-900 mt-0.5">Septembre 2014</dd>
-                      </div>
+                      {settings.creation_date && (
+                        <div>
+                          <dt className="text-gray-500 font-medium">Date de création</dt>
+                          <dd className="font-semibold text-gray-900 mt-0.5">{settings.creation_date}</dd>
+                        </div>
+                      )}
 
-                      <div>
-                        <dt className="text-gray-500 font-medium">Enregistrement officiel</dt>
-                        <dd className="font-semibold text-gray-900 mt-0.5">20 septembre 2017</dd>
-                      </div>
+                      {settings.official_registration_date && (
+                        <div>
+                          <dt className="text-gray-500 font-medium">Enregistrement officiel</dt>
+                          <dd className="font-semibold text-gray-900 mt-0.5">{settings.official_registration_date}</dd>
+                        </div>
+                      )}
 
-                      <div>
-                        <dt className="text-gray-500 font-medium">Récépissé Préfectoral</dt>
-                        <dd className="font-mono text-gray-900 mt-0.5 bg-white p-1.5 rounded border border-gray-200">
-                          N°9/040PDM/SG/STCCD-
-                        </dd>
-                      </div>
+                      {settings.registration_reference && (
+                        <div>
+                          <dt className="text-gray-500 font-medium">Récépissé Préfectoral</dt>
+                          <dd className="font-mono text-gray-900 mt-0.5 bg-white p-1.5 rounded border border-gray-200">
+                            {settings.registration_reference}
+                          </dd>
+                        </div>
+                      )}
 
-                      <div>
-                        <dt className="text-gray-500 font-medium">Journal Officiel</dt>
-                        <dd className="font-mono text-gray-900 mt-0.5 bg-white p-1.5 rounded border border-gray-200">
-                          JO N°21 du 1er Novembre 2017
-                        </dd>
-                      </div>
+                      {settings.jo_reference && (
+                        <div>
+                          <dt className="text-gray-500 font-medium">Journal Officiel</dt>
+                          <dd className="font-mono text-gray-900 mt-0.5 bg-white p-1.5 rounded border border-gray-200">
+                            {settings.jo_reference}
+                          </dd>
+                        </div>
+                      )}
 
-                      <div>
-                        <dt className="text-gray-500 font-medium">Identifiant Fiscal Unique (IFU)</dt>
-                        <dd className="font-mono font-bold text-[#92278F] mt-0.5 bg-purple-50 p-1.5 rounded border border-purple-200 text-sm">
-                          6 2022 1407 5648
-                        </dd>
-                      </div>
+                      {settings.ifu_number && (
+                        <div>
+                          <dt className="text-gray-500 font-medium">Identifiant Fiscal Unique (IFU)</dt>
+                          <dd className="font-mono font-bold text-[#92278F] mt-0.5 bg-purple-50 p-1.5 rounded border border-purple-200 text-sm">
+                            {settings.ifu_number}
+                          </dd>
+                        </div>
+                      )}
 
-                      <div>
-                        <dt className="text-gray-500 font-medium">Siège Social</dt>
-                        <dd className="font-semibold text-gray-900 mt-0.5 flex items-start gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-[#FF8C00] shrink-0 mt-0.5" />
-                          <span>Djacoṭé-Comè, Mono, République du Bénin</span>
-                        </dd>
-                      </div>
+                      {addressLocation && (
+                        <div>
+                          <dt className="text-gray-500 font-medium">Siège Social</dt>
+                          <dd className="font-semibold text-gray-900 mt-0.5 flex items-start gap-1">
+                            <MapPin className="w-3.5 h-3.5 text-[#FF8C00] shrink-0 mt-0.5" />
+                            <span>{addressLocation}</span>
+                          </dd>
+                        </div>
+                      )}
 
-                      <div>
-                        <dt className="text-gray-500 font-medium">Boîte Postale</dt>
-                        <dd className="font-semibold text-gray-900 mt-0.5">BP 69 Comè – Bénin</dd>
-                      </div>
+                      {postalBox && (
+                        <div>
+                          <dt className="text-gray-500 font-medium">Boîte Postale</dt>
+                          <dd className="font-semibold text-gray-900 mt-0.5">{postalBox}</dd>
+                        </div>
+                      )}
                     </dl>
                   </div>
 

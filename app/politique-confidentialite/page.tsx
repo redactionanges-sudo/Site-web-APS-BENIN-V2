@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { useLanguage } from '@/lib/i18n';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { ArrowLeft } from 'lucide-react';
 
 export default function PolitiqueConfidentialitePage() {
   const { language } = useLanguage();
+  const { email } = useSiteSettings();
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -64,7 +66,13 @@ export default function PolitiqueConfidentialitePage() {
                 <p>
                   Conformément aux lois béninoises relatives à la protection des données personnelles, vous disposez d’un droit d’accès, de rectification, d’opposition et de suppression de vos données. Pour exercer ce droit, il vous suffit de contacter notre secrétariat par email à :
                 </p>
-                <p className="font-semibold text-[#92278F]">agissonspoursauver@gmail.com</p>
+                {email && (
+                  <p className="font-semibold text-[#92278F]">
+                    <a href={`mailto:${email}`} className="hover:underline">
+                      {email}
+                    </a>
+                  </p>
+                )}
               </section>
             </div>
           </div>

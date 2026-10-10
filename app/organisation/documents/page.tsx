@@ -7,6 +7,7 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { InstitutionalDoc } from '@/types';
+import { trackEvent } from '@/lib/analytics';
 import {
   DOCUMENT_CATEGORIES,
   getCategoryMeta,
@@ -41,15 +42,20 @@ export default function DocumentsPage() {
     });
   }, []);
 
-  // Extract unique available years sorted descending
-  const availableYears = useMemo(() => {
-    const years = Array.from(new Set(docs.map((d) => d.publication_year).filter(Boolean)));
-    return years.sort((a, b) => b - a);
+  // Strict filter: Only documents with explicit is_public === true are visible to the public
+  const publicDocs = useMemo(() => {
+    return docs.filter((d) => d.is_public === true);
   }, [docs]);
 
-  // Filtered documents
+  // Extract unique available years sorted descending (from public documents only)
+  const availableYears = useMemo(() => {
+    const years = Array.from(new Set(publicDocs.map((d) => d.publication_year).filter(Boolean)));
+    return years.sort((a, b) => b - a);
+  }, [publicDocs]);
+
+  // Filtered documents for display
   const filteredDocs = useMemo(() => {
-    return docs.filter((doc) => {
+    return publicDocs.filter((doc) => {
       // Search
       const matchesSearch =
         !searchQuery ||
@@ -68,13 +74,13 @@ export default function DocumentsPage() {
 
       return matchesSearch && matchesCategory && matchesYear;
     });
-  }, [docs, searchQuery, selectedCategory, selectedYear]);
+  }, [publicDocs, searchQuery, selectedCategory, selectedYear]);
 
   // Categories present in the loaded public documents
   const presentCategories = useMemo(() => {
-    const usedCatIds = new Set(docs.map((d) => d.category));
+    const usedCatIds = new Set(publicDocs.map((d) => d.category));
     return DOCUMENT_CATEGORIES.filter((c) => usedCatIds.has(c.id));
-  }, [docs]);
+  }, [publicDocs]);
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -292,6 +298,13 @@ export default function DocumentsPage() {
                                 <a
                                   href={doc.file_url}
                                   download
+                                  onClick={() => {
+                                    trackEvent('download_document', {
+                                      target_id: doc.id,
+                                      target_title: title,
+                                      path: '/organisation/documents',
+                                    });
+                                  }}
                                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-colors shadow-2xs"
                                   title={language === 'en' ? 'Direct download' : 'Télécharger le fichier'}
                                 >

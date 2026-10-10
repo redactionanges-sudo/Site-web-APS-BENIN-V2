@@ -119,6 +119,13 @@ export function checkTablePermission(table: string, role: UserRole): { allowed: 
     return { allowed: true };
   }
 
+  if (table === 'audit_logs') {
+    if (role !== 'super_admin' && role !== 'admin') {
+      return { allowed: false, error: 'Accès au journal réservé aux Administrateurs.' };
+    }
+    return { allowed: true };
+  }
+
   // All other tables are editorial
   return { allowed: true };
 }

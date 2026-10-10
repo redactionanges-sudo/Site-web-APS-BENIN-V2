@@ -255,8 +255,9 @@ export default function AdminDomainesPage() {
 
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer ce domaine ?"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement le domaine « ${domainToDelete?.title_fr} » ?`}
+          title="Placer ce domaine dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer le domaine « ${domainToDelete?.title_fr} » dans la corbeille ? Vous pourrez le restaurer à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteConfirmOpen(false)}
         />

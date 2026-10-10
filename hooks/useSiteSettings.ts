@@ -152,21 +152,21 @@ export function useSiteSettings(): UseSiteSettingsResult {
 
     orgName: settings.org_name || initialSiteSettings.org_name,
     orgNameShort: settings.org_name_short || initialSiteSettings.org_name_short,
-    sloganFr: settings.slogan_fr || initialSiteSettings.slogan_fr,
-    sloganEn: settings.slogan_en || initialSiteSettings.slogan_en,
-    addressLocation: settings.address_location || initialSiteSettings.address_location,
-    addressLocality: settings.address_locality || initialSiteSettings.address_locality,
-    postalBox: settings.postal_box || initialSiteSettings.postal_box,
-    email: settings.email || initialSiteSettings.email,
-    logoUrl: settings.logo_url || initialSiteSettings.logo_url,
+    sloganFr: typeof settings.slogan_fr === 'string' ? settings.slogan_fr : (initialSiteSettings.slogan_fr || ''),
+    sloganEn: typeof settings.slogan_en === 'string' ? settings.slogan_en : (initialSiteSettings.slogan_en || ''),
+    addressLocation: typeof settings.address_location === 'string' ? settings.address_location : '',
+    addressLocality: typeof settings.address_locality === 'string' ? settings.address_locality : '',
+    postalBox: typeof settings.postal_box === 'string' ? settings.postal_box : '',
+    email: typeof settings.email === 'string' ? settings.email : '',
+    logoUrl: typeof settings.logo_url === 'string' ? settings.logo_url : '',
 
-    phones: settings.phones || [],
+    phones: Array.isArray(settings.phones) ? settings.phones : [],
     validPhones,
     primaryPhone,
     primaryPhoneTelHref,
-    hasValidPhone: Boolean(primaryPhoneTelHref),
+    hasValidPhone: validPhones.length > 0 && Boolean(primaryPhoneTelHref),
 
-    socialLinks: settings.social_links,
+    socialLinks: settings.social_links || initialSiteSettings.social_links,
     activeSocials,
   };
 }

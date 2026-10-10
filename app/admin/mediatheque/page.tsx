@@ -7,6 +7,7 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabase, isSupabaseConfigured, supabaseStore } from '@/lib/supabase';
 import { MediaItem, PhotoAlbum, ProjectItem } from '@/types';
 import { ImagePickerField } from '@/components/admin/MediaSelectorModal';
+import { UploadProgressBar, UploadProgressData } from '@/components/admin/UploadProgressBar';
 import {
   Upload,
   Plus,
@@ -53,7 +54,8 @@ export default function AdminMediathequePage() {
   // Media Modal state
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
   const [editingMedia, setEditingMedia] = useState<MediaItem | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(false);
+  const [uploadData, setUploadData] = useState<UploadProgressData | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Video specific management state
   const [videoSourceMode, setVideoSourceMode] = useState<'youtube' | 'vimeo' | 'storage'>('youtube');
@@ -175,14 +177,53 @@ export default function AdminMediathequePage() {
 
   const toggleHeroStatus = async (item: MediaItem, e: React.MouseEvent) => {
     e.stopPropagation();
+    const willShowInHero = !item.show_in_hero;
+    let nextHeroOrder = Number(item.hero_order) || 1;
+
+    if (willShowInHero) {
+      // Find all currently selected hero items except this one
+      const currentHeroItems = mediaList.filter(
+        (m) => m.type === 'photo' && m.show_in_hero && m.id !== item.id
+      );
+      // Next available position: 1, 2, 3...
+      const maxOrder = currentHeroItems.reduce(
+        (max, m) => Math.max(max, Number(m.hero_order) || 0),
+        0
+      );
+      nextHeroOrder = maxOrder + 1;
+    }
+
     const updated: MediaItem = {
       ...item,
-      show_in_hero: !item.show_in_hero,
+      show_in_hero: willShowInHero,
       is_active: item.is_active !== false,
-      hero_order: item.hero_order || 1,
+      hero_order: nextHeroOrder,
     };
-    await supabaseStore.saveMedia(updated);
+
     setMediaList((prev) => prev.map((m) => (m.id === item.id ? updated : m)));
+    try {
+      await supabaseStore.saveMedia(updated);
+    } catch (err: any) {
+      console.error('Erreur toggle Hero:', err);
+      setMediaList((prev) => prev.map((m) => (m.id === item.id ? item : m)));
+      alert(`Erreur d'enregistrement : ${err.message || 'Impossible de mettre à jour le Hero'}`);
+    }
+  };
+
+  const updateHeroOrder = async (item: MediaItem, newOrder: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const cleanOrder = Math.max(1, Math.min(99, Number(newOrder) || 1));
+    const updated: MediaItem = {
+      ...item,
+      hero_order: cleanOrder,
+    };
+    setMediaList((prev) => prev.map((m) => (m.id === item.id ? updated : m)));
+    try {
+      await supabaseStore.saveMedia(updated);
+    } catch (err: any) {
+      console.error('Erreur updateHeroOrder:', err);
+      setMediaList((prev) => prev.map((m) => (m.id === item.id ? item : m)));
+    }
   };
 
   const toggleActiveStatus = async (item: MediaItem, e: React.MouseEvent) => {
@@ -221,10 +262,21 @@ export default function AdminMediathequePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadProgress(true);
+    setIsUploading(true);
+    setUploadData({
+      phase: 'preparing',
+      percent: 0,
+      fileName: file.name,
+      totalBytes: file.size,
+      loadedBytes: 0,
+      message: 'Préparation du fichier...',
+    });
+
     try {
       const bucket = mediaForm.type === 'video' ? 'videos' : 'images';
-      const result = await supabaseStore.uploadFile(file, bucket);
+      const result = await supabaseStore.uploadFile(file, bucket, 'uploads', (progress) => {
+        setUploadData(progress);
+      });
 
       if (!result.success || !result.publicUrl) {
         throw new Error(result.error || 'Erreur lors du téléversement vers Supabase Storage');
@@ -258,9 +310,15 @@ export default function AdminMediathequePage() {
       }
     } catch (err: any) {
       console.error('Upload error:', err);
-      alert(`Erreur de téléversement : ${err.message || 'Impossible d\'envoyer le fichier vers Supabase Storage'}`);
+      setUploadData({
+        phase: 'error',
+        percent: 0,
+        fileName: file.name,
+        error: err.message || 'Impossible d\'envoyer le fichier vers Supabase Storage',
+      });
     } finally {
-      setUploadProgress(false);
+      setIsUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -364,20 +422,27 @@ export default function AdminMediathequePage() {
     }
   };
 
-  const filteredMedia = mediaList.filter((m) => {
-    const matchesTab = activeTab === 'photos' ? m.type === 'photo' : m.type === 'video';
-    const matchesAlbum = selectedAlbumFilter === 'all' || m.album_id === selectedAlbumFilter;
-    const matchesHero = !heroFilterOnly || (m.type === 'photo' && m.show_in_hero);
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      m.title_fr.toLowerCase().includes(q) ||
-      m.title_en.toLowerCase().includes(q) ||
-      (m.category && m.category.toLowerCase().includes(q)) ||
-      (m.location && m.location.toLowerCase().includes(q));
+  const filteredMedia = mediaList
+    .filter((m) => {
+      const matchesTab = activeTab === 'photos' ? m.type === 'photo' : m.type === 'video';
+      const matchesAlbum = selectedAlbumFilter === 'all' || m.album_id === selectedAlbumFilter;
+      const matchesHero = !heroFilterOnly || (m.type === 'photo' && m.show_in_hero);
+      const q = search.toLowerCase();
+      const matchesSearch =
+        !q ||
+        m.title_fr.toLowerCase().includes(q) ||
+        m.title_en.toLowerCase().includes(q) ||
+        (m.category && m.category.toLowerCase().includes(q)) ||
+        (m.location && m.location.toLowerCase().includes(q));
 
-    return matchesTab && matchesAlbum && matchesHero && matchesSearch;
-  });
+      return matchesTab && matchesAlbum && matchesHero && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (heroFilterOnly) {
+        return (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99);
+      }
+      return 0;
+    });
 
   const totalPages = Math.ceil(filteredMedia.length / ITEMS_PER_PAGE) || 1;
   const paginatedMedia = filteredMedia.slice(
@@ -565,9 +630,32 @@ export default function AdminMediathequePage() {
                         </div>
 
                         {item.show_in_hero && item.type === 'photo' && (
-                          <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF8C00] text-white shadow-xs flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" /> Hero #{item.hero_order || 1}
-                          </span>
+                          <div
+                            className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF8C00] text-white shadow-xs flex items-center gap-1.5 z-10"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Hero #{item.hero_order || 1}</span>
+                            <div className="flex items-center gap-0.5 border-l border-white/30 pl-1">
+                              <button
+                                type="button"
+                                title="Monter la priorité (ordre - 1)"
+                                disabled={(item.hero_order || 1) <= 1}
+                                onClick={(e) => updateHeroOrder(item, (item.hero_order || 1) - 1, e)}
+                                className="w-4 h-4 flex items-center justify-center rounded hover:bg-black/25 disabled:opacity-30 transition-colors text-[9px]"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                title="Descendre la priorité (ordre + 1)"
+                                onClick={(e) => updateHeroOrder(item, (item.hero_order || 1) + 1, e)}
+                                className="w-4 h-4 flex items-center justify-center rounded hover:bg-black/25 transition-colors text-[9px]"
+                              >
+                                ▼
+                              </button>
+                            </div>
+                          </div>
                         )}
 
                         {item.is_active === false && (
@@ -804,21 +892,19 @@ export default function AdminMediathequePage() {
                 {mediaForm.type === 'photo' && (
                   <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 space-y-3">
                     <label className="block text-xs font-bold text-gray-800">
-                      Téléverser une image (Supabase Storage ou Fichier local)
+                      Téléverser une image locale (Supabase Storage) :
                     </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="text-xs text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#92278F] file:text-white hover:file:bg-[#741772]"
-                      />
-                      {uploadProgress && (
-                        <span className="text-xs text-[#92278F] font-bold animate-pulse">
-                          Traitement en cours...
-                        </span>
-                      )}
-                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      disabled={isUploading}
+                      className="text-xs text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#92278F] file:text-white hover:file:bg-[#741772] disabled:opacity-50 cursor-pointer"
+                    />
+                    <UploadProgressBar
+                      data={uploadData}
+                      onReset={() => setUploadData(null)}
+                    />
                   </div>
                 )}
 
@@ -905,23 +991,21 @@ export default function AdminMediathequePage() {
 
                     {/* File upload option for storage mode */}
                     {videoSourceMode === 'storage' && (
-                      <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-2">
+                      <div className="p-3 bg-white rounded-xl border border-gray-200 space-y-3">
                         <label className="block text-xs font-semibold text-gray-700">
                           Téléverser un fichier vidéo MP4/WebM (Supabase Storage, bucket videos) :
                         </label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="file"
-                            accept="video/mp4,video/webm,video/ogg,video/quicktime"
-                            onChange={handleFileUpload}
-                            className="text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700"
-                          />
-                          {uploadProgress && (
-                            <span className="text-xs text-emerald-600 font-bold animate-pulse">
-                              Téléversement en cours...
-                            </span>
-                          )}
-                        </div>
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm,video/ogg,video/quicktime"
+                          onChange={handleFileUpload}
+                          disabled={isUploading}
+                          className="text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                        />
+                        <UploadProgressBar
+                          data={uploadData}
+                          onReset={() => setUploadData(null)}
+                        />
                         <p className="text-[11px] text-gray-500">
                           Ou saisissez directement l'URL d'un fichier vidéo hébergé ci-dessous :
                         </p>
@@ -1329,16 +1413,21 @@ export default function AdminMediathequePage() {
                 <div className="pt-4 border-t border-gray-200 flex items-center justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setMediaModalOpen(false)}
-                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50"
+                    onClick={() => {
+                      setMediaModalOpen(false);
+                      setUploadData(null);
+                    }}
+                    disabled={isUploading}
+                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 disabled:opacity-50"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold shadow-xs"
+                    disabled={isUploading}
+                    className="px-5 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Enregistrer le média
+                    {isUploading ? 'Téléversement en cours...' : 'Enregistrer le média'}
                   </button>
                 </div>
               </form>
@@ -1504,8 +1593,9 @@ export default function AdminMediathequePage() {
         {/* Delete Confirmation Modal */}
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer ce média ?"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement « ${itemToDelete?.title} » ?`}
+          title="Placer ce média dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer « ${itemToDelete?.title} » dans la corbeille ? Le fichier source est préservé et pourra être restauré à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => {
             setDeleteConfirmOpen(false);

@@ -358,3 +358,129 @@ export interface ContactMessage {
   created_at: string;
   notes?: string;
 }
+
+export type AuditActionType =
+  | 'creation'
+  | 'modification'
+  | 'publication'
+  | 'depublication'
+  | 'suppression'
+  | 'corbeille'
+  | 'restauration'
+  | 'suppression_definitive'
+  | 'connexion'
+  | 'deconnexion'
+  | 'export'
+  | 'synchronisation'
+  | 'securite';
+
+export type AuditModule =
+  | 'projets'
+  | 'actualites'
+  | 'opportunites'
+  | 'partenaires'
+  | 'equipe'
+  | 'gouvernance'
+  | 'documents'
+  | 'mediatheque'
+  | 'domaines'
+  | 'statistiques'
+  | 'parametres'
+  | 'bandeau'
+  | 'messages'
+  | 'utilisateurs'
+  | 'authentification'
+  | 'systeme'
+  | 'corbeille';
+
+export interface AuditLog {
+  id: string;
+  created_at: string;
+  user_id?: string;
+  user_email?: string;
+  user_name?: string;
+  user_role?: string;
+  action_type: AuditActionType;
+  module: AuditModule;
+  module_label?: string;
+  target_id?: string;
+  target_title?: string;
+  summary: string;
+  changes?: Record<string, any> | Array<{ field: string; label?: string; old_value?: any; new_value?: any }>;
+  metadata?: Record<string, any>;
+}
+
+export type TrashModule =
+  | 'projets'
+  | 'actualites'
+  | 'opportunites'
+  | 'partenaires'
+  | 'equipe'
+  | 'gouvernance'
+  | 'documents'
+  | 'mediatheque'
+  | 'domaines'
+  | 'statistiques';
+
+export interface TrashItem {
+  id: string;
+  original_id: string;
+  module: TrashModule;
+  table_name: string;
+  title: string;
+  data: any;
+  previous_status?: string;
+  deleted_at: string;
+  deleted_by_id?: string;
+  deleted_by_email?: string;
+  deleted_by_name?: string;
+}
+
+export type AnalyticsEventType =
+  | 'page_view'
+  | 'view_project'
+  | 'view_news'
+  | 'view_opportunity'
+  | 'download_document'
+  | 'click_call_headquarters'
+  | 'click_cta';
+
+export interface AnalyticsEvent {
+  id: string;
+  created_at: string;
+  session_id: string;
+  event_type: AnalyticsEventType;
+  path: string;
+  page_title?: string;
+  referrer?: string;
+  device_type?: 'mobile' | 'tablet' | 'desktop';
+  browser?: string;
+  country?: string;
+  target_id?: string;
+  target_title?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface AnalyticsPeriodSummary {
+  period: '7d' | '30d' | '90d' | 'custom';
+  startDate: string;
+  endDate: string;
+  hasData: boolean;
+  totalPageViews: number;
+  totalSessions: number;
+  totalUniqueVisitors: number;
+  callHeadquartersClicks: number;
+  documentDownloads: number;
+  projectViews: number;
+  newsViews: number;
+  opportunityViews: number;
+  topPages: Array<{ path: string; title: string; views: number; percentage: number }>;
+  trafficByDate: Array<{ date: string; pageViews: number; sessions: number }>;
+  deviceBreakdown: Array<{ device: 'mobile' | 'desktop' | 'tablet'; count: number; percentage: number }>;
+  sourcesBreakdown: Array<{ source: string; count: number; percentage: number }>;
+  actionsBreakdown: Array<{ action: string; label: string; count: number }>;
+  lastUpdated: string;
+}
+
+
+

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { supabaseStore } from '@/lib/supabase';
@@ -246,6 +247,34 @@ export default function AdminStatistiquesPage() {
       />
 
       <main className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+        {/* Distinction Banner: Institutional Impact vs Web Traffic Analytics */}
+        <div className="bg-gradient-to-r from-purple-50 via-white to-orange-50 border border-purple-200/80 rounded-2xl p-4 sm:p-5 text-xs sm:text-sm text-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#92278F]/10 border border-[#92278F]/30 flex items-center justify-center shrink-0 text-[#92278F]">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-bold text-gray-900 flex items-center gap-2">
+                <span>Indicateurs Institutionnels d'Impact (Chiffres Clés)</span>
+                <span className="text-[10px] bg-purple-100 text-[#92278F] font-bold px-2 py-0.5 rounded-full border border-purple-200">
+                  Affichage Accueil
+                </span>
+              </div>
+              <p className="text-gray-600 mt-0.5 leading-relaxed">
+                Ce module gère les chiffres clés présentés aux visiteurs (ex. +10 000 Bénéficiaires, 12 Communes).
+                Pour mesurer le <strong>trafic réel, les pages vues et les téléchargements</strong> avec export PDF, consultez le tableau de bord Analytics.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/analytics"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#92278F] hover:bg-[#7b1f78] text-white text-xs font-bold shrink-0 transition shadow-xs"
+          >
+            <span>Statistiques du Site (Trafic)</span>
+            <ArrowUp className="w-3.5 h-3.5 rotate-45" />
+          </Link>
+        </div>
+
         {/* Top notification */}
         {savedSuccess && (
           <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in">
@@ -447,8 +476,9 @@ export default function AdminStatistiquesPage() {
                             type="button"
                             onClick={() => handleDelete(st.id)}
                             className="px-2 py-1 bg-red-600 text-white rounded text-[11px] font-bold hover:bg-red-700"
+                            title="Placer dans la corbeille"
                           >
-                            Confirmer
+                            Mettre à la corbeille
                           </button>
                           <button
                             type="button"
@@ -463,7 +493,7 @@ export default function AdminStatistiquesPage() {
                           type="button"
                           onClick={() => setDeleteConfirmId(st.id)}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-200"
-                          title="Supprimer cette statistique"
+                          title="Placer cette statistique dans la corbeille"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

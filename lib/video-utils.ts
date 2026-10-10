@@ -88,6 +88,28 @@ export function parseVideoUrl(url: string = ''): VideoInfo {
 }
 
 /**
+ * Returns a secure embed URL for embedding in an article iframe or player.
+ * Supports YouTube (watch, youtu.be, shorts, embed), Vimeo, and direct files.
+ * Returns null if the URL is missing or cannot be recognized.
+ */
+export function getVideoEmbedUrl(url?: string | null, autoplay: boolean = false): string | null {
+  if (!url || !url.trim()) return null;
+  const trimmed = url.trim();
+  const info = parseVideoUrl(trimmed);
+
+  if (info.platform === 'youtube' && info.videoId) {
+    return `https://www.youtube-nocookie.com/embed/${info.videoId}?rel=0${autoplay ? '&autoplay=1' : ''}`;
+  }
+  if (info.platform === 'vimeo' && info.videoId) {
+    return `https://player.vimeo.com/video/${info.videoId}?dnt=1${autoplay ? '&autoplay=1' : ''}`;
+  }
+  if ((info.platform === 'storage' || info.platform === 'direct') && info.embedUrl) {
+    return info.embedUrl;
+  }
+  return null;
+}
+
+/**
  * Validates a video URL based on expected platform.
  */
 export function validateVideoUrl(

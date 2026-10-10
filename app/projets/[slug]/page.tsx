@@ -9,6 +9,7 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem } from '@/types';
+import { trackEvent } from '@/lib/analytics';
 import {
   ArrowLeft,
   Calendar,
@@ -38,6 +39,13 @@ export default function ProjectDetailPage({ params }: PageProps) {
     supabaseStore.getProjectBySlug(slug).then((res) => {
       setProject(res);
       setLoading(false);
+      if (res) {
+        trackEvent('view_project', {
+          target_id: res.id,
+          target_title: res.title_fr,
+          path: `/projets/${slug}`,
+        });
+      }
     });
   }, [slug]);
 

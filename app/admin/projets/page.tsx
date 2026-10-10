@@ -684,8 +684,9 @@ export default function AdminProjectsPage() {
         {/* Delete Confirmation Modal */}
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer ce projet ?"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement le projet « ${projectToDelete?.title_fr} » ? Cette action est irréversible.`}
+          title="Placer ce projet dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer le projet « ${projectToDelete?.title_fr} » dans la corbeille ? Vous pourrez le restaurer à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => {
             setDeleteConfirmOpen(false);

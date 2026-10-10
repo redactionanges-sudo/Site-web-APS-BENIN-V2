@@ -48,7 +48,7 @@ export default function AdminOpportunitiesPage() {
     documents_required_fr: '',
     documents_required_en: '',
     pdf_url: '',
-    contact_email: 'agissonspoursauver@gmail.com',
+    contact_email: 'contact@apsbeninong.org',
     status: 'open',
     main_image: '',
     gallery: [],
@@ -82,7 +82,7 @@ export default function AdminOpportunitiesPage() {
       documents_required_fr: '',
       documents_required_en: '',
       pdf_url: '',
-      contact_email: 'agissonspoursauver@gmail.com',
+      contact_email: 'contact@apsbeninong.org',
       status: 'open',
       main_image: '',
       gallery: [],
@@ -142,7 +142,7 @@ export default function AdminOpportunitiesPage() {
       documents_required_fr: form.documents_required_fr || '',
       documents_required_en: form.documents_required_en || '',
       pdf_url: form.pdf_url || '',
-      contact_email: form.contact_email || 'agissonspoursauver@gmail.com',
+      contact_email: form.contact_email || 'contact@apsbeninong.org',
       status: form.status as OpportunityStatus || 'open',
       main_image: form.main_image || '',
       gallery: form.gallery || [],
@@ -573,8 +573,9 @@ export default function AdminOpportunitiesPage() {
         {/* Delete Confirmation Modal */}
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer cette offre ?"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement « ${oppToDelete?.title_fr} » ?`}
+          title="Placer cette opportunité dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer l'opportunité « ${oppToDelete?.title_fr} » dans la corbeille ? Vous pourrez la restaurer à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => {
             setDeleteConfirmOpen(false);

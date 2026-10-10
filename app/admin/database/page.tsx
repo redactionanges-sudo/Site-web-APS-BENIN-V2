@@ -22,15 +22,16 @@ export default function AdminDatabasePage() {
     message?: string;
   }>({ tested: false });
   const [testing, setTesting] = useState(false);
+  const [selectedScript, setSelectedScript] = useState<string>('/supabase-schema.sql');
   const [sqlContent, setSqlContent] = useState('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch('/supabase-schema.sql')
+    fetch(selectedScript)
       .then((res) => res.text())
       .then(setSqlContent)
       .catch((err) => console.error(err));
-  }, []);
+  }, [selectedScript]);
 
   const handleTestConnection = async () => {
     setTesting(true);
@@ -126,21 +127,33 @@ export default function AdminDatabasePage() {
             <div>
               <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
                 <FileCode className="w-4 h-4 text-[#FF8C00]" />
-                <span>Script de Migration SQL Supabase (PostgreSQL + RLS)</span>
+                <span>Scripts de Migration SQL Supabase (PostgreSQL + RLS)</span>
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
                 Exécutez ce script dans l'éditeur SQL de votre tableau de bord Supabase (SQL Editor).
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={copySql}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-colors border border-gray-300"
-            >
-              <Copy className="w-3.5 h-3.5 text-[#92278F]" />
-              <span>{copied ? 'Copié !' : 'Copier tout le SQL'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedScript}
+                onChange={(e) => setSelectedScript(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold bg-white text-gray-800 focus:outline-hidden focus:border-[#92278F]"
+              >
+                <option value="/supabase-schema.sql">Schéma Global Complet (Tables + RLS + Corbeille + Journal)</option>
+                <option value="/supabase-migration-corbeille.sql">Migration Lot 6.3 : Corbeille & Restauration (trash_items)</option>
+                <option value="/supabase-migration-audit-logs.sql">Migration Lot 6.2 : Journal d'Activité (audit_logs)</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={copySql}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold transition-colors border border-gray-300 shrink-0"
+              >
+                <Copy className="w-3.5 h-3.5 text-[#92278F]" />
+                <span>{copied ? 'Copié !' : 'Copier'}</span>
+              </button>
+            </div>
           </div>
 
           <div className="relative">

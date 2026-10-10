@@ -6,6 +6,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { InstitutionalDoc, DocumentCategory } from '@/types';
+import { UploadProgressBar, UploadProgressData } from '@/components/admin/UploadProgressBar';
 import {
   DOCUMENT_CATEGORIES,
   getCategoryMeta,
@@ -47,6 +48,7 @@ export default function AdminDocumentsPage() {
   const [sourceType, setSourceType] = useState<'upload' | 'external'>('upload');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [uploadData, setUploadData] = useState<UploadProgressData | null>(null);
   const [selectedFileName, setSelectedFileName] = useState('');
 
   const [form, setForm] = useState<Partial<InstitutionalDoc>>({
@@ -132,6 +134,14 @@ export default function AdminDocumentsPage() {
 
     setUploading(true);
     setUploadError('');
+    setUploadData({
+      phase: 'preparing',
+      percent: 0,
+      fileName: file.name,
+      totalBytes: file.size,
+      loadedBytes: 0,
+      message: 'Préparation du document...',
+    });
 
     try {
       // Calculate friendly file size
@@ -139,7 +149,9 @@ export default function AdminDocumentsPage() {
         ? `${(file.size / (1024 * 1024)).toFixed(1)} Mo`
         : `${Math.round(file.size / 1024)} Ko`;
 
-      const result = await supabaseStore.uploadFile(file, 'documents', 'documents');
+      const result = await supabaseStore.uploadFile(file, 'documents', 'documents', (progress) => {
+        setUploadData(progress);
+      });
 
       if (!result.success || !result.publicUrl) {
         throw new Error(result.error || 'Erreur lors du téléversement du document');
@@ -155,6 +167,12 @@ export default function AdminDocumentsPage() {
     } catch (err: any) {
       console.error('Document upload error:', err);
       setUploadError(err.message || 'Impossible de téléverser le document.');
+      setUploadData({
+        phase: 'error',
+        percent: 0,
+        fileName: file.name,
+        error: err.message || 'Impossible de téléverser le document.',
+      });
     } finally {
       setUploading(false);
     }
@@ -614,12 +632,15 @@ export default function AdminDocumentsPage() {
                     <div className="space-y-2">
                       {/* Upload Box */}
                       <div className="border-2 border-dashed border-purple-200 hover:border-[#92278F] rounded-xl p-4 text-center bg-white transition-colors">
-                        {uploading ? (
-                          <div className="py-4 space-y-2">
-                            <div className="w-6 h-6 border-2 border-[#92278F] border-t-transparent rounded-full animate-spin mx-auto" />
-                            <p className="text-xs font-medium text-gray-600">
-                              Téléversement vers Supabase Storage (bucket documents)...
-                            </p>
+                        {uploading && uploadData ? (
+                          <div className="py-2 text-left">
+                            <UploadProgressBar
+                              data={uploadData}
+                              onReset={() => {
+                                setUploadData(null);
+                                setUploadError('');
+                              }}
+                            />
                           </div>
                         ) : form.file_url && form.file_url !== '#' ? (
                           <div className="space-y-3">
@@ -794,8 +815,9 @@ export default function AdminDocumentsPage() {
         {/* Modal Confirmation de suppression */}
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer ce document ?"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement le document « ${docToDelete?.title_fr} » du répertoire d’APS-BÉNIN ? Cette action retirera son association du site.`}
+          title="Placer ce document dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer le document « ${docToDelete?.title_fr} » dans la corbeille ? Le fichier est conservé et pourra être restauré à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteConfirmOpen(false)}
         />

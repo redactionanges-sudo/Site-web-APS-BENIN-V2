@@ -5,10 +5,20 @@ import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { useLanguage } from '@/lib/i18n';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { ShieldCheck, ArrowLeft } from 'lucide-react';
 
 export default function MentionsLegalesPage() {
   const { language } = useLanguage();
+  const {
+    orgName,
+    orgNameShort,
+    addressLocation,
+    postalBox,
+    validPhones,
+    email,
+    settings,
+  } = useSiteSettings();
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -37,16 +47,16 @@ export default function MentionsLegalesPage() {
                   Le présent site internet institutionnel est la propriété exclusive de l'Organisation Non Gouvernementale :
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li><strong>Dénomination officielle :</strong> AGISSONS POUR SAUVER – APS-BÉNIN</li>
-                  <li><strong>Sigle :</strong> APS-BÉNIN</li>
-                  <li><strong>Date de création :</strong> Septembre 2014</li>
-                  <li><strong>Enregistrement officiel :</strong> Récépissé N°9/040PDM/SG/STCCD- du 20 septembre 2017 (Préfecture du Mono)</li>
-                  <li><strong>Journal Officiel :</strong> JO N°21 du 1er Novembre 2017</li>
-                  <li><strong>Identifiant Fiscal Unique (IFU) :</strong> 6 2022 1407 5648</li>
-                  <li><strong>Siège social :</strong> Djacoṭé-Comè, Département du Mono, République du Bénin</li>
-                  <li><strong>Boîte Postale :</strong> BP 69 Comè – République du Bénin</li>
-                  <li><strong>Téléphones :</strong> +229 52 94 83 23 / +229 96 44 83 62</li>
-                  <li><strong>Email :</strong> agissonspoursauver@gmail.com</li>
+                  <li><strong>Dénomination officielle :</strong> {orgName || 'AGISSONS POUR SAUVER – APS-BÉNIN'}</li>
+                  <li><strong>Sigle :</strong> {orgNameShort || 'APS-BÉNIN'}</li>
+                  {settings.creation_date && <li><strong>Date de création :</strong> {settings.creation_date}</li>}
+                  {settings.registration_reference && <li><strong>Enregistrement officiel :</strong> {settings.registration_reference}</li>}
+                  {settings.jo_reference && <li><strong>Journal Officiel :</strong> {settings.jo_reference}</li>}
+                  {settings.ifu_number && <li><strong>Identifiant Fiscal Unique (IFU) :</strong> {settings.ifu_number}</li>}
+                  {addressLocation && <li><strong>Siège social :</strong> {addressLocation}</li>}
+                  {postalBox && <li><strong>Boîte Postale :</strong> {postalBox}</li>}
+                  {validPhones.length > 0 && <li><strong>Téléphones :</strong> {validPhones.join(' / ')}</li>}
+                  {email && <li><strong>Email :</strong> {email}</li>}
                   <li><strong>Directeur de publication :</strong> La Présidente / Directrice Exécutive d'APS-BÉNIN</li>
                 </ul>
               </section>

@@ -7,7 +7,6 @@ import { useLanguage } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { SiteLogo } from '@/components/SiteLogo';
-import { CallHeadquartersCTA } from '@/components/CallHeadquartersCTA';
 import {
   Menu,
   X,
@@ -30,8 +29,8 @@ export const Navbar: React.FC = () => {
     addressLocality,
     addressLocation,
     email,
+    primaryPhone,
     primaryPhoneTelHref,
-    validPhones,
   } = useSiteSettings();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -48,39 +47,37 @@ export const Navbar: React.FC = () => {
     <header className="w-full sticky top-0 z-50 bg-white shadow-sm border-b border-gray-100">
       {/* Top Bar: Contact info & utilities */}
       <div className="bg-[#92278F] text-white text-xs py-2 px-4 sm:px-8">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-purple-100">
-            <span className="flex items-center gap-1.5 hover:text-white transition-colors">
-              <MapPin className="w-3.5 h-3.5 text-[#FF8C00]" />
-              <span>{addressLocality || addressLocation}</span>
-            </span>
-
-            {primaryPhoneTelHref && validPhones.length > 0 && (
-              <a
-                href={primaryPhoneTelHref}
-                className="flex items-center gap-1.5 hover:text-white transition-colors"
-                title="Numéro direct du siège"
-              >
-                <Phone className="w-3.5 h-3.5 text-[#FF8C00]" />
-                <span>{validPhones.join(' / ')}</span>
-              </a>
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-4 sm:gap-6 text-purple-100 min-w-0">
+            {(addressLocality || addressLocation) && (
+              <span className="flex items-center gap-1.5 hover:text-white transition-colors truncate">
+                <MapPin className="w-3.5 h-3.5 text-[#FF8C00] shrink-0" />
+                <span className="truncate">{addressLocality || addressLocation}</span>
+              </span>
             )}
 
             {email && (
               <a
                 href={`mailto:${email}`}
-                className="hidden md:flex items-center gap-1.5 hover:text-white transition-colors"
+                className="hidden md:flex items-center gap-1.5 hover:text-white transition-colors truncate"
               >
-                <Mail className="w-3.5 h-3.5 text-[#FF8C00]" />
-                <span>{email}</span>
+                <Mail className="w-3.5 h-3.5 text-[#FF8C00] shrink-0" />
+                <span className="truncate">{email}</span>
+              </a>
+            )}
+
+            {primaryPhone && primaryPhoneTelHref && (
+              <a
+                href={primaryPhoneTelHref}
+                className="hidden sm:flex items-center gap-1.5 hover:text-white transition-colors truncate font-medium"
+              >
+                <Phone className="w-3.5 h-3.5 text-[#FF8C00] shrink-0" />
+                <span className="truncate">{primaryPhone}</span>
               </a>
             )}
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* Direct Call Headquarters CTA */}
-            <CallHeadquartersCTA variant="header" className="hidden lg:inline-flex" />
-
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             {/* Bilingual Language Switcher */}
             <div className="flex items-center bg-black/20 rounded px-2 py-0.5 border border-white/20">
               <Globe className="w-3 h-3 text-[#FF8C00] mr-1.5" />
@@ -544,12 +541,6 @@ export const Navbar: React.FC = () => {
             >
               {t('nav.contact')}
             </Link>
-
-            {primaryPhoneTelHref && (
-              <div className="pt-2 px-1">
-                <CallHeadquartersCTA variant="primary" className="w-full justify-center" />
-              </div>
-            )}
 
             <div className="pt-4 border-t border-gray-200">
               <Link

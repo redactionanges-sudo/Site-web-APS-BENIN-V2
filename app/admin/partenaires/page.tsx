@@ -367,8 +367,9 @@ export default function AdminPartenairesPage() {
 
         <ConfirmModal
           isOpen={deleteConfirmOpen}
-          title="Supprimer ce partenaire ?"
-          message={`Êtes-vous sûr de vouloir supprimer définitivement « ${partnerToDelete?.name} » ?`}
+          title="Placer ce partenaire dans la corbeille ?"
+          message={`Êtes-vous sûr de vouloir déplacer le partenaire « ${partnerToDelete?.name} » dans la corbeille ? Vous pourrez le restaurer à tout moment.`}
+          confirmLabel="Mettre à la corbeille"
           onConfirm={confirmDelete}
           onCancel={() => setDeleteConfirmOpen(false)}
         />

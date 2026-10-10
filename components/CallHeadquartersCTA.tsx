@@ -3,6 +3,7 @@
 import React from 'react';
 import { Phone } from 'lucide-react';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { trackEvent } from '@/lib/analytics';
 
 export interface CallHeadquartersCTAProps {
   /**
@@ -48,7 +49,7 @@ export const CallHeadquartersCTA: React.FC<CallHeadquartersCTAProps> = ({
     footer:
       'inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-colors shadow-xs font-heading',
     hero:
-      'hidden xl:inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-all shadow-md hover:-translate-y-0.5 active:scale-95 font-heading',
+      'inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-[#92278F] hover:bg-[#741772] text-white font-semibold text-sm transition-all shadow-lg hover:shadow-purple-900/50 hover:-translate-y-0.5 border border-purple-400/30 group active:scale-95 font-heading',
     contact:
       'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-all shadow-xs hover:bg-[#741772] active:scale-95 font-heading',
   };
@@ -64,6 +65,12 @@ export const CallHeadquartersCTA: React.FC<CallHeadquartersCTAProps> = ({
   return (
     <a
       href={primaryPhoneTelHref}
+      onClick={() => {
+        trackEvent('click_call_headquarters', {
+          page_title: typeof document !== 'undefined' ? document.title : '',
+          metadata: { variant },
+        });
+      }}
       className={`${baseClasses[variant] || baseClasses.primary} ${className}`}
       title="Appeler le siège"
       aria-label="Appeler le siège"

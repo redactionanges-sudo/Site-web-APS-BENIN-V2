@@ -51,22 +51,45 @@ export const HeroBanner: React.FC = () => {
   useEffect(() => {
     let mounted = true;
 
-    // Load fresh hero photos
-    supabaseStore.getHeroPhotos().then((photos) => {
-      if (mounted && photos && photos.length > 0) {
-        setSlides(photos);
-      }
-    });
+    const loadFreshHeroPhotos = () => {
+      supabaseStore.getHeroPhotos().then((photos) => {
+        if (mounted && photos && photos.length > 0) {
+          setSlides(photos);
+          setCurrentIndex((prev) => (prev >= photos.length ? 0 : prev));
+        }
+      });
+    };
 
-    // Load fresh banner announcements
-    supabaseStore.getBannerAnnouncements().then((items) => {
-      if (mounted && items && items.length > 0) {
-        setAnnouncements(items);
-      }
-    });
+    const loadFreshAnnouncements = () => {
+      supabaseStore.getBannerAnnouncements().then((items) => {
+        if (mounted && items && items.length > 0) {
+          setAnnouncements(items);
+        }
+      });
+    };
+
+    // Initial load
+    loadFreshHeroPhotos();
+    loadFreshAnnouncements();
+
+    // Event listeners for real-time synchronization with admin mutations
+    const handleMediaSync = () => {
+      loadFreshHeroPhotos();
+    };
+
+    const handleSettingsSync = () => {
+      loadFreshAnnouncements();
+    };
+
+    window.addEventListener('aps_media_changed', handleMediaSync);
+    window.addEventListener('aps_site_settings_changed', handleSettingsSync);
+    window.addEventListener('storage', handleMediaSync);
 
     return () => {
       mounted = false;
+      window.removeEventListener('aps_media_changed', handleMediaSync);
+      window.removeEventListener('aps_site_settings_changed', handleSettingsSync);
+      window.removeEventListener('storage', handleMediaSync);
     };
   }, []);
 

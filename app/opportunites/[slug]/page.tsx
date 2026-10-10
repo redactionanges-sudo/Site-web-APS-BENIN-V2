@@ -8,6 +8,8 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem } from '@/types';
+import { trackEvent } from '@/lib/analytics';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 import {
   ArrowLeft,
   Calendar,
@@ -28,6 +30,7 @@ interface PageProps {
 export default function OpportunityDetailPage({ params }: PageProps) {
   const { slug } = use(params);
   const { language, t } = useLanguage();
+  const { orgNameShort, addressLocation } = useSiteSettings();
   const [opp, setOpp] = useState<OpportunityItem | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +38,13 @@ export default function OpportunityDetailPage({ params }: PageProps) {
     supabaseStore.getOpportunityBySlug(slug).then((res) => {
       setOpp(res);
       setLoading(false);
+      if (res) {
+        trackEvent('view_opportunity', {
+          target_id: res.id,
+          target_title: res.title_fr,
+          path: `/opportunites/${slug}`,
+        });
+      }
     });
   }, [slug]);
 
@@ -194,6 +204,37 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                   </div>
                 </div>
 
+                {/* Embedded Document Download Banner if available */}
+                {opp.pdf_url && opp.pdf_url.trim() !== '' && opp.pdf_url.trim() !== '#' && (
+                  <div className="p-4 sm:p-5 rounded-xl bg-orange-50/70 border border-orange-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-orange-100 text-[#FF8C00] shrink-0 mt-0.5">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-bold text-gray-900">
+                          {language === 'en' ? 'Official Terms of Reference (TOR) Available' : 'Termes de Référence (TDR) / Document officiel'}
+                        </h4>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          {language === 'en'
+                            ? 'Consult the full specifications and evaluation criteria.'
+                            : 'Consultez l’intégralité des spécifications techniques et critères d’évaluation.'}
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href={opp.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#FF8C00] hover:bg-[#e07b00] text-white text-xs font-bold shrink-0 transition-colors shadow-xs"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>{language === 'en' ? 'Download PDF' : 'Télécharger le PDF'}</span>
+                    </a>
+                  </div>
+                )}
+
                 {/* Gallery of Images if present */}
                 {opp.gallery && opp.gallery.length > 0 && (
                   <div className="space-y-4 pt-6 border-t border-gray-100">
@@ -221,6 +262,37 @@ export default function OpportunityDetailPage({ params }: PageProps) {
 
               {/* Sidebar */}
               <div className="lg:col-span-4 space-y-6">
+                {/* Official TOR / Document Download Card */}
+                {opp.pdf_url && opp.pdf_url.trim() !== '' && opp.pdf_url.trim() !== '#' && (
+                  <div className="p-6 rounded-2xl bg-purple-50/70 border border-purple-200 shadow-xs space-y-3">
+                    <div className="flex items-center gap-2 text-[#92278F]">
+                      <FileText className="w-5 h-5 shrink-0" />
+                      <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wider font-heading">
+                        {language === 'en' ? 'Official Documents / TOR' : 'Document Officiel / TDR'}
+                      </h3>
+                    </div>
+
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {language === 'en'
+                        ? 'Download the full Terms of Reference (TOR) or detailed call specifications.'
+                        : 'Téléchargez les Termes de Référence complets (TDR), le dossier d’appel d’offres ou la fiche de poste.'}
+                    </p>
+
+                    <a
+                      href={opp.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white font-bold text-xs transition-colors shadow-xs group"
+                    >
+                      <Download className="w-4 h-4 shrink-0 text-[#FF8C00] group-hover:translate-y-0.5 transition-transform" />
+                      <span>
+                        {language === 'en' ? 'Download Document (PDF)' : 'Télécharger le document (PDF)'}
+                      </span>
+                    </a>
+                  </div>
+                )}
+
                 <div className="p-6 rounded-2xl bg-gray-50 border border-gray-200 space-y-4">
                   <h3 className="font-bold text-sm text-gray-900 uppercase tracking-wider border-b border-gray-200 pb-3">
                     {language === 'en' ? 'How to Apply' : 'Modalités de Soumission'}
@@ -245,7 +317,7 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                     <div>
                       <span className="text-gray-500 font-medium block">Lieu de dépôt physique :</span>
                       <span className="font-semibold text-gray-800 block mt-0.5">
-                        Siège APS-BÉNIN, Djacoṭé-Comè (Département du Mono)
+                        Siège {orgNameShort || 'APS-BÉNIN'}{addressLocation ? `, ${addressLocation}` : ''}
                       </span>
                     </div>
 

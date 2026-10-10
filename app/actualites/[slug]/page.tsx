@@ -9,6 +9,8 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem } from '@/types';
+import { trackEvent } from '@/lib/analytics';
+import { getVideoEmbedUrl, parseVideoUrl } from '@/lib/video-utils';
 import {
   ArrowLeft,
   Calendar,
@@ -34,6 +36,13 @@ export default function NewsDetailPage({ params }: PageProps) {
     supabaseStore.getNewsBySlug(slug).then((res) => {
       setArticle(res);
       setLoading(false);
+      if (res) {
+        trackEvent('view_news', {
+          target_id: res.id,
+          target_title: res.title_fr,
+          path: `/actualites/${slug}`,
+        });
+      }
     });
   }, [slug]);
 
@@ -145,20 +154,35 @@ export default function NewsDetailPage({ params }: PageProps) {
               {language === 'en' ? article.content_en : article.content_fr}
             </div>
 
-            {/* Video embed if present */}
-            {article.video_url && (
+            {/* Video embed only if a valid, supported video URL is provided */}
+            {article.video_url && parseVideoUrl(article.video_url).platform !== 'unknown' && (
               <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
                 <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
                   <Play className="w-4 h-4 text-[#92278F]" />
-                  <span>Vidéo associée</span>
+                  <span>{language === 'en' ? 'Associated Video' : 'Vidéo associée'}</span>
                 </h3>
-                <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
-                  <iframe
-                    src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                    title="Vidéo APS-BÉNIN"
-                    className="w-full h-full border-0"
-                    allowFullScreen
-                  />
+                <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-xs">
+                  {(() => {
+                    const info = parseVideoUrl(article.video_url);
+                    if (info.platform === 'storage' || info.platform === 'direct') {
+                      return (
+                        <video
+                          src={info.embedUrl || article.video_url}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
+                      );
+                    }
+                    return (
+                      <iframe
+                        src={getVideoEmbedUrl(article.video_url)!}
+                        title={language === 'en' ? `${article.title_en || article.title_fr} - Video` : `${article.title_fr} - Vidéo`}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    );
+                  })()}
                 </div>
               </div>
             )}

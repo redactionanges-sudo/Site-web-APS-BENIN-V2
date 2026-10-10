@@ -5,6 +5,7 @@ import { LanguageProvider } from '@/lib/i18n';
 import { AuthProvider } from '@/lib/auth';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { AfricanPatternCanvas } from '@/components/AfricanPatternCanvas';
+import { AnalyticsTracker } from '@/components/AnalyticsTracker';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -45,6 +46,7 @@ export default function RootLayout({
     <html lang="fr" className={`${montserrat.variable} ${openSans.variable}`}>
       <body className="min-h-screen bg-[#FAF8FB] text-gray-900 font-sans antialiased selection:bg-[#92278F] selection:text-white relative" suppressHydrationWarning>
         <AfricanPatternCanvas />
+        <AnalyticsTracker />
         <AuthProvider>
           <LanguageProvider>
             <div className="relative z-10 flex flex-col min-h-screen">

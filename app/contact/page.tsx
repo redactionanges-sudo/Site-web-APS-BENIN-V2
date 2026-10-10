@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { SocialLinksConfig } from '@/types';
-import { getActiveSocialPlatforms } from '@/lib/social';
+import { useSiteSettings, sanitizePhoneForTel } from '@/hooks/useSiteSettings';
 import {
   MapPin,
   Phone,
@@ -24,29 +23,25 @@ import {
 
 export default function ContactPage() {
   const { language, t } = useLanguage();
-  const [socialLinks, setSocialLinks] = useState<SocialLinksConfig | null>(null);
+  const {
+    orgName,
+    sloganFr,
+    sloganEn,
+    addressLocation,
+    postalBox,
+    validPhones,
+    email,
+    activeSocials,
+  } = useSiteSettings();
 
-  useEffect(() => {
-    let isMounted = true;
-    supabaseStore.getSettings().then((s) => {
-      if (isMounted && s?.social_links) {
-        setSocialLinks(s.social_links);
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const activeSocials = useMemo(() => {
-    return getActiveSocialPlatforms(socialLinks);
-  }, [socialLinks]);
+  const currentSlogan = language === 'en' ? (sloganEn || sloganFr) : (sloganFr || sloganEn);
 
   const renderSocialIcon = (id: string, badge: string) => {
     switch (id) {
       case 'facebook':
         return <Facebook className="w-3.5 h-3.5 text-[#1877F2]" />;
       case 'twitter':
+      case 'x':
         return <Twitter className="w-3.5 h-3.5 text-black" />;
       case 'linkedin':
         return <Linkedin className="w-3.5 h-3.5 text-[#0A66C2]" />;
@@ -233,71 +228,77 @@ export default function ContactPage() {
                 <div className="bg-white rounded-2xl p-8 border border-gray-200 space-y-6 shadow-sm">
                   <div>
                     <h2 className="text-xl font-bold text-gray-900 font-heading">
-                      AGISSONS POUR SAUVER – APS-BÉNIN
+                      {orgName || 'AGISSONS POUR SAUVER – APS-BÉNIN'}
                     </h2>
-                    <p className="text-xs text-gray-500 font-serif italic mt-1 text-[#92278F]">
-                      « {language === 'en' ? 'For a more just and egalitarian world' : 'Pour un monde plus juste et égalitaire'} »
-                    </p>
+                    {currentSlogan && (
+                      <p className="text-xs text-gray-500 font-serif italic mt-1 text-[#92278F]">
+                        « {currentSlogan} »
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-4 text-xs text-gray-700">
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100">
-                        <MapPin className="w-5 h-5 text-[#FF8C00]" />
+                    {(addressLocation || postalBox) && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100">
+                          <MapPin className="w-5 h-5 text-[#FF8C00]" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-gray-900 block text-sm">
+                            Siège de l’ONG
+                          </span>
+                          {addressLocation && (
+                            <p className="text-gray-600 mt-0.5 leading-relaxed">{addressLocation}</p>
+                          )}
+                          {postalBox && (
+                            <p className="text-gray-600 font-medium mt-1">{postalBox}</p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-bold text-gray-900 block text-sm">
-                          Siège de l’ONG
-                        </span>
-                        <p className="text-gray-600 mt-0.5">
-                          Djacoṭé-Comè, Département du Mono
-                        </p>
-                        <p className="text-gray-600">République du Bénin</p>
-                        <p className="text-gray-600 font-medium mt-1">
-                          BP : 69 Comè – République du Bénin
-                        </p>
-                      </div>
-                    </div>
+                    )}
 
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100">
-                        <Phone className="w-5 h-5 text-[#FF8C00]" />
+                    {validPhones.length > 0 && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100">
+                          <Phone className="w-5 h-5 text-[#FF8C00]" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-gray-900 block text-sm">
+                            Lignes directes
+                          </span>
+                          <div className="space-y-1 mt-0.5">
+                            {validPhones.map((phone, idx) => (
+                              <a
+                                key={idx}
+                                href={`tel:${sanitizePhoneForTel(phone)}`}
+                                className="block text-gray-700 hover:text-[#92278F] font-semibold"
+                              >
+                                {phone}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-bold text-gray-900 block text-sm">
-                          Lignes directes
-                        </span>
-                        <a
-                          href="tel:+22952948323"
-                          className="block text-gray-700 hover:text-[#92278F] font-semibold mt-0.5"
-                        >
-                          +229 52 94 83 23
-                        </a>
-                        <a
-                          href="tel:+22996448362"
-                          className="block text-gray-700 hover:text-[#92278F] font-semibold"
-                        >
-                          +229 96 44 83 62
-                        </a>
-                      </div>
-                    </div>
+                    )}
 
-                    <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100">
-                        <Mail className="w-5 h-5 text-[#FF8C00]" />
+                    {email && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center shrink-0 border border-purple-100">
+                          <Mail className="w-5 h-5 text-[#FF8C00]" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-gray-900 block text-sm">
+                            Courrier électronique
+                          </span>
+                          <a
+                            href={`mailto:${email}`}
+                            className="text-[#92278F] hover:underline font-semibold block mt-0.5 break-all"
+                          >
+                            {email}
+                          </a>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-bold text-gray-900 block text-sm">
-                          Courrier électronique
-                        </span>
-                        <a
-                          href="mailto:agissonspoursauver@gmail.com"
-                          className="text-[#92278F] hover:underline font-semibold block mt-0.5"
-                        >
-                          agissonspoursauver@gmail.com
-                        </a>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Dynamic Social Networks */}
                     {activeSocials.length > 0 && (

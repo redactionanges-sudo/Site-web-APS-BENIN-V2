@@ -19,15 +19,17 @@ export const AdminLayoutProvider: React.FC<{ children: React.ReactNode }> = ({ c
 interface AdminAuthGuardProps {
   children: React.ReactNode;
   requireSuperAdmin?: boolean;
+  requireAdmin?: boolean;
 }
 
 export const AdminAuthGuard: React.FC<AdminAuthGuardProps> = ({
   children,
   requireSuperAdmin = false,
+  requireAdmin = false,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, loading, isSuperAdmin, canAccessBackOffice } = useAuth();
+  const { user, loading, isSuperAdmin, isAdmin, canAccessBackOffice } = useAuth();
   const isInsideLayout = useContext(AdminLayoutContext);
 
   const isPublicAuthPage = ['/admin/login', '/admin/forgot-password', '/admin/reset-password'].includes(pathname);
@@ -73,6 +75,27 @@ export const AdminAuthGuard: React.FC<AdminAuthGuardProps> = ({
         <h2 className="text-xl font-bold text-gray-900 mb-2">Accès Restreint</h2>
         <p className="text-xs sm:text-sm text-gray-600 max-w-md mb-6">
           Cette section est strictement réservée au rôle <strong>Super Administrateur</strong>. Votre profil actuel ne dispose pas des privilèges nécessaires.
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push('/admin')}
+          className="px-4 py-2 rounded-lg bg-[#92278F] text-white text-xs font-bold hover:bg-[#741772] transition-colors"
+        >
+          Retourner au tableau de bord
+        </button>
+      </div>
+    );
+  }
+
+  if (requireAdmin && !isAdmin) {
+    return (
+      <div className="flex-1 p-12 flex flex-col items-center justify-center text-center">
+        <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+          <ShieldAlert className="w-8 h-8 text-amber-600" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Accès Administrateur Requis</h2>
+        <p className="text-xs sm:text-sm text-gray-600 max-w-md mb-6">
+          Cette section est réservée aux <strong>Administrateurs</strong> et <strong>Super Administrateurs</strong>. Votre profil d&apos;Éditeur ne permet pas de consulter le journal d&apos;activité.
         </p>
         <button
           type="button"
