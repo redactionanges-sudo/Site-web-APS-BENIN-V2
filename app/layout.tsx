@@ -43,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" className={`${montserrat.variable} ${openSans.variable}`}>
+    <html lang="fr" className={`${montserrat.variable} ${openSans.variable}`} suppressHydrationWarning>
       <body className="min-h-screen bg-[#FAF8FB] text-gray-900 font-sans antialiased selection:bg-[#92278F] selection:text-white relative" suppressHydrationWarning>
         <AfricanPatternCanvas />
         <AnalyticsTracker />

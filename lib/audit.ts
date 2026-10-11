@@ -15,6 +15,7 @@ export const MODULE_META: Record<
   mediatheque: { label: 'Médiathèque', badge: 'bg-fuchsia-900/60 text-fuchsia-200 border-fuchsia-700', icon: 'Image' },
   domaines: { label: "Domaines d'action", badge: 'bg-violet-900/60 text-violet-200 border-violet-700', icon: 'ShieldCheck' },
   statistiques: { label: 'Chiffres Clés', badge: 'bg-orange-900/60 text-orange-200 border-orange-700', icon: 'BarChart3' },
+  pages_institutionnelles: { label: 'Pages Institutionnelles', badge: 'bg-amber-900/60 text-amber-200 border-amber-700', icon: 'BookOpen' },
   parametres: { label: 'Paramètres du Site', badge: 'bg-gray-800 text-gray-200 border-gray-700', icon: 'Settings' },
   bandeau: { label: 'Bandeau Hero', badge: 'bg-yellow-900/60 text-yellow-200 border-yellow-700', icon: 'Bell' },
   messages: { label: 'Messages Reçus', badge: 'bg-pink-900/60 text-pink-200 border-pink-700', icon: 'Mail' },

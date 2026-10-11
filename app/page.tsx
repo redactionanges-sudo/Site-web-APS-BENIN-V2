@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Navbar } from '@/components/Navbar';
@@ -15,10 +15,38 @@ import { PartnersCarousel } from '@/components/PartnersCarousel';
 import { CallToAction } from '@/components/CallToAction';
 import { HomeMediathequeSection } from '@/components/HomeMediathequeSection';
 import { useLanguage } from '@/lib/i18n';
+import { supabaseStore } from '@/lib/supabase';
+import { InstitutionalPage } from '@/types';
 import { ShieldCheck, HeartHandshake, Eye, Award, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   const { language, t } = useLanguage();
+  const [presPage, setPresPage] = useState<InstitutionalPage | null>(null);
+
+  useEffect(() => {
+    supabaseStore.getInstitutionalPageBySlug('presentation').then(setPresPage);
+
+    const handlePageChanged = (e: any) => {
+      if (e?.detail?.slug === 'presentation') {
+        setPresPage(e.detail);
+      }
+    };
+    window.addEventListener('aps_page_changed', handlePageChanged);
+
+    return () => {
+      window.removeEventListener('aps_page_changed', handlePageChanged);
+    };
+  }, []);
+
+  const presImage =
+    presPage?.images?.find((img) => img.slot_key === 'community_action')?.url ||
+    presPage?.images?.[1]?.url ||
+    presPage?.images?.[0]?.url ||
+    'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=1000&q=80';
+
+  const presAlt =
+    presPage?.images?.find((img) => img.slot_key === 'community_action')?.alt_fr ||
+    'APS-BÉNIN Activités de terrain à Comè';
 
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
@@ -109,8 +137,8 @@ export default function HomePage() {
               <div className="lg:col-span-5">
                 <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-gray-200">
                   <img
-                    src="https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=1000&q=80"
-                    alt="APS-BÉNIN Activités de terrain à Comè"
+                    src={presImage}
+                    alt={presAlt}
                     className="w-full h-[440px] object-cover"
                     loading="lazy"
                   />

@@ -23,6 +23,8 @@ import {
   AuditModule,
   TrashItem,
   TrashModule,
+  InstitutionalPage,
+  InstitutionalPageSlug,
 } from '@/types';
 import { getAuditLogs, recordAuditLog } from './audit';
 import {
@@ -40,6 +42,7 @@ import {
   initialAlbums,
   initialMedia,
   initialAdminUsers,
+  initialInstitutionalPages,
 } from './initial-data';
 
 let rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -280,6 +283,7 @@ function mutateLocalStorageTable(table: string, action: 'upsert' | 'delete', dat
     history_milestones: { key: 'history', initial: initialHistory },
     profiles: { key: 'users', initial: initialAdminUsers },
     contact_messages: { key: 'contact_messages', initial: [] },
+    institutional_pages: { key: 'institutional_pages', initial: initialInstitutionalPages },
   };
 
   const entry = map[table];
@@ -328,6 +332,7 @@ async function logTableMutation(
     statistics: { module: 'statistiques', label: 'Chiffres Clés' },
     site_settings: { module: 'parametres', label: 'Paramètres du Site' },
     history_milestones: { module: 'parametres', label: 'Historique & Jalons' },
+    institutional_pages: { module: 'pages_institutionnelles', label: 'Pages Institutionnelles' },
     contact_messages: { module: 'messages', label: 'Messages Reçus' },
     profiles: { module: 'utilisateurs', label: 'Utilisateurs & Rôles' },
     trash_items: { module: 'corbeille', label: 'Corbeille' },
@@ -1404,6 +1409,62 @@ export const supabaseStore = {
     return await this.getHistory();
   },
 
+  // Institutional Pages (Présentation, Histoire, Mission-Vision-Valeurs, Domaines)
+  async getInstitutionalPages(): Promise<InstitutionalPage[]> {
+    const cached = getCachedData<InstitutionalPage[]>('institutional_pages');
+    if (cached) return cached;
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('institutional_pages')
+          .select('*');
+        if (!error && data && data.length > 0) {
+          const res = data as InstitutionalPage[];
+          setCachedData('institutional_pages', res);
+          setStoredItem('institutional_pages', res);
+          return res;
+        }
+      } catch (e) {
+        console.warn('Supabase institutional_pages fallback:', e);
+      }
+    }
+
+    const local = getStoredItem('institutional_pages', initialInstitutionalPages);
+    setCachedData('institutional_pages', local);
+    return local;
+  },
+
+  async getInstitutionalPageBySlug(slug: InstitutionalPageSlug | string): Promise<InstitutionalPage | null> {
+    const pages = await this.getInstitutionalPages();
+    const found = pages.find((p) => p.slug === slug);
+    if (found) return found;
+
+    // Fallback to initial pages if not found
+    const initial = initialInstitutionalPages.find((p) => p.slug === slug);
+    return initial || null;
+  },
+
+  async saveInstitutionalPage(page: InstitutionalPage): Promise<InstitutionalPage> {
+    const payload = {
+      ...page,
+      updated_at: new Date().toISOString(),
+    };
+
+    await mutateTable('institutional_pages', 'upsert', payload);
+    invalidateCache('institutional_pages');
+
+    // Trigger custom events so public and admin views update immediately in real-time
+    if (typeof window !== 'undefined') {
+      try {
+        window.dispatchEvent(new CustomEvent('aps_page_changed', { detail: payload }));
+        localStorage.setItem('aps_page_last_updated', Date.now().toString());
+      } catch {}
+    }
+
+    return payload;
+  },
+
   // Contact Messages
   async getMessages(): Promise<ContactMessage[]> {
     const cached = getCachedData<ContactMessage[]>('messages');
@@ -1892,6 +1953,7 @@ export const supabaseStore = {
       mediatheque: { table: 'media' },
       domaines: { table: 'domains' },
       statistiques: { table: 'statistics' },
+      pages_institutionnelles: { table: 'institutional_pages' },
     };
 
     const cfg = MODULE_TABLE_CONFIG[module] || { table: 'projects' };

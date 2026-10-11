@@ -31,6 +31,7 @@ import {
   X,
   CheckCircle2,
   ShieldAlert,
+  BookOpen,
 } from 'lucide-react';
 
 const MODULE_ICONS: Record<TrashModule, React.ReactNode> = {
@@ -44,6 +45,7 @@ const MODULE_ICONS: Record<TrashModule, React.ReactNode> = {
   mediatheque: <ImageIcon className="w-4 h-4 text-fuchsia-500" />,
   domaines: <ShieldCheck className="w-4 h-4 text-violet-500" />,
   statistiques: <BarChart3 className="w-4 h-4 text-orange-500" />,
+  pages_institutionnelles: <BookOpen className="w-4 h-4 text-[#FF8C00]" />,
 };
 
 const MODULE_LABELS: Record<TrashModule, string> = {
@@ -57,6 +59,7 @@ const MODULE_LABELS: Record<TrashModule, string> = {
   mediatheque: 'Médiathèque',
   domaines: "Domaines d'action",
   statistiques: 'Chiffres Clés',
+  pages_institutionnelles: 'Pages Institutionnelles',
 };
 
 const ITEMS_PER_PAGE = 12;

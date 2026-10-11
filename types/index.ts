@@ -385,6 +385,7 @@ export type AuditModule =
   | 'mediatheque'
   | 'domaines'
   | 'statistiques'
+  | 'pages_institutionnelles'
   | 'parametres'
   | 'bandeau'
   | 'messages'
@@ -420,7 +421,8 @@ export type TrashModule =
   | 'documents'
   | 'mediatheque'
   | 'domaines'
-  | 'statistiques';
+  | 'statistiques'
+  | 'pages_institutionnelles';
 
 export interface TrashItem {
   id: string;
@@ -481,6 +483,76 @@ export interface AnalyticsPeriodSummary {
   actionsBreakdown: Array<{ action: string; label: string; count: number }>;
   lastUpdated: string;
 }
+
+// -------------------------------------------------------------
+// INSTITUTIONAL PAGES & EDITORIAL CONTENT (CMS BACK-OFFICE)
+// -------------------------------------------------------------
+export type InstitutionalPageSlug =
+  | 'presentation'
+  | 'histoire'
+  | 'mission-vision-valeurs'
+  | 'domaines';
+
+export interface InstitutionalPageBlock {
+  id: string;
+  type: 'paragraph' | 'pillar' | 'quote' | 'image' | 'callout' | 'cta';
+  title_fr?: string;
+  title_en?: string;
+  content_fr?: string;
+  content_en?: string;
+  image_url?: string;
+  image_alt_fr?: string;
+  image_alt_en?: string;
+  caption_fr?: string;
+  caption_en?: string;
+  icon_name?: string;
+  button_text_fr?: string;
+  button_text_en?: string;
+  button_url?: string;
+  order_index: number;
+}
+
+export interface InstitutionalPageImage {
+  id: string;
+  slot_key: string; // e.g. 'hero_background', 'headquarters_photo', 'community_action', 'gallery_item'
+  label_fr: string;
+  label_en: string;
+  url: string;
+  alt_fr: string;
+  alt_en: string;
+  caption_fr?: string;
+  caption_en?: string;
+  order_index?: number;
+}
+
+export interface InstitutionalPage {
+  id: string;
+  slug: InstitutionalPageSlug;
+  title_fr: string;
+  title_en: string;
+  subtitle_fr?: string;
+  subtitle_en?: string;
+  badge_fr?: string;
+  badge_en?: string;
+  quote_fr?: string;
+  quote_en?: string;
+  intro_fr?: string;
+  intro_en?: string;
+  body_html_fr?: string;
+  body_html_en?: string;
+  hero_image?: string;
+  hero_image_alt_fr?: string;
+  hero_image_alt_en?: string;
+  images: InstitutionalPageImage[];
+  blocks: InstitutionalPageBlock[];
+  meta_title_fr?: string;
+  meta_title_en?: string;
+  meta_description_fr?: string;
+  meta_description_en?: string;
+  is_published: boolean;
+  updated_at?: string;
+}
+
 
 
 

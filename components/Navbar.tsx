@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/lib/i18n';
@@ -37,6 +37,11 @@ export const Navbar: React.FC = () => {
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false);
   const [mediaDropdownOpen, setMediaDropdownOpen] = useState(false);
   const [oppDropdownOpen, setOppDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -113,7 +118,7 @@ export const Navbar: React.FC = () => {
             >
               <Lock className="w-3 h-3 text-[#FF8C00]" />
               <span className="hidden sm:inline">
-                {user ? `Admin (${user.role === 'super_admin' ? 'Super' : 'Éditeur'})` : t('nav.admin')}
+                {mounted && user ? `Admin (${user.role === 'super_admin' ? 'Super' : 'Éditeur'})` : t('nav.admin')}
               </span>
             </Link>
           </div>

@@ -1,12 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { supabaseStore } from '@/lib/supabase';
+import { InstitutionalPage } from '@/types';
 import {
   ShieldCheck,
   FileCheck2,
@@ -15,11 +17,161 @@ import {
   Building,
   CheckCircle2,
   ArrowRight,
+  Scale,
+  Users,
+  Compass,
+  Heart,
+  ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
+
+const iconMap: Record<string, React.ReactNode> = {
+  ShieldCheck: <ShieldCheck className="w-5 h-5 text-[#92278F]" />,
+  Users: <Users className="w-5 h-5 text-[#FF8C00]" />,
+  CheckCircle2: <CheckCircle2 className="w-5 h-5 text-[#92278F]" />,
+  Scale: <Scale className="w-5 h-5 text-[#FF8C00]" />,
+  Compass: <Compass className="w-5 h-5 text-[#92278F]" />,
+  Heart: <Heart className="w-5 h-5 text-[#FF8C00]" />,
+  ShieldAlert: <ShieldAlert className="w-5 h-5 text-[#92278F]" />,
+};
 
 export default function PresentationPage() {
   const { language } = useLanguage();
   const { orgName, addressLocation, postalBox, settings } = useSiteSettings();
+  const [pageData, setPageData] = useState<InstitutionalPage | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    supabaseStore.getInstitutionalPageBySlug('presentation').then((res) => {
+      if (isMounted) {
+        setPageData(res);
+        setLoading(false);
+      }
+    });
+
+    // Listen to real-time changes saved from back-office
+    const handlePageChanged = (e: any) => {
+      if (e?.detail?.slug === 'presentation') {
+        setPageData(e.detail);
+      }
+    };
+    window.addEventListener('aps_page_changed', handlePageChanged);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('aps_page_changed', handlePageChanged);
+    };
+  }, []);
+
+  // Compute values dynamically with fallback to institutional settings
+  const badge = pageData
+    ? language === 'en'
+      ? pageData.badge_en || pageData.badge_fr || 'The Organization'
+      : pageData.badge_fr || "L'Organisation"
+    : language === 'en'
+    ? 'The Organization'
+    : "L'Organisation";
+
+  const title = pageData
+    ? language === 'en'
+      ? pageData.title_en || pageData.title_fr || 'Overview & Identity'
+      : pageData.title_fr || 'Présentation Institutionnelle'
+    : language === 'en'
+    ? 'Overview & Identity'
+    : 'Présentation Institutionnelle';
+
+  const quote = pageData
+    ? language === 'en'
+      ? pageData.quote_en || pageData.quote_fr || settings.slogan_en || 'For a more just and egalitarian world'
+      : pageData.quote_fr || settings.slogan_fr || 'Pour un monde plus juste et égalitaire'
+    : language === 'en'
+    ? 'For a more just and egalitarian world'
+    : 'Pour un monde plus juste et égalitaire';
+
+  const intro = pageData
+    ? language === 'en'
+      ? pageData.intro_en || pageData.intro_fr || ''
+      : pageData.intro_fr || ''
+    : language === 'en'
+    ? 'is a non-governmental organization created in September 2014 by a collective of citizens committed to the defense of human rights, human dignity, and social justice.'
+    : "est une organisation non gouvernementale créée en septembre 2014 par un collectif de citoyennes et citoyens engagés pour la défense des droits humains, de la dignité et de la justice sociale.";
+
+  const bodyContent = pageData
+    ? language === 'en'
+      ? pageData.body_html_en || pageData.body_html_fr || ''
+      : pageData.body_html_fr || ''
+    : '';
+
+  // Extract paragraphs cleanly
+  const paragraphs = bodyContent
+    ? bodyContent.split('\n\n').filter(Boolean)
+    : [
+        language === 'en'
+          ? "Officially registered in September 2017 with the Ministry of Interior and Public Security (Prefectural Order N°9/040PDM/SG/STCCD- and published in the Official Gazette of the Republic of Benin N°21 of November 1, 2017), the NGO has established a solid operational footprint in the Mono department."
+          : "Enregistrée officiellement en septembre 2017 auprès du Ministère de l'Intérieur et de la Sécurité Publique (Récépissé N°9/040PDM/SG/STCCD- et parution au Journal Officiel de la République du Bénin N°21 du 1er Novembre 2017), l'ONG a bâti un ancrage territorial solide dans le département du Mono.",
+        language === 'en'
+          ? "APS-BENIN works every day to eliminate all forms of discrimination against women and girls, fight gender-based violence, ensure comprehensive access to sexual and reproductive health information, and support socioeconomic independence through vocational training and solidarity cooperatives."
+          : "APS-BÉNIN œuvre au quotidien pour éliminer toutes les formes de discrimination à l'égard des femmes et des filles, éradiquer les violences basées sur le genre, garantir l'accès universel à l'information sur la santé sexuelle et reproductive et favoriser l'autonomie financière des ménages vulnérables par la formation professionnelle et l'appui aux coopératives solidaires."
+      ];
+
+  // Hero image
+  const heroImage = pageData?.hero_image;
+
+  // Headquarters photo from managed images
+  const hqImageObj = pageData?.images?.find(
+    (img) => img.slot_key === 'headquarters_photo' || img.slot_key === 'image_1'
+  ) || pageData?.images?.[0];
+
+  const fieldImageObj = pageData?.images?.find(
+    (img) => img.slot_key === 'community_action' || img.slot_key === 'image_2'
+  ) || pageData?.images?.[1];
+
+  // Blocks (Pillars / Principles)
+  const pillars = pageData?.blocks && pageData.blocks.length > 0
+    ? pageData.blocks
+    : [
+        {
+          id: 'blk-pres-1',
+          type: 'pillar',
+          title_fr: 'Indépendance & Éthique',
+          title_en: 'Independence & Ethics',
+          content_fr: 'Une association apolitique, laïque et régie par des règles strictes de probité.',
+          content_en: 'A non-partisan, secular civil society entity governed by strict integrity.',
+          icon_name: 'ShieldCheck',
+          order_index: 1,
+        },
+        {
+          id: 'blk-pres-2',
+          type: 'pillar',
+          title_fr: 'Proximité & Inclusion',
+          title_en: 'Proximity & Inclusiveness',
+          content_fr: 'Des actions co-construites avec les communautés de base et les personnes vulnérables.',
+          content_en: 'Actions co-designed with grassroots community members and vulnerable groups.',
+          icon_name: 'Users',
+          order_index: 2,
+        },
+        {
+          id: 'blk-pres-3',
+          type: 'pillar',
+          title_fr: 'Transparence & Résultats',
+          title_en: 'Transparency & Results',
+          content_fr: 'Redevabilité rigoureuse envers les bénéficiaires, les partenaires et les bailleurs.',
+          content_en: 'Accountability to beneficiaries, institutional partners and donors.',
+          icon_name: 'CheckCircle2',
+          order_index: 3,
+        },
+        {
+          id: 'blk-pres-4',
+          type: 'pillar',
+          title_fr: 'Égalité de Genre',
+          title_en: 'Gender Equality',
+          content_fr: 'Lutte constante pour l’égalité des droits, le leadership et l’autonomie des femmes.',
+          content_en: 'Advancing equal rights, leadership and economic opportunities.',
+          icon_name: 'Scale',
+          order_index: 4,
+        },
+      ];
 
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
@@ -28,25 +180,29 @@ export default function PresentationPage() {
       <main className="flex-1">
         {/* Page Header */}
         <section className="bg-gray-900 text-white py-16 sm:py-20 relative overflow-hidden">
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center opacity-25"
-            style={{
-              backgroundImage: `url('https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=1600&q=80')`,
-            }}
-          />
+          {heroImage && (
+            <div
+              className="absolute inset-0 z-0 bg-cover bg-center opacity-25"
+              style={{
+                backgroundImage: `url('${heroImage}')`,
+              }}
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-[#92278F]/50 to-black/90" />
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8">
             <div className="max-w-3xl space-y-4">
               <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3 py-1 rounded bg-white/10 border border-white/20">
-                {language === 'en' ? 'The Organization' : "L'Organisation"}
+                {badge}
               </span>
               <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading">
-                {language === 'en' ? 'Overview & Identity' : 'Présentation Institutionnelle'}
+                {title}
               </h1>
-              <p className="text-lg text-purple-100 font-serif italic border-l-4 border-[#FF8C00] pl-4">
-                « {language === 'en' ? 'For a more just and egalitarian world' : 'Pour un monde plus juste et égalitaire'} »
-              </p>
+              {quote && (
+                <p className="text-lg text-purple-100 font-serif italic border-l-4 border-[#FF8C00] pl-4">
+                  « {quote} »
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -63,21 +219,12 @@ export default function PresentationPage() {
                   </h2>
                   <div className="prose prose-purple max-w-none text-gray-700 space-y-4 leading-relaxed text-base">
                     <p>
-                      <strong>AGISSONS POUR SAUVER (APS-BÉNIN)</strong>{' '}
-                      {language === 'en'
-                        ? 'is a non-governmental organization created in September 2014 by a collective of citizens committed to the defense of human rights, human dignity, and social justice.'
-                        : "est une organisation non gouvernementale créée en septembre 2014 par un collectif de citoyennes et citoyens engagés pour la défense des droits humains, de la dignité et de la justice sociale."}
+                      <strong>{orgName || 'AGISSONS POUR SAUVER (APS-BÉNIN)'}</strong>{' '}
+                      {intro}
                     </p>
-                    <p>
-                      {language === 'en'
-                        ? 'Officially registered in September 2017 with the Ministry of Interior and Public Security (Prefectural Order N°9/040PDM/SG/STCCD- and published in the Official Gazette of the Republic of Benin N°21 of November 1, 2017), the NGO has established a solid operational footprint in the Mono department.'
-                        : "Enregistrée officiellement en septembre 2017 auprès du Ministère de l'Intérieur et de la Sécurité Publique (Récépissé N°9/040PDM/SG/STCCD- et parution au Journal Officiel de la République du Bénin N°21 du 1er Novembre 2017), l'ONG a bâti un ancrage territorial solide dans le département du Mono."}
-                    </p>
-                    <p>
-                      {language === 'en'
-                        ? 'APS-BENIN works every day to eliminate all forms of discrimination against women and girls, fight gender-based violence, ensure comprehensive access to sexual and reproductive health information, and support socioeconomic independence through vocational training and solidarity cooperatives.'
-                        : "APS-BÉNIN œuvre au quotidien pour éliminer toutes les formes de discrimination à l'égard des femmes et des filles, éradiquer les violences basées sur le genre, garantir l'accès universel à l'information sur la santé sexuelle et reproductive et favoriser l'autonomie financière des ménages vulnérables par la formation professionnelle et l'appui aux coopératives solidaires."}
-                    </p>
+                    {paragraphs.map((p, i) => (
+                      <p key={i}>{p}</p>
+                    ))}
                   </div>
                 </div>
 
@@ -88,63 +235,52 @@ export default function PresentationPage() {
                     <span>{language === 'en' ? 'Our Fundamental Principles' : 'Nos Principes Fondateurs'}</span>
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-3 bg-white p-4 rounded-xl border border-gray-100">
-                      <CheckCircle2 className="w-5 h-5 text-[#FF8C00] shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900">
-                          {language === 'en' ? 'Independence & Ethics' : 'Indépendance & Éthique'}
-                        </h4>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {language === 'en'
-                            ? 'A non-partisan, secular civil society entity governed by strict integrity.'
-                            : 'Une association apolitique, laïque et régie par des règles strictes de probité.'}
-                        </p>
-                      </div>
-                    </div>
+                    {pillars.map((pillar: any, index: number) => {
+                      const pTitle = language === 'en' ? pillar.title_en || pillar.title_fr : pillar.title_fr;
+                      const pDesc = language === 'en' ? pillar.content_en || pillar.content_fr : pillar.content_fr;
+                      const icon = iconMap[pillar.icon_name || ''] || <CheckCircle2 className="w-5 h-5 text-[#FF8C00] shrink-0 mt-0.5" />;
 
-                    <div className="flex items-start gap-3 bg-white p-4 rounded-xl border border-gray-100">
-                      <CheckCircle2 className="w-5 h-5 text-[#FF8C00] shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900">
-                          {language === 'en' ? 'Proximity & Inclusiveness' : 'Proximité & Inclusion'}
-                        </h4>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {language === 'en'
-                            ? 'Actions co-designed with grassroots community members and vulnerable groups.'
-                            : 'Des actions co-construites avec les communautés de base et les personnes vulnérables.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3 bg-white p-4 rounded-xl border border-gray-100">
-                      <CheckCircle2 className="w-5 h-5 text-[#FF8C00] shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900">
-                          {language === 'en' ? 'Transparency & Results' : 'Transparence & Résultats'}
-                        </h4>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {language === 'en'
-                            ? 'Accountability to beneficiaries, institutional partners and donors.'
-                            : 'Redevabilité rigoureuse envers les bénéficiaires, les partenaires et les bailleurs.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3 bg-white p-4 rounded-xl border border-gray-100">
-                      <CheckCircle2 className="w-5 h-5 text-[#FF8C00] shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900">
-                          {language === 'en' ? 'Gender Equality' : 'Égalité de Genre'}
-                        </h4>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {language === 'en'
-                            ? 'Advancing equal rights, leadership and economic opportunities.'
-                            : 'Lutte constante pour l’égalité des droits, le leadership et l’autonomie des femmes.'}
-                        </p>
-                      </div>
-                    </div>
+                      return (
+                        <div key={pillar.id || index} className="flex items-start gap-3 bg-white p-4 rounded-xl border border-gray-100 shadow-2xs">
+                          <div className="shrink-0 mt-0.5">
+                            {icon}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-gray-900">
+                              {pTitle}
+                            </h4>
+                            <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                              {pDesc}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
+
+                {/* Additional illustrative photos if configured in admin */}
+                {fieldImageObj && fieldImageObj.url && (
+                  <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-xs bg-white">
+                    <div className="relative h-64 sm:h-80 w-full overflow-hidden bg-gray-100">
+                      <img
+                        src={fieldImageObj.url}
+                        alt={language === 'en' ? fieldImageObj.alt_en || fieldImageObj.alt_fr : fieldImageObj.alt_fr}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    {(fieldImageObj.caption_fr || fieldImageObj.caption_en) && (
+                      <div className="p-4 bg-white border-t border-gray-100 text-xs text-gray-600">
+                        <p className="font-semibold text-gray-900">
+                          {language === 'en'
+                            ? fieldImageObj.caption_en || fieldImageObj.caption_fr
+                            : fieldImageObj.caption_fr}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Subsections links */}
                 <div className="pt-4 flex flex-wrap gap-4">
@@ -169,7 +305,7 @@ export default function PresentationPage() {
               {/* Right Column: Institutional Identity Card */}
               <div className="lg:col-span-4">
                 <div className="sticky top-28 space-y-6">
-                  <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                  <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-xs">
                     <h3 className="text-base font-bold text-gray-900 font-heading border-b border-gray-200 pb-3 mb-4 flex items-center gap-2">
                       <FileCheck2 className="w-5 h-5 text-[#92278F]" />
                       <span>{language === 'en' ? 'Institutional Identity Card' : "Fiche d'Identité Officielle"}</span>
@@ -242,19 +378,25 @@ export default function PresentationPage() {
                   </div>
 
                   {/* Photo of headquarters or community */}
-                  <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-xs">
-                    <img
-                      src="https://images.unsplash.com/photo-1542810634-71277d95dcbb?auto=format&fit=crop&w=800&q=80"
-                      alt="APS-BÉNIN Siège Comè"
-                      className="w-full h-44 object-cover"
-                    />
-                    <div className="p-4 bg-white text-xs text-gray-600">
-                      <p className="font-semibold text-gray-900">Siège de Djacoṭé-Comè</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        Accueil du public et cellules d’écoute citoyennes.
-                      </p>
+                  {hqImageObj && hqImageObj.url && (
+                    <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-xs">
+                      <img
+                        src={hqImageObj.url}
+                        alt={language === 'en' ? hqImageObj.alt_en || hqImageObj.alt_fr : hqImageObj.alt_fr || 'APS-BÉNIN Siège'}
+                        className="w-full h-44 object-cover"
+                      />
+                      <div className="p-4 bg-white text-xs text-gray-600">
+                        <p className="font-semibold text-gray-900">
+                          {language === 'en' ? hqImageObj.label_en || hqImageObj.label_fr : hqImageObj.label_fr || 'Siège de Djacoṭé-Comè'}
+                        </p>
+                        {(hqImageObj.caption_fr || hqImageObj.caption_en) && (
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            {language === 'en' ? hqImageObj.caption_en || hqImageObj.caption_fr : hqImageObj.caption_fr}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

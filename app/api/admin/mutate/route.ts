@@ -19,7 +19,8 @@ const ALLOWED_TABLES = new Set([
   'contact_messages',
   'profiles',
   'audit_logs',
-  'trash_items'
+  'trash_items',
+  'institutional_pages'
 ]);
 
 const TABLE_COLUMNS: Record<string, string[]> = {
@@ -108,6 +109,13 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   trash_items: [
     'id', 'original_id', 'module', 'table_name', 'title', 'data',
     'previous_status', 'deleted_at', 'deleted_by_id', 'deleted_by_email', 'deleted_by_name'
+  ],
+  institutional_pages: [
+    'id', 'slug', 'title_fr', 'title_en', 'subtitle_fr', 'subtitle_en',
+    'badge_fr', 'badge_en', 'quote_fr', 'quote_en', 'intro_fr', 'intro_en',
+    'body_html_fr', 'body_html_en', 'hero_image', 'hero_image_alt_fr',
+    'hero_image_alt_en', 'images', 'blocks', 'meta_title_fr', 'meta_title_en',
+    'meta_description_fr', 'meta_description_en', 'is_published', 'updated_at'
   ]
 };
 
@@ -125,6 +133,7 @@ const TABLE_TO_MODULE_MAP: Record<string, { module: string; label: string }> = {
   statistics: { module: 'statistiques', label: 'Chiffres Clés' },
   site_settings: { module: 'parametres', label: 'Paramètres du Site' },
   history_milestones: { module: 'parametres', label: 'Historique & Jalons' },
+  institutional_pages: { module: 'pages_institutionnelles', label: 'Pages Institutionnelles' },
   contact_messages: { module: 'messages', label: 'Messages Reçus' },
   profiles: { module: 'utilisateurs', label: 'Utilisateurs & Rôles' },
   trash_items: { module: 'corbeille', label: 'Corbeille' },

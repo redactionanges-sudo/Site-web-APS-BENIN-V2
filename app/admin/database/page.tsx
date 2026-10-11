@@ -141,6 +141,7 @@ export default function AdminDatabasePage() {
                 className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-semibold bg-white text-gray-800 focus:outline-hidden focus:border-[#92278F]"
               >
                 <option value="/supabase-schema.sql">Schéma Global Complet (Tables + RLS + Corbeille + Journal + Analytics)</option>
+                <option value="/supabase-migration-institutional-pages.sql">Migration Lot : Pages Institutionnelles (institutional_pages + RLS)</option>
                 <option value="/supabase-migration-analytics.sql">Migration Lot 6.5 : Analytics & Mesures d'Audience (analytics_events)</option>
                 <option value="/supabase-migration-corbeille.sql">Migration Lot 6.3 : Corbeille & Restauration (trash_items)</option>
                 <option value="/supabase-migration-audit-logs.sql">Migration Lot 6.2 : Journal d'Activité (audit_logs)</option>

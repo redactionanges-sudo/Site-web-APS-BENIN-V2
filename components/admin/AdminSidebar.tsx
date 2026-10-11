@@ -17,6 +17,7 @@ import {
   Users,
   Building,
   FileText,
+  BookOpen,
   Mail,
   BarChart3,
   Bell,
@@ -35,8 +36,10 @@ export const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const { user, logout, isSuperAdmin, isAdmin } = useAuth();
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     let isMounted = true;
     supabaseStore.getUnreadMessagesCount().then((count) => {
       if (isMounted) setUnreadMsgCount(count);
@@ -65,6 +68,7 @@ export const AdminSidebar: React.FC = () => {
     { href: '/admin/projets', label: 'Projets (CMS)', icon: <FolderKanban className="w-4 h-4" /> },
     { href: '/admin/actualites', label: 'Actualités (CMS)', icon: <Newspaper className="w-4 h-4" /> },
     { href: '/admin/opportunites', label: 'Opportunités', icon: <Briefcase className="w-4 h-4" /> },
+    { href: '/admin/pages-institutionnelles', label: 'Pages Institutionnelles', icon: <BookOpen className="w-4 h-4 text-[#FF8C00]" /> },
     { href: '/admin/mediatheque', label: 'Médiathèque', icon: <ImageIcon className="w-4 h-4" /> },
     { href: '/admin/domaines', label: "Domaines d'action", icon: <ShieldCheck className="w-4 h-4" /> },
     { href: '/admin/partenaires', label: 'Partenaires', icon: <Handshake className="w-4 h-4" /> },
@@ -112,22 +116,22 @@ export const AdminSidebar: React.FC = () => {
         <div className="p-4 mx-3 my-3 rounded-xl bg-gray-900 border border-gray-800 text-xs">
           <div className="flex items-center justify-between mb-1">
             <span className="font-bold text-white truncate line-clamp-1">
-              {user?.full_name || 'Administrateur'}
+              {mounted && user?.full_name ? user.full_name : 'Administrateur'}
             </span>
             <span
               className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                isSuperAdmin
+                mounted && isSuperAdmin
                   ? 'bg-purple-900 text-purple-200 border border-purple-700'
-                  : user?.role === 'admin'
+                  : mounted && user?.role === 'admin'
                   ? 'bg-orange-950 text-orange-300 border border-orange-800'
                   : 'bg-gray-800 text-gray-300'
               }`}
             >
-              {isSuperAdmin ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : 'Éditeur'}
+              {mounted && isSuperAdmin ? 'Super Admin' : mounted && user?.role === 'admin' ? 'Admin' : 'Éditeur'}
             </span>
           </div>
           <span className="text-[10px] text-gray-400 truncate block">
-            {user?.email || 'admin@aps-benin.org'}
+            {mounted && user?.email ? user.email : 'admin@aps-benin.org'}
           </span>
         </div>
 

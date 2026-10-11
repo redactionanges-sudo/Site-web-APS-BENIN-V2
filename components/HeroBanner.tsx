@@ -26,22 +26,8 @@ import {
 export const HeroBanner: React.FC = () => {
   const { language, t } = useLanguage();
 
-  // 1. Initial State: Read synchronously from cached real hero photos if present in localStorage, otherwise start empty (neutral backdrop)
-  const [slides, setSlides] = useState<MediaItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('aps_hero_slides_v1');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
-          }
-        }
-      } catch {}
-    }
-    return [];
-  });
-
+  // 1. Initial State: Start deterministically with empty slides (neutral backdrop) to ensure zero SSR/client hydration mismatch
+  const [slides, setSlides] = useState<MediaItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);

@@ -22,6 +22,7 @@ import {
   RotateCw,
   ShieldCheck,
   Lock,
+  BookOpen,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -438,6 +439,14 @@ export default function AdminDashboardPage() {
             >
               <Plus className="w-4 h-4 text-[#FF8C00]" />
               <span>Publier une Offre</span>
+            </Link>
+
+            <Link
+              href="/admin/pages-institutionnelles"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#d97500] border border-orange-200 text-xs font-bold transition-all active:scale-95"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Éditer les Pages Institutionnelles</span>
             </Link>
 
             <Link
