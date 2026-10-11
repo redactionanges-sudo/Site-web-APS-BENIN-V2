@@ -6,6 +6,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem } from '@/types';
 import { ArrowRight, Calendar, User } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 export const LatestNews: React.FC = () => {
   const { language, t } = useLanguage();
@@ -62,13 +63,14 @@ export const LatestNews: React.FC = () => {
               className="bg-white rounded-2xl overflow-hidden border border-gray-200/90 hover:border-[#92278F] transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col group"
             >
               <div className="relative h-48 w-full overflow-hidden bg-gray-100">
-                <img
-                  src={item.main_image || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&q=80'}
+                <OptimizedImage
+                  src={item.main_image}
                   alt={language === 'en' ? item.title_en : item.title_fr}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  loading="lazy"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute top-3 left-3 bg-[#92278F] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded shadow-xs">
+                <div className="absolute top-3 left-3 bg-[#92278F] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded shadow-xs z-10">
                   {language === 'en' ? item.category_en : item.category_fr}
                 </div>
               </div>

@@ -2430,8 +2430,18 @@ export async function uploadFileToStorage(
   file: File,
   bucket: StorageBucket = 'images',
   folder: string = 'uploads',
-  onProgress?: UploadProgressCallback
-): Promise<{ success: boolean; publicUrl: string; path: string; error?: string }> {
+  onProgress?: UploadProgressCallback,
+  profile: 'hero' | 'content' | 'portrait' | 'thumbnail' | 'auto' = 'auto'
+): Promise<{
+  success: boolean;
+  publicUrl: string;
+  path: string;
+  thumbnailUrl?: string;
+  originalUrl?: string;
+  optimized?: boolean;
+  optimization?: any;
+  error?: string;
+}> {
   const cleanName = file.name
     .replace(/[^a-zA-Z0-9.-]/g, '_')
     .toLowerCase();
@@ -2443,7 +2453,7 @@ export async function uploadFileToStorage(
     fileName: file.name,
     totalBytes: file.size,
     loadedBytes: 0,
-    message: 'Préparation du fichier...',
+    message: 'Préparation et analyse de l\'image...',
   });
 
   // 1. Environnement navigateur avec XMLHttpRequest pour mesure de progression réelle
@@ -2454,6 +2464,7 @@ export async function uploadFileToStorage(
         formData.append('file', file);
         formData.append('bucket', bucket);
         formData.append('folder', folder);
+        formData.append('profile', profile);
 
         let token = '';
         if (supabase) {
@@ -2535,15 +2546,26 @@ export async function uploadFileToStorage(
           if (xhr.status >= 200 && xhr.status < 300 && resData?.success) {
             const publicUrl = resData.publicUrl || resData.url || '';
             const path = resData.path || filePath;
+            const savingsMsg = resData.optimization?.savingsPercent
+              ? ` (${resData.optimization.savingsPercent}% de réduction)`
+              : '';
             onProgress?.({
               phase: 'success',
               percent: 100,
               fileName: file.name,
               totalBytes: file.size,
               loadedBytes: file.size,
-              message: 'Téléversement réussi et fichier enregistré !',
+              message: `Téléversement et optimisation automatique réussis !${savingsMsg}`,
             });
-            return resolve({ success: true, publicUrl, path });
+            return resolve({
+              success: true,
+              publicUrl,
+              path,
+              thumbnailUrl: resData.thumbnailUrl || publicUrl,
+              originalUrl: resData.originalUrl || publicUrl,
+              optimized: resData.optimized,
+              optimization: resData.optimization,
+            });
           }
 
           const errMsg = resData?.error || `Erreur serveur (HTTP ${xhr.status}) lors du téléversement.`;
@@ -2609,12 +2631,16 @@ export async function uploadFileToStorage(
         phase: 'success',
         percent: 100,
         fileName: file.name,
-        message: 'Téléversement réussi !',
+        message: 'Téléversement et optimisation automatique réussis !',
       });
       return {
         success: true,
         publicUrl: resData.publicUrl || resData.url,
         path: resData.path || filePath,
+        thumbnailUrl: resData.thumbnailUrl || resData.publicUrl || resData.url,
+        originalUrl: resData.originalUrl,
+        optimized: resData.optimized,
+        optimization: resData.optimization,
       };
     }
 

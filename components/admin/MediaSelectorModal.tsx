@@ -169,7 +169,7 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
         title_en: generatedTitle,
         type: 'photo',
         url: result.publicUrl,
-        thumbnail_url: result.publicUrl,
+        thumbnail_url: result.thumbnailUrl || result.publicUrl,
         category: 'Médiathèque',
         date: new Date().toISOString().split('T')[0],
         location: 'APS-BÉNIN',

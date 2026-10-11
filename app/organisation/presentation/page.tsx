@@ -24,6 +24,7 @@ import {
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 const iconMap: Record<string, React.ReactNode> = {
   ShieldCheck: <ShieldCheck className="w-5 h-5 text-[#92278F]" />,
@@ -263,11 +264,12 @@ export default function PresentationPage() {
                 {fieldImageObj && fieldImageObj.url && (
                   <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-xs bg-white">
                     <div className="relative h-64 sm:h-80 w-full overflow-hidden bg-gray-100">
-                      <img
+                      <OptimizedImage
                         src={fieldImageObj.url}
                         alt={language === 'en' ? fieldImageObj.alt_en || fieldImageObj.alt_fr : fieldImageObj.alt_fr}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 66vw"
+                        className="object-cover"
                       />
                     </div>
                     {(fieldImageObj.caption_fr || fieldImageObj.caption_en) && (
@@ -380,11 +382,15 @@ export default function PresentationPage() {
                   {/* Photo of headquarters or community */}
                   {hqImageObj && hqImageObj.url && (
                     <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-xs">
-                      <img
-                        src={hqImageObj.url}
-                        alt={language === 'en' ? hqImageObj.alt_en || hqImageObj.alt_fr : hqImageObj.alt_fr || 'APS-BÉNIN Siège'}
-                        className="w-full h-44 object-cover"
-                      />
+                      <div className="relative w-full h-44 overflow-hidden bg-gray-100">
+                        <OptimizedImage
+                          src={hqImageObj.url}
+                          alt={language === 'en' ? hqImageObj.alt_en || hqImageObj.alt_fr : hqImageObj.alt_fr || 'APS-BÉNIN Siège'}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 33vw"
+                          className="object-cover"
+                        />
+                      </div>
                       <div className="p-4 bg-white text-xs text-gray-600">
                         <p className="font-semibold text-gray-900">
                           {language === 'en' ? hqImageObj.label_en || hqImageObj.label_fr : hqImageObj.label_fr || 'Siège de Djacoṭé-Comè'}

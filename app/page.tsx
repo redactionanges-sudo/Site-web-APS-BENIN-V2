@@ -18,6 +18,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { InstitutionalPage } from '@/types';
 import { ShieldCheck, HeartHandshake, Eye, Award, ArrowRight } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function HomePage() {
   const { language, t } = useLanguage();
@@ -135,14 +136,15 @@ export default function HomePage() {
 
               {/* Visual column with authentic photography */}
               <div className="lg:col-span-5">
-                <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-gray-200">
-                  <img
+                <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-gray-200 h-[440px]">
+                  <OptimizedImage
                     src={presImage}
                     alt={presAlt}
-                    className="w-full h-[440px] object-cover"
-                    loading="lazy"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 42vw"
+                    className="object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-6">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-6 z-10">
                     <div className="text-white">
                       <p className="text-xs font-semibold uppercase tracking-wider text-orange-400">
                         {language === 'en' ? 'Djacoṭé-Comè • Mono' : 'Djacoṭé-Comè • Mono'}

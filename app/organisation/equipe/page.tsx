@@ -8,6 +8,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { TeamMember } from '@/types';
 import { UserCheck, Award, User } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function EquipePage() {
   const { language } = useLanguage();

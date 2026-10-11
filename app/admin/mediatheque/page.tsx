@@ -301,7 +301,7 @@ export default function AdminMediathequePage() {
         setMediaForm((prev) => ({
           ...prev,
           url: result.publicUrl,
-          thumbnail_url: result.publicUrl,
+          thumbnail_url: result.thumbnailUrl || result.publicUrl,
           title_fr: prev.title_fr || generatedTitle,
           title_en: prev.title_en || generatedTitle,
           alt_fr: prev.alt_fr || generatedTitle,
