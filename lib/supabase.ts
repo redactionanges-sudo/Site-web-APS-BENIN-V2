@@ -177,29 +177,27 @@ export function packStatistic(stat: KeyStatistic): any {
 export function unpackMedia(row: any): MediaItem {
   if (!row) return row;
   let description_en = row.description_en || '';
+  let show_in_hero = false;
+  let hero_order = 99;
+  let is_active = true;
 
-  // 1. Seed fallback for initial hero items
-  const seedItem = initialMedia.find((m) => m.id === row.id);
-  let show_in_hero = seedItem?.show_in_hero ?? false;
-  let hero_order = seedItem?.hero_order ?? 1;
-  let is_active = seedItem?.is_active ?? true;
-
-  // 2. Parse encapsulated metadata if present in description_en
-  if (typeof description_en === 'string' && description_en.trim().startsWith('{')) {
+  // 1. Robust recursive unwrap of metadata in description_en
+  while (typeof description_en === 'string' && description_en.trim().startsWith('{')) {
     try {
       const parsed = JSON.parse(description_en);
-      description_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
       if (parsed.show_in_hero !== undefined) show_in_hero = Boolean(parsed.show_in_hero);
-      if (parsed.hero_order !== undefined) hero_order = Number(parsed.hero_order) || 1;
+      if (parsed.hero_order !== undefined) hero_order = Number(parsed.hero_order) || 99;
       if (parsed.is_active !== undefined) is_active = Boolean(parsed.is_active);
+      description_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
     } catch {
-      // keep raw string if parsing fails
+      break;
     }
-  } else {
-    if (row.show_in_hero !== undefined) show_in_hero = Boolean(row.show_in_hero);
-    if (row.hero_order !== undefined) hero_order = Number(row.hero_order) || 1;
-    if (row.is_active !== undefined) is_active = row.is_active !== false;
   }
+
+  // 2. Direct row columns override if present
+  if (row.show_in_hero !== undefined && row.show_in_hero !== null) show_in_hero = Boolean(row.show_in_hero);
+  if (row.hero_order !== undefined && row.hero_order !== null) hero_order = Number(row.hero_order) || 99;
+  if (row.is_active !== undefined && row.is_active !== null) is_active = row.is_active !== false;
 
   return {
     id: row.id,
@@ -216,7 +214,7 @@ export function unpackMedia(row: any): MediaItem {
     alt_fr: row.alt_fr || row.title_fr || '',
     alt_en: row.alt_en || row.title_en || row.title_fr || '',
     description_fr: row.description_fr || '',
-    description_en,
+    description_en: typeof description_en === 'string' ? description_en : '',
     video_platform: row.video_platform,
     show_in_hero,
     hero_order,
@@ -226,46 +224,42 @@ export function unpackMedia(row: any): MediaItem {
 
 export function packMedia(item: any): any {
   let original_desc_en = item.description_en || '';
-  let show_in_hero = item.show_in_hero;
-  let hero_order = item.hero_order;
-  let is_active = item.is_active;
+  let show_in_hero = Boolean(item.show_in_hero);
+  let hero_order = Number(item.hero_order) || 1;
+  let is_active = item.is_active !== false;
 
-  // If description_en is already packed JSON, extract any existing fields if not explicitly passed
-  if (typeof original_desc_en === 'string' && original_desc_en.trim().startsWith('{')) {
+  // Unpack any nested JSON if description_en was already encapsulated
+  while (typeof original_desc_en === 'string' && original_desc_en.trim().startsWith('{')) {
     try {
       const parsed = JSON.parse(original_desc_en);
-      if (show_in_hero === undefined && parsed.show_in_hero !== undefined) {
-        show_in_hero = parsed.show_in_hero;
+      if (parsed.show_in_hero !== undefined && item.show_in_hero === undefined) {
+        show_in_hero = Boolean(parsed.show_in_hero);
       }
-      if (hero_order === undefined && parsed.hero_order !== undefined) {
-        hero_order = parsed.hero_order;
+      if (parsed.hero_order !== undefined && item.hero_order === undefined) {
+        hero_order = Number(parsed.hero_order) || 1;
       }
-      if (is_active === undefined && parsed.is_active !== undefined) {
-        is_active = parsed.is_active;
+      if (parsed.is_active !== undefined && item.is_active === undefined) {
+        is_active = Boolean(parsed.is_active);
       }
       original_desc_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
     } catch {
-      // ignore
+      break;
     }
   }
 
-  const final_show_in_hero = Boolean(show_in_hero);
-  const final_hero_order = Number(hero_order) || 1;
-  const final_is_active = is_active !== false;
-
   const packedMeta = JSON.stringify({
-    desc_en: original_desc_en,
-    show_in_hero: final_show_in_hero,
-    hero_order: final_hero_order,
-    is_active: final_is_active,
+    desc_en: typeof original_desc_en === 'string' ? original_desc_en : '',
+    show_in_hero,
+    hero_order,
+    is_active,
     updated_at: new Date().toISOString(),
   });
 
   return {
     ...item,
-    show_in_hero: final_show_in_hero,
-    hero_order: final_hero_order,
-    is_active: final_is_active,
+    show_in_hero,
+    hero_order,
+    is_active,
     description_en: packedMeta,
   };
 }
@@ -1292,22 +1286,27 @@ export const supabaseStore = {
       .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
 
     if (heroPhotos.length > 0) {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('aps_hero_slides_v1', JSON.stringify(heroPhotos));
+        } catch {}
+      }
       return heroPhotos;
     }
 
-    // Clean fallback to active photos if none explicitly marked for Hero
-    const activePhotos = allMedia
-      .filter((m) => m.type === 'photo' && m.is_active !== false)
-      .slice(0, 5);
-
-    if (activePhotos.length > 0) {
-      return activePhotos;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('aps_hero_slides_v1');
+      } catch {}
     }
+    return [];
+  },
 
-    // Ultimate fallback to initial hero photos
-    return initialMedia
-      .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
-      .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
+  async getPublishedVideos(): Promise<MediaItem[]> {
+    const allMedia = await this.getMedia();
+    return allMedia
+      .filter((m) => m.type === 'video' && m.is_active !== false)
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   },
 
   async saveMedia(item: MediaItem): Promise<MediaItem[]> {
@@ -1331,6 +1330,15 @@ export const supabaseStore = {
         setStoredItem('media', newList);
         setCachedData('media', newList);
 
+        const heroList = newList
+          .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
+          .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
+        if (heroList.length > 0) {
+          localStorage.setItem('aps_hero_slides_v1', JSON.stringify(heroList));
+        } else {
+          localStorage.removeItem('aps_hero_slides_v1');
+        }
+
         window.dispatchEvent(new Event('aps_media_changed'));
         localStorage.setItem('aps_media_last_updated', Date.now().toString());
       } catch {}
@@ -1348,8 +1356,18 @@ export const supabaseStore = {
       await mutateTable('media', 'delete', id);
     }
     invalidateCache('media');
+
     if (typeof window !== 'undefined') {
       try {
+        const remaining = allMedia.filter(m => m.id !== id);
+        const heroList = remaining
+          .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
+          .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
+        if (heroList.length > 0) {
+          localStorage.setItem('aps_hero_slides_v1', JSON.stringify(heroList));
+        } else {
+          localStorage.removeItem('aps_hero_slides_v1');
+        }
         window.dispatchEvent(new Event('aps_media_changed'));
         localStorage.setItem('aps_media_last_updated', Date.now().toString());
       } catch {}

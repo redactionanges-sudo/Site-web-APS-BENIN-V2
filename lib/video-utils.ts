@@ -164,7 +164,7 @@ export function validateVideoUrl(
 }
 
 export const DEFAULT_VIDEO_FALLBACK_POSTER =
-  'https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=800&q=80';
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="%230f172a"/><circle cx="400" cy="225" r="46" fill="%2392278F"/><polygon points="392,207 418,225 392,243" fill="%23FFFFFF"/><text x="400" y="310" fill="%23E2E8F0" font-family="sans-serif" font-size="16" font-weight="600" text-anchor="middle">APS-BÉNIN • Vidéo Officielle</text></svg>';
 
 /**
  * Returns a guaranteed valid thumbnail URL for a video.

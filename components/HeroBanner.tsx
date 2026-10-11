@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { MediaItem, BannerAnnouncement } from '@/types';
-import { initialMedia, initialSiteSettings } from '@/lib/initial-data';
+import { initialSiteSettings } from '@/lib/initial-data';
 import { CallHeadquartersCTA } from '@/components/CallHeadquartersCTA';
 import {
   ArrowRight,
@@ -26,14 +26,22 @@ import {
 export const HeroBanner: React.FC = () => {
   const { language, t } = useLanguage();
 
-  // 1. Initial State starts immediately with seed hero photos so first image renders INSTANTLY (0 delay)
-  const initialHeroPhotos = useMemo(() => {
-    return initialMedia
-      .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
-      .sort((a, b) => (a.hero_order || 99) - (b.hero_order || 99));
-  }, []);
+  // 1. Initial State: Read synchronously from cached real hero photos if present in localStorage, otherwise start empty (neutral backdrop)
+  const [slides, setSlides] = useState<MediaItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('aps_hero_slides_v1');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return [];
+  });
 
-  const [slides, setSlides] = useState<MediaItem[]>(initialHeroPhotos);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -53,7 +61,7 @@ export const HeroBanner: React.FC = () => {
 
     const loadFreshHeroPhotos = () => {
       supabaseStore.getHeroPhotos().then((photos) => {
-        if (mounted && photos && photos.length > 0) {
+        if (mounted) {
           setSlides(photos);
           setCurrentIndex((prev) => (prev >= photos.length ? 0 : prev));
         }
@@ -121,11 +129,11 @@ export const HeroBanner: React.FC = () => {
     };
   }, [slides.length, isPaused, nextSlide]);
 
-  const currentSlide = slides[currentIndex] || slides[0];
+  const currentSlide = slides.length > 0 ? (slides[currentIndex] || slides[0]) : null;
 
   // Preload next slide in background once current is rendered
-  const nextIndex = (currentIndex + 1) % slides.length;
-  const nextSlideData = slides[nextIndex];
+  const nextIndex = slides.length > 0 ? (currentIndex + 1) % slides.length : 0;
+  const nextSlideData = slides.length > 1 ? slides[nextIndex] : null;
 
   // Filter active announcements based on schedule dates
   const activeAnnouncements = useMemo(() => {
@@ -140,9 +148,6 @@ export const HeroBanner: React.FC = () => {
     return filtered.length > 0 ? filtered : initialAnnouncements;
   }, [announcements, initialAnnouncements]);
 
-  const fallbackUrl =
-    'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1920&q=80';
-
   return (
     <section
       className="relative overflow-hidden bg-gray-950 text-white min-h-[640px] lg:min-h-[720px] flex flex-col justify-between"
@@ -151,34 +156,40 @@ export const HeroBanner: React.FC = () => {
       aria-label="Bannière d'accueil APS-BÉNIN"
     >
       {/* Dynamic Background Image Slideshow with optimized lightweight gradients */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <AnimatePresence initial={false} mode="sync">
-          <motion.div
-            key={currentSlide?.id || 'default-hero'}
-            initial={{ opacity: 0, scale: 1.04 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: 'easeOut' }}
-            className="absolute inset-0 w-full h-full"
-          >
-            <Image
-              src={currentSlide?.url || fallbackUrl}
-              alt={
-                currentSlide
-                  ? language === 'en'
-                    ? currentSlide.alt_en || currentSlide.title_en
-                    : currentSlide.alt_fr || currentSlide.title_fr
-                  : 'APS-BÉNIN actions sur le terrain'
-              }
-              fill
-              priority={currentIndex === 0}
-              sizes="100vw"
-              className="object-cover object-center filter brightness-[0.92] contrast-[1.03]"
-              referrerPolicy="no-referrer"
-              unoptimized={Boolean(currentSlide?.url?.startsWith('data:'))}
-            />
-          </motion.div>
-        </AnimatePresence>
+      <div className="absolute inset-0 z-0 overflow-hidden bg-gray-950">
+        {currentSlide?.url ? (
+          <AnimatePresence initial={false} mode="sync">
+            <motion.div
+              key={currentSlide.id}
+              initial={{ opacity: 0, scale: 1.04 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.9, ease: 'easeOut' }}
+              className="absolute inset-0 w-full h-full"
+            >
+              <Image
+                src={currentSlide.url}
+                alt={
+                  language === 'en'
+                    ? currentSlide.alt_en || currentSlide.title_en || 'APS-BENIN actions'
+                    : currentSlide.alt_fr || currentSlide.title_fr || 'APS-BÉNIN actions sur le terrain'
+                }
+                fill
+                priority={currentIndex === 0}
+                sizes="100vw"
+                className="object-cover object-center filter brightness-[0.92] contrast-[1.03]"
+                referrerPolicy="no-referrer"
+                unoptimized={Boolean(currentSlide.url.startsWith('data:'))}
+              />
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          /* Neutral branded gradient backdrop matching APS-BÉNIN corporate visual identity */
+          <div className="absolute inset-0 bg-gradient-to-br from-[#2f0d2e] via-[#1a081a] to-gray-950">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#92278F]/25 via-transparent to-transparent opacity-80 pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-[#FF8C00]/15 via-transparent to-transparent pointer-events-none" />
+          </div>
+        )}
 
         {/* Hidden link tag to preload ONLY the immediate next image */}
         {nextSlideData?.url && (
@@ -285,67 +296,73 @@ export const HeroBanner: React.FC = () => {
         </div>
 
         {/* Carousel Navigation Controls & Photo Caption Info */}
-        <div className="mt-8 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-white/15">
-          {/* Slide Indicators & Arrows */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
-              <button
-                type="button"
-                onClick={prevSlide}
-                aria-label="Image précédente"
-                className="p-1 rounded-full text-white/90 hover:text-white hover:bg-white/20 transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-1.5 px-2">
-                {slides.map((slide, idx) => (
+        {slides.length > 0 && (
+          <div className="mt-8 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-white/15">
+            {/* Slide Indicators & Arrows */}
+            {slides.length > 1 ? (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
                   <button
-                    key={slide.id}
                     type="button"
-                    onClick={() => goToSlide(idx)}
-                    aria-label={`Aller à la photo ${idx + 1}`}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      idx === currentIndex
-                        ? 'w-6 bg-[#FF8C00]'
-                        : 'w-2 bg-white/40 hover:bg-white/80'
-                    }`}
-                  />
-                ))}
-              </div>
+                    onClick={prevSlide}
+                    aria-label="Image précédente"
+                    className="p-1 rounded-full text-white/90 hover:text-white hover:bg-white/20 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
 
-              <button
-                type="button"
-                onClick={nextSlide}
-                aria-label="Image suivante"
-                className="p-1 rounded-full text-white/90 hover:text-white hover:bg-white/20 transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+                  <div className="flex items-center gap-1.5 px-2">
+                    {slides.map((slide, idx) => (
+                      <button
+                        key={slide.id}
+                        type="button"
+                        onClick={() => goToSlide(idx)}
+                        aria-label={`Aller à la photo ${idx + 1}`}
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          idx === currentIndex
+                            ? 'w-6 bg-[#FF8C00]'
+                            : 'w-2 bg-white/40 hover:bg-white/80'
+                        }`}
+                      />
+                    ))}
+                  </div>
 
-            <span className="text-xs text-gray-200 hidden sm:inline-flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#FF8C00]" />
-              {slides.length > 0 ? `${currentIndex + 1} / ${slides.length}` : ''}
-            </span>
-          </div>
+                  <button
+                    type="button"
+                    onClick={nextSlide}
+                    aria-label="Image suivante"
+                    className="p-1 rounded-full text-white/90 hover:text-white hover:bg-white/20 transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
 
-          {/* Current photo caption tag */}
-          {currentSlide && (
-            <div className="flex items-center gap-2 text-xs text-gray-200 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 max-w-md truncate">
-              {currentSlide.location && (
-                <span className="flex items-center gap-1 text-orange-300 shrink-0 font-medium">
-                  <MapPin className="w-3 h-3" />
-                  {currentSlide.location}
+                <span className="text-xs text-gray-200 hidden sm:inline-flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#FF8C00]" />
+                  {`${currentIndex + 1} / ${slides.length}`}
                 </span>
-              )}
-              <span className="text-gray-400">•</span>
-              <span className="truncate text-white font-medium">
-                {language === 'en' ? currentSlide.title_en : currentSlide.title_fr}
-              </span>
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              <div />
+            )}
+
+            {/* Current photo caption tag */}
+            {currentSlide && (
+              <div className="flex items-center gap-2 text-xs text-gray-200 bg-black/50 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 max-w-md truncate">
+                {currentSlide.location && (
+                  <span className="flex items-center gap-1 text-orange-300 shrink-0 font-medium">
+                    <MapPin className="w-3 h-3" />
+                    {currentSlide.location}
+                  </span>
+                )}
+                <span className="text-gray-400">•</span>
+                <span className="truncate text-white font-medium">
+                  {language === 'en' ? currentSlide.title_en : currentSlide.title_fr}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Dynamic Administrable Information Marquee Banner */}

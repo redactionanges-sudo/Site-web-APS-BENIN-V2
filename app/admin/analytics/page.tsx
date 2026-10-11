@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
 import { AdminHeader } from '@/components/admin/AdminHeader';
@@ -57,7 +57,7 @@ export default function AdminAnalyticsPage() {
   const [isFallbackLocal, setIsFallbackLocal] = useState<boolean>(false);
   const [testEventSent, setTestEventSent] = useState<string | null>(null);
 
-  const loadData = async (isManualRefresh = false) => {
+  const loadData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -79,11 +79,11 @@ export default function AdminAnalyticsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [period, customStart, customEnd]);
 
   useEffect(() => {
     loadData(false);
-  }, [period]);
+  }, [loadData]);
 
   const handleApplyCustomDates = () => {
     if (!customStart || !customEnd) return;

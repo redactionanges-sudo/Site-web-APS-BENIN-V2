@@ -13,8 +13,9 @@ import { LatestNews } from '@/components/LatestNews';
 import { OpenOpportunities } from '@/components/OpenOpportunities';
 import { PartnersCarousel } from '@/components/PartnersCarousel';
 import { CallToAction } from '@/components/CallToAction';
+import { HomeMediathequeSection } from '@/components/HomeMediathequeSection';
 import { useLanguage } from '@/lib/i18n';
-import { ShieldCheck, HeartHandshake, Eye, Award, ArrowRight, Play, Image as ImageIcon } from 'lucide-react';
+import { ShieldCheck, HeartHandshake, Eye, Award, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   const { language, t } = useLanguage();
@@ -151,124 +152,8 @@ export default function HomePage() {
         {/* 7. Current Opportunities */}
         <OpenOpportunities />
 
-        {/* 8. Mediatheque Preview */}
-        <section className="py-20 bg-gray-900 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-              <div className="max-w-2xl">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#FF8C00]">
-                  {t('media.badge')}
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-1 font-heading">
-                  {t('media.title')}
-                </h2>
-                <p className="text-sm sm:text-base text-gray-300 mt-2">
-                  {t('media.subtitle')}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/mediatheque/photos"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/20 transition-colors"
-                >
-                  <ImageIcon className="w-3.5 h-3.5 text-[#FF8C00]" />
-                  <span>{t('media.view_photos')}</span>
-                </Link>
-                <Link
-                  href="/mediatheque/videos"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-semibold transition-colors"
-                >
-                  <Play className="w-3.5 h-3.5 text-[#FF8C00]" />
-                  <span>{t('media.view_videos')}</span>
-                </Link>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Photo 1 */}
-              <Link
-                href="/mediatheque/photos"
-                className="group relative rounded-2xl overflow-hidden bg-gray-800 h-64 border border-gray-700/80 block"
-              >
-                <motion.img
-                  src="https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80"
-                  alt="Éducation sexuelle en milieu scolaire"
-                  className="w-full h-full object-cover"
-                  whileHover={{ scale: 1.08 }}
-                  transition={{ duration: 0.45, ease: 'easeOut' }}
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-end p-5">
-                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-1">
-                    {language === 'en' ? 'Album: Health & Education' : 'Album : Santé & Éducation'}
-                  </span>
-                  <h4 className="font-bold text-sm text-white line-clamp-2">
-                    {language === 'en'
-                      ? 'Adolescent reproductive health awareness in Comè secondary schools'
-                      : 'Sensibilisation SDSR des adolescents dans les collèges de Comè'}
-                  </h4>
-                </div>
-              </Link>
-
-              {/* Photo 2 */}
-              <Link
-                href="/mediatheque/photos"
-                className="group relative rounded-2xl overflow-hidden bg-gray-800 h-64 border border-gray-700/80 block"
-              >
-                <motion.img
-                  src="https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=800&q=80"
-                  alt="Formation des femmes artisanes"
-                  className="w-full h-full object-cover"
-                  whileHover={{ scale: 1.08 }}
-                  transition={{ duration: 0.45, ease: 'easeOut' }}
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-end p-5">
-                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-1">
-                    {language === 'en' ? 'Album: Economic Autonomy' : 'Album : Autonomie Économique'}
-                  </span>
-                  <h4 className="font-bold text-sm text-white line-clamp-2">
-                    {language === 'en'
-                      ? 'Vocational equipment handover to women cooperatives in Mono'
-                      : 'Dotation des équipements de transformation aux coopératives du Mono'}
-                  </h4>
-                </div>
-              </Link>
-
-              {/* Video preview */}
-              <div className="group relative rounded-2xl overflow-hidden bg-gray-800 h-64 border border-gray-700/80">
-                <motion.img
-                  src="https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=800&q=80"
-                  alt="Vidéo reportage terrain"
-                  className="w-full h-full object-cover"
-                  whileHover={{ scale: 1.06 }}
-                  transition={{ duration: 0.45, ease: 'easeOut' }}
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                  <Link
-                    href="/mediatheque/videos"
-                    className="w-14 h-14 rounded-full bg-[#92278F] text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform border-2 border-[#FF8C00]"
-                    aria-label="Regarder la vidéo"
-                  >
-                    <Play className="w-6 h-6 fill-current ml-1 text-white" />
-                  </Link>
-                </div>
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 p-5">
-                  <span className="text-[10px] font-bold text-[#FF8C00] uppercase tracking-wider mb-1 block">
-                    {language === 'en' ? 'Featured Video' : 'Vidéo à la une'}
-                  </span>
-                  <h4 className="font-bold text-sm text-white line-clamp-1">
-                    {language === 'en'
-                      ? 'Field Report: Real impact of APS-BENIN actions in Mono'
-                      : 'Reportage terrain : L’impact réel des actions d’APS-BÉNIN dans le Mono'}
-                  </h4>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* 8. Mediatheque & Video Section */}
+        <HomeMediathequeSection />
 
         {/* 9. Partenaires */}
         <PartnersCarousel />
