@@ -234,6 +234,7 @@ export default function DocumentsPage() {
                   const catMeta = getCategoryMeta(doc.category);
                   const fmt = detectDocFormat(doc.file_url);
                   const isRealUrl = doc.file_url && doc.file_url !== '#';
+                  const docTitle = language === 'en' ? doc.title_en || doc.title_fr : doc.title_fr;
 
                   return (
                     <div
@@ -254,7 +255,7 @@ export default function DocumentsPage() {
 
                         {/* Title */}
                         <h2 className="text-base font-bold text-gray-900 group-hover:text-[#92278F] transition-colors font-heading mb-2 leading-snug">
-                          {language === 'en' ? doc.title_en || doc.title_fr : doc.title_fr}
+                          {docTitle}
                         </h2>
 
                         {/* Description */}
@@ -301,7 +302,7 @@ export default function DocumentsPage() {
                                   onClick={() => {
                                     trackEvent('download_document', {
                                       target_id: doc.id,
-                                      target_title: title,
+                                      target_title: docTitle,
                                       path: '/organisation/documents',
                                     });
                                   }}

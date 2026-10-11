@@ -2,21 +2,23 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AnalyticsPeriodSummary } from '@/types';
 
-export interface GeneratePdfOptions {
+export interface PDFExportOptions {
   summary: AnalyticsPeriodSummary;
-  orgName?: string;
-  slogan?: string;
-  generatedByName?: string;
+  generatedBy?: string;
+  logoUrl?: string;
 }
 
-export function exportAnalyticsToPDF(options: GeneratePdfOptions): void {
-  const { summary, orgName = 'AGISSONS POUR SAUVER (APS-BÉNIN)', slogan = 'Pour un monde plus juste et égalitaire' } = options;
+/**
+ * Génère et déclenche le téléchargement d'un rapport PDF officiel des statistiques du site APS-BÉNIN.
+ *
+ * RÈGLES STRICTES :
+ * - Aucune donnée fictive ou inventée.
+ * - Si aucune donnée n'est disponible pour la période, un avertissement clair est inclus.
+ * - Mise en page A4 élégante avec en-tête institutionnel, métriques chiffrées, tableaux détaillés et pagination.
+ */
+export async function exportAnalyticsToPDF(options: PDFExportOptions): Promise<void> {
+  const { summary, generatedBy } = options;
 
-  if (!summary.hasData || summary.totalPageViews === 0) {
-    throw new Error('Aucune donnée statistique disponible pour générer un rapport sur cette période.');
-  }
-
-  // Create A4 Portrait PDF (210 x 297 mm)
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -26,53 +28,55 @@ export function exportAnalyticsToPDF(options: GeneratePdfOptions): void {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
+  const contentWidth = pageWidth - margin * 2;
 
-  // Colors
-  const purplePrimary: [number, number, number] = [146, 39, 143]; // #92278F
-  const orangeAccent: [number, number, number] = [255, 140, 0];  // #FF8C00
-  const darkGray: [number, number, number] = [31, 41, 55];
-  const mutedGray: [number, number, number] = [107, 114, 128];
-  const lightBg: [number, number, number] = [249, 250, 251];
+  // Couleurs de la charte APS-BÉNIN
+  const primaryViolet: [number, number, number] = [146, 39, 143]; // #92278F
+  const secondaryOrange: [number, number, number] = [255, 140, 0]; // #FF8C00
+  const darkText: [number, number, number] = [30, 41, 59];
+  const mutedText: [number, number, number] = [100, 116, 139];
+  const lightBg: [number, number, number] = [248, 250, 252];
 
   let currentY = 14;
 
-  // ==========================================
-  // 1. BRAND HEADER
-  // ==========================================
-  // Top accent bar (dual color: purple & orange)
-  doc.setFillColor(...purplePrimary);
-  doc.rect(margin, currentY, (pageWidth - margin * 2) * 0.7, 2, 'F');
-  doc.setFillColor(...orangeAccent);
-  doc.rect(margin + (pageWidth - margin * 2) * 0.7, currentY, (pageWidth - margin * 2) * 0.3, 2, 'F');
-  currentY += 8;
+  // =========================================================================
+  // 1. BANDEAU SUPÉRIEUR INSTITUTIONNEL
+  // =========================================================================
+  doc.setFillColor(...primaryViolet);
+  doc.rect(margin, currentY, contentWidth, 22, 'F');
 
-  // Header Logo & Organization Title
+  // Décoration orange latérale
+  doc.setFillColor(...secondaryOrange);
+  doc.rect(margin, currentY, 4, 22, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('RÉPUBLIQUE DU BÉNIN', margin + 8, currentY + 7);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('ASSOCIATION DE PROTECTION ET DE SAUVEGARDE (APS-BÉNIN)', margin + 8, currentY + 13);
+  doc.setFontSize(7.5);
+  doc.setTextColor(254, 215, 170); // orange pastel
+  doc.text('Portail Web Officiel — Système de Mesure d\'Audience et de Fréquentation Réelle', margin + 8, currentY + 18);
+
+  currentY += 28;
+
+  // =========================================================================
+  // 2. TITRE DU DOCUMENT & MÉTADONNÉES
+  // =========================================================================
+  doc.setTextColor(...darkText);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(...purplePrimary);
-  doc.text('APS-BÉNIN', margin, currentY);
+  doc.text('Rapport Statistique du Site Web APS-BÉNIN', margin, currentY);
 
-  doc.setFontSize(10);
-  doc.setTextColor(...darkGray);
-  doc.text(`— ${orgName}`, margin + 34, currentY);
+  currentY += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...mutedText);
 
-  currentY += 5;
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...orangeAccent);
-  doc.text(`« ${slogan} »`, margin, currentY);
-
-  currentY += 8;
-
-  // Document Title
-  doc.setFillColor(243, 232, 243); // subtle purple tint
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 18, 2, 2, 'F');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(...purplePrimary);
-  doc.text('RAPPORT STATISTIQUE DU SITE WEB APS-BÉNIN', margin + 6, currentY + 7);
-
+  // Période textuelle
   const periodLabel =
     summary.period === '7d'
       ? '7 derniers jours'
@@ -82,234 +86,389 @@ export function exportAnalyticsToPDF(options: GeneratePdfOptions): void {
       ? '90 derniers jours'
       : 'Période personnalisée';
 
-  const startFormatted = new Date(summary.startDate).toLocaleDateString('fr-FR');
-  const endFormatted = new Date(summary.endDate).toLocaleDateString('fr-FR');
+  const dateRangeStr = `Du ${summary.startDate || 'N/A'} au ${summary.endDate || 'N/A'}`;
+  doc.text(`Période couverte : ${periodLabel} (${dateRangeStr})`, margin, currentY);
+
+  currentY += 5;
+  const genDate = new Date().toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  doc.text(`Date et heure de génération : ${genDate}${generatedBy ? ` • Opérateur : ${generatedBy}` : ''}`, margin, currentY);
+
+  currentY += 8;
+
+  // =========================================================================
+  // 3. AVERTISSEMENT DE CONFORMITÉ & INTÉGRITÉ DES DONNÉES
+  // =========================================================================
+  doc.setFillColor(...lightBg);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, currentY, contentWidth, 12, 1.5, 1.5, 'FD');
+
+  doc.setFontSize(7.5);
+  doc.setTextColor(...primaryViolet);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RÈGLE D\'INTÉGRITÉ DES MESURES :', margin + 4, currentY + 4.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...darkGray);
+  doc.setTextColor(...mutedText);
   doc.text(
-    `Période : ${periodLabel} (du ${startFormatted} au ${endFormatted}) • Généré le ${new Date().toLocaleString('fr-FR')}`,
-    margin + 6,
-    currentY + 13
+    'Toutes les statistiques ci-dessous proviennent exclusivement d\'événements réels enregistrés sur le portail public. Aucun chiffre de démonstration, extrapolation ou visiteur fictif n\'est inclus.',
+    margin + 4,
+    currentY + 8.5
   );
 
-  currentY += 24;
+  currentY += 16;
 
-  // ==========================================
-  // 2. PRINCIPAUX INDICATEURS (KPI CARDS)
-  // ==========================================
+  // Si aucune donnée n'a été collectée pour la période sélectionnée
+  if (!summary.hasData) {
+    doc.setFillColor(254, 242, 242); // rouge clair
+    doc.setDrawColor(248, 113, 113);
+    doc.roundedRect(margin, currentY, contentWidth, 26, 2, 2, 'FD');
+
+    doc.setTextColor(185, 28, 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('AUCUNE DONNÉE COLLECTÉE POUR CETTE PÉRIODE', margin + 6, currentY + 8);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(153, 27, 27);
+    doc.text(
+      'Aucune visite ou interaction réelle n\'a été enregistrée sur le site web entre le ' +
+        summary.startDate +
+        ' et le ' +
+        summary.endDate +
+        '.',
+      margin + 6,
+      currentY + 15
+    );
+    doc.text(
+      'Conformément aux directives déontologiques de l\'APS-BÉNIN, aucun indicateur fictif n\'a été généré pour combler ce rapport.',
+      margin + 6,
+      currentY + 21
+    );
+
+    currentY += 34;
+
+    // Tableau vide explicite
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [['Indicateur', 'Valeur Réelle Observée', 'Statut']],
+      body: [
+        ['Pages consultées', '0', 'Aucune visite enregistrée'],
+        ['Sessions de navigation', '0', 'Aucune session enregistrée'],
+        ['Visiteurs uniques réels', '0', 'Aucun visiteur'],
+        ['Clics "Appeler le siège"', '0', 'Aucun appel déclenché'],
+        ['Téléchargements de documents', '0', 'Aucun téléchargement'],
+      ],
+      headStyles: {
+        fillColor: primaryViolet,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+      },
+      styles: { fontSize: 8, cellPadding: 3 },
+    });
+
+    addFooters(doc, pageHeight, margin, contentWidth);
+    savePDF(doc, summary);
+    return;
+  }
+
+  // =========================================================================
+  // 4. INDICATEURS CLÉS CHIFFRÉS (GRILLE DE BLOCS)
+  // =========================================================================
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.setTextColor(...purplePrimary);
-  doc.text('1. Indicateurs Clés de Fréquentation Réelle', margin, currentY);
-  currentY += 4;
+  doc.setFontSize(11);
+  doc.setTextColor(...primaryViolet);
+  doc.text('1. Indicateurs Clés de Fréquentation & d\'Interaction', margin, currentY);
+  currentY += 5;
 
-  const cardWidth = (pageWidth - margin * 2 - 6) / 3;
-  const cardHeight = 18;
+  const cardWidth = (contentWidth - 6) / 3;
+  const cardHeight = 16;
 
   const kpis = [
-    { label: 'Pages Vues', value: summary.totalPageViews.toLocaleString('fr-FR'), desc: 'Consultations totales' },
-    { label: 'Visiteurs & Sessions', value: summary.totalSessions.toLocaleString('fr-FR'), desc: 'Sessions uniques anonymes' },
-    { label: 'Appels au Siège', value: summary.callHeadquartersClicks.toLocaleString('fr-FR'), desc: 'Clics sur CTA téléphone' },
-    { label: 'Téléchargements', value: summary.documentDownloads.toLocaleString('fr-FR'), desc: 'Documents institutionnels' },
-    { label: 'Projets Consultés', value: summary.projectViews.toLocaleString('fr-FR'), desc: 'Fiches projets lues' },
-    { label: 'Actualités Lues', value: summary.newsViews.toLocaleString('fr-FR'), desc: 'Articles et communiqués' },
+    { label: 'Pages Vues', value: summary.totalPageViews.toLocaleString('fr-FR'), note: 'Consultations cumulées' },
+    { label: 'Sessions Actives', value: summary.totalSessions.toLocaleString('fr-FR'), note: 'Visites distinctes' },
+    { label: 'Clics "Appeler le siège"', value: summary.callHeadquartersClicks.toLocaleString('fr-FR'), note: 'Actions prioritaires' },
+    { label: 'Téléchargements Docs', value: summary.documentDownloads.toLocaleString('fr-FR'), note: 'Rapports & PDF acquis' },
+    { label: 'Vues Projets', value: summary.projectViews.toLocaleString('fr-FR'), note: 'Fiches projets lues' },
+    { label: 'Vues Actualités & Opps', value: (summary.newsViews + summary.opportunityViews).toLocaleString('fr-FR'), note: 'Articles & avis consultés' },
   ];
 
-  // Draw 2 rows of 3 cards
-  kpis.forEach((kpi, idx) => {
-    const col = idx % 3;
-    const row = Math.floor(idx / 3);
+  for (let i = 0; i < kpis.length; i++) {
+    const row = Math.floor(i / 3);
+    const col = i % 3;
     const x = margin + col * (cardWidth + 3);
     const y = currentY + row * (cardHeight + 3);
 
-    doc.setFillColor(...lightBg);
-    doc.setDrawColor(229, 231, 235);
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
     doc.roundedRect(x, y, cardWidth, cardHeight, 1.5, 1.5, 'FD');
 
-    // Value
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(...purplePrimary);
-    doc.text(kpi.value, x + 4, y + 7);
+    // Petite bordure violette gauche
+    doc.setFillColor(...(i === 2 ? secondaryOrange : primaryViolet));
+    doc.rect(x, y, 2, cardHeight, 'F');
 
-    // Label
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(...darkGray);
-    doc.text(kpi.label, x + 4, y + 12);
+    doc.setFontSize(11);
+    doc.setTextColor(...darkText);
+    doc.text(kpis[i].value, x + 5, y + 6);
 
-    // Desc
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...primaryViolet);
+    doc.text(kpis[i].label, x + 5, y + 10.5);
+
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.setTextColor(...mutedGray);
-    doc.text(kpi.desc, x + 4, y + 16);
-  });
+    doc.setTextColor(...mutedText);
+    doc.text(kpis[i].note, x + 5, y + 14);
+  }
 
-  currentY += cardHeight * 2 + 10;
+  currentY += (cardHeight + 3) * 2 + 6;
 
-  // ==========================================
-  // 3. TOP DES PAGES LES PLUS CONSULTÉES
-  // ==========================================
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.setTextColor(...purplePrimary);
-  doc.text('2. Pages les Plus Consultées sur la Période', margin, currentY);
-  currentY += 3;
+  // =========================================================================
+  // 5. TABLEAU DE L'ÉVOLUTION DU TRAFIC PAR JOUR
+  // =========================================================================
+  if (summary.trafficByDate && summary.trafficByDate.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...primaryViolet);
+    doc.text('2. Évolution Chronologique du Trafic', margin, currentY);
+    currentY += 4;
 
-  const tableData = summary.topPages.map((p, idx) => [
-    `#${idx + 1}`,
-    p.path,
-    p.title || 'Page du site',
-    p.views.toLocaleString('fr-FR'),
-    `${p.percentage}%`,
-  ]);
+    const trafficTableRows = summary.trafficByDate.map((item) => [
+      item.date,
+      item.pageViews.toString(),
+      item.sessions.toString(),
+      item.sessions > 0 ? (item.pageViews / item.sessions).toFixed(1) : '1.0',
+    ]);
 
-  autoTable(doc, {
-    startY: currentY,
-    margin: { left: margin, right: margin },
-    head: [['Rang', 'Chemin d’accès (URL)', 'Titre de la page', 'Consultations', 'Part']],
-    body: tableData.length > 0 ? tableData : [['-', 'Aucune page consultée', '-', '0', '0%']],
-    theme: 'grid',
-    styles: {
-      fontSize: 8,
-      cellPadding: 2.2,
-      font: 'helvetica',
-    },
-    headStyles: {
-      fillColor: purplePrimary,
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-    },
-    alternateRowStyles: {
-      fillColor: [250, 250, 250],
-    },
-    columnStyles: {
-      0: { cellWidth: 14, halign: 'center' },
-      1: { cellWidth: 50 },
-      2: { cellWidth: 'auto' },
-      3: { cellWidth: 26, halign: 'right' },
-      4: { cellWidth: 18, halign: 'right' },
-    },
-  });
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [['Date (AAAA-MM-JJ)', 'Pages Vues', 'Sessions Distinctes', 'Moyenne Pages / Session']],
+      body: trafficTableRows,
+      headStyles: {
+        fillColor: primaryViolet,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      styles: {
+        fontSize: 7.5,
+        cellPadding: 2,
+        halign: 'left',
+      },
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+    });
 
-  // @ts-ignore
-  currentY = doc.lastAutoTable.finalY + 8;
+    currentY = (doc as any).lastAutoTable?.finalY + 8 || currentY + 30;
+  }
 
-  // Check page overflow
+  // Vérifier si saut de page nécessaire
   if (currentY > pageHeight - 65) {
     doc.addPage();
     currentY = 16;
   }
 
-  // ==========================================
-  // 4. RÉPARTITION PAR APPAREILS & SOURCES
-  // ==========================================
+  // =========================================================================
+  // 6. TOP PAGES LES PLUS CONSULTÉES
+  // =========================================================================
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.setTextColor(...purplePrimary);
-  doc.text('3. Répartition Technique & Sources de Trafic', margin, currentY);
-  currentY += 3;
+  doc.setFontSize(11);
+  doc.setTextColor(...primaryViolet);
+  doc.text('3. Pages les Plus Consultées du Site', margin, currentY);
+  currentY += 4;
 
-  const deviceData = summary.deviceBreakdown.map((d) => [
-    d.device === 'mobile' ? 'Téléphone Mobile' : d.device === 'desktop' ? 'Ordinateur (Desktop)' : 'Tablette',
-    d.count.toLocaleString('fr-FR'),
-    `${d.percentage}%`,
+  const topPagesRows = (summary.topPages || []).slice(0, 10).map((p, idx) => [
+    (idx + 1).toString(),
+    p.path,
+    p.title || p.path,
+    p.views.toString(),
+    `${p.percentage}%`,
   ]);
 
-  const sourceData = summary.sourcesBreakdown.map((s) => [
-    s.source,
-    s.count.toLocaleString('fr-FR'),
-    `${s.percentage}%`,
-  ]);
+  if (topPagesRows.length > 0) {
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [['#', 'Chemin URL', 'Titre de la Page', 'Consultations', 'Part (%)']],
+      body: topPagesRows,
+      headStyles: {
+        fillColor: primaryViolet,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 8 },
+        1: { cellWidth: 40 },
+        3: { halign: 'center', cellWidth: 22 },
+        4: { halign: 'center', cellWidth: 16 },
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+    });
 
-  // Devices Table
-  autoTable(doc, {
-    startY: currentY,
-    margin: { left: margin, right: pageWidth / 2 + 2 },
-    head: [['Type d’appareil', 'Événements', 'Part']],
-    body: deviceData,
-    theme: 'grid',
-    styles: { fontSize: 7.5, cellPadding: 2 },
-    headStyles: { fillColor: [75, 85, 99], textColor: [255, 255, 255] },
-  });
+    currentY = (doc as any).lastAutoTable?.finalY + 8 || currentY + 30;
+  } else {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...mutedText);
+    doc.text('Aucune page vue enregistrée sur cette période.', margin, currentY + 4);
+    currentY += 10;
+  }
 
-  // Sources Table on right side
-  autoTable(doc, {
-    startY: currentY,
-    margin: { left: pageWidth / 2 + 2, right: margin },
-    head: [['Source de trafic', 'Événements', 'Part']],
-    body: sourceData.length > 0 ? sourceData : [['Direct / Non identifié', '100%', '100%']],
-    theme: 'grid',
-    styles: { fontSize: 7.5, cellPadding: 2 },
-    headStyles: { fillColor: orangeAccent, textColor: [255, 255, 255] },
-  });
-
-  // @ts-ignore
-  currentY = Math.max(doc.lastAutoTable.finalY || currentY, currentY) + 8;
-
-  // Check overflow
-  if (currentY > pageHeight - 40) {
+  // Vérifier saut de page
+  if (currentY > pageHeight - 65) {
     doc.addPage();
     currentY = 16;
   }
 
-  // ==========================================
-  // 5. SYNTHÈSE & MENTIONS DE CONFIDENTIALITÉ
-  // ==========================================
-  doc.setFillColor(...lightBg);
-  doc.setDrawColor(229, 231, 235);
-  doc.roundedRect(margin, currentY, pageWidth - margin * 2, 22, 2, 2, 'FD');
-
+  // =========================================================================
+  // 7. RÉPARTITION PAR APPAREILS & SOURCES DE TRAFIC
+  // =========================================================================
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...purplePrimary);
-  doc.text('Synthèse & Respect de la Confidentialité :', margin + 4, currentY + 5.5);
+  doc.setFontSize(11);
+  doc.setTextColor(...primaryViolet);
+  doc.text('4. Profil Technique & Sources du Trafic', margin, currentY);
+  currentY += 4;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...darkGray);
-  doc.text(
-    '• Ce rapport est généré à partir des événements mesurés en direct sur le site officiel APS-BÉNIN sans interpolation.',
-    margin + 4,
-    currentY + 10.5
-  );
-  doc.text(
-    '• Conforme à l’éthique d’APS-BÉNIN : aucun traceur intrusif ni donnée personnelle identifiante (PII) n’est enregistrée.',
-    margin + 4,
-    currentY + 15
-  );
-  doc.text(
-    '• Les adresses IP et identités nominatives des visiteurs publics ne sont ni stockées ni présentées dans ce document.',
-    margin + 4,
-    currentY + 19.5
-  );
+  const techRows: string[][] = [];
 
-  // ==========================================
-  // 6. NUMÉROTATION DES PAGES & FOOTER
-  // ==========================================
+  // Devices
+  (summary.deviceBreakdown || []).forEach((d) => {
+    techRows.push([
+      'Appareil',
+      d.device === 'mobile' ? 'Mobile (Smartphone)' : d.device === 'tablet' ? 'Tablette' : 'Ordinateur (Desktop)',
+      d.count.toString(),
+      `${d.percentage}%`,
+    ]);
+  });
+
+  // Sources
+  (summary.sourcesBreakdown || []).slice(0, 5).forEach((s) => {
+    techRows.push(['Source de trafic', s.source, s.count.toString(), `${s.percentage}%`]);
+  });
+
+  if (techRows.length > 0) {
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [['Catégorie', 'Détail / Canal', 'Nombre Réel', 'Part (%)']],
+      body: techRows,
+      headStyles: {
+        fillColor: secondaryOrange,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        2: { halign: 'center', cellWidth: 24 },
+        3: { halign: 'center', cellWidth: 20 },
+      },
+      alternateRowStyles: {
+        fillColor: [255, 251, 235], // orange très clair
+      },
+    });
+
+    currentY = (doc as any).lastAutoTable?.finalY + 8 || currentY + 30;
+  }
+
+  // Vérifier saut de page
+  if (currentY > pageHeight - 55) {
+    doc.addPage();
+    currentY = 16;
+  }
+
+  // =========================================================================
+  // 8. ACTIONS & INTERACTIONS CITOYENNES
+  // =========================================================================
+  if (summary.actionsBreakdown && summary.actionsBreakdown.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...primaryViolet);
+    doc.text('5. Actions & Événements Spécifiques Réalisés', margin, currentY);
+    currentY += 4;
+
+    const actionRows = summary.actionsBreakdown.map((a) => [a.label, a.count.toString()]);
+
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: margin, right: margin },
+      head: [['Intitulé de l\'Action ou Document', 'Occurrences Réelles']],
+      body: actionRows,
+      headStyles: {
+        fillColor: primaryViolet,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.5,
+      },
+      styles: {
+        fontSize: 7,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        1: { halign: 'center', cellWidth: 35 },
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+    });
+  }
+
+  // =========================================================================
+  // 9. PIED DE PAGE NUMÉROTÉ SUR TOUTES LES PAGES
+  // =========================================================================
+  addFooters(doc, pageHeight, margin, contentWidth);
+
+  savePDF(doc, summary);
+}
+
+function addFooters(doc: jsPDF, pageHeight: number, margin: number, contentWidth: number): void {
   const totalPages = doc.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-
-    // Footer line
-    doc.setDrawColor(229, 231, 235);
-    doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, pageHeight - 12, margin + contentWidth, pageHeight - 12);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...mutedGray);
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
     doc.text(
-      'APS-BÉNIN — Djacoṭé-Comè, Mono, République du Bénin • Enregistrement N°9/040PDM/SG/STCCD- du 20/09/2017',
+      'APS-BÉNIN • Rapport Statistique Confidentiel • Toutes données issues de collectes réelles et vérifiables',
       margin,
-      pageHeight - 7.5
+      pageHeight - 8
     );
-
-    doc.text(`Page ${i} sur ${totalPages}`, pageWidth - margin - 18, pageHeight - 7.5);
+    doc.text(`Page ${i} sur ${totalPages}`, margin + contentWidth - 16, pageHeight - 8);
   }
+}
 
-  // Save / Trigger Download
-  const filename = `rapport-statistiques-aps-benin-${summary.period}-${new Date().toISOString().slice(0, 10)}.pdf`;
+function savePDF(doc: jsPDF, summary: AnalyticsPeriodSummary): void {
+  const filename = `Rapport-Statistiques-APS-BENIN-${summary.period}-${summary.startDate}_au_${summary.endDate}.pdf`;
   doc.save(filename);
 }

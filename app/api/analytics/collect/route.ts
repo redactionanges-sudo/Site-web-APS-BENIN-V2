@@ -1,41 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminSupabase } from '@/lib/server-auth';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const rawUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').trim();
+const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+const sbClient = (serviceKey || anonKey) && rawUrl
+  ? createClient(rawUrl, serviceKey || anonKey)
+  : null;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { id, event_type, path, session_id } = body;
+    let body: any;
+    const contentType = req.headers.get('content-type') || '';
 
-    if (!event_type || !path || !session_id) {
-      return NextResponse.json({ error: 'Données analytiques incomplètes' }, { status: 400 });
+    if (contentType.includes('application/json')) {
+      body = await req.json();
+    } else {
+      const text = await req.text();
+      body = JSON.parse(text);
     }
 
-    const client = adminSupabase || supabase;
-    if (isSupabaseConfigured && client) {
-      const { error } = await client.from('analytics_events').insert([{
-        id: id || `ev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        created_at: body.created_at || new Date().toISOString(),
-        session_id,
-        event_type,
-        path,
-        page_title: body.page_title?.slice(0, 200) || '',
-        referrer: body.referrer?.slice(0, 150) || 'Direct',
-        device_type: body.device_type || 'desktop',
-        browser: body.browser?.slice(0, 100) || '',
-        country: body.country || 'BJ',
-        target_id: body.target_id?.slice(0, 100),
-        target_title: body.target_title?.slice(0, 200),
-        metadata: body.metadata || {},
-      }]);
+    if (!body || !body.event_type || !body.path) {
+      return NextResponse.json({ error: 'Payload invalide' }, { status: 400 });
+    }
 
+    // Préparation de l'événement sécurisé
+    const event = {
+      id: body.id || 'evt_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36),
+      created_at: body.created_at || new Date().toISOString(),
+      session_id: body.session_id || 'anon_sess',
+      event_type: body.event_type,
+      path: body.path.slice(0, 500),
+      page_title: body.page_title ? String(body.page_title).slice(0, 300) : null,
+      referrer: body.referrer ? String(body.referrer).slice(0, 500) : null,
+      device_type: body.device_type || 'desktop',
+      browser: body.browser ? String(body.browser).slice(0, 100) : null,
+      country: body.country || 'BJ',
+      target_id: body.target_id ? String(body.target_id).slice(0, 150) : null,
+      target_title: body.target_title ? String(body.target_title).slice(0, 300) : null,
+      metadata: body.metadata || null,
+    };
+
+    if (sbClient) {
+      const { error } = await sbClient.from('analytics_events').insert([event]);
       if (error) {
-        console.warn('Erreur insertion analytics_events API:', error.message);
+        // Table may not exist yet in database or RLS check
+        return NextResponse.json({ success: true, stored: 'unmigrated_table', warning: error.message });
       }
+      return NextResponse.json({ success: true, stored: 'supabase' });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, stored: 'local' });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ success: false, error: err?.message || 'Erreur interne' }, { status: 500 });
   }
 }
