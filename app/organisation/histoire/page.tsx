@@ -7,7 +7,7 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { HistoryMilestone, InstitutionalPage } from '@/types';
-import { Calendar, CheckCircle2, Award, Clock } from 'lucide-react';
+import { Calendar, CheckCircle2, Award, Clock, EyeOff } from 'lucide-react';
 
 export default function HistoirePage() {
   const { language } = useLanguage();
@@ -59,6 +59,17 @@ export default function HistoirePage() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       <Navbar />
+
+      {pageData && pageData.is_published === false && (
+        <div className="bg-amber-500 text-white text-xs font-bold py-2.5 px-4 text-center flex items-center justify-center gap-2 shadow-xs">
+          <EyeOff className="w-4 h-4 shrink-0" />
+          <span>
+            {language === 'en'
+              ? 'Notice: This page is currently saved as a draft in the admin back-office.'
+              : 'Avis : Cette page est actuellement configurée en mode brouillon interne dans le back-office.'}
+          </span>
+        </div>
+      )}
 
       <main className="flex-1">
         {/* Header */}

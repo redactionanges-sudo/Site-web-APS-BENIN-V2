@@ -23,6 +23,7 @@ import {
   Heart,
   ShieldAlert,
   Sparkles,
+  EyeOff,
 } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
@@ -177,6 +178,17 @@ export default function PresentationPage() {
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
       <Navbar />
+
+      {pageData && pageData.is_published === false && (
+        <div className="bg-amber-500 text-white text-xs font-bold py-2.5 px-4 text-center flex items-center justify-center gap-2 shadow-xs">
+          <EyeOff className="w-4 h-4 shrink-0" />
+          <span>
+            {language === 'en'
+              ? 'Notice: This institutional page is currently saved as a draft in the admin back-office.'
+              : 'Avis : Cette page institutionnelle est actuellement configurée en mode brouillon interne dans le back-office.'}
+          </span>
+        </div>
+      )}
 
       <main className="flex-1">
         {/* Page Header */}

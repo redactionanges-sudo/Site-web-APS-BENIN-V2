@@ -70,7 +70,7 @@ export const AdminSidebar: React.FC = () => {
     { href: '/admin/opportunites', label: 'Opportunités', icon: <Briefcase className="w-4 h-4" /> },
     { href: '/admin/pages-institutionnelles', label: 'Pages Institutionnelles', icon: <BookOpen className="w-4 h-4 text-[#FF8C00]" /> },
     { href: '/admin/mediatheque', label: 'Médiathèque', icon: <ImageIcon className="w-4 h-4" /> },
-    { href: '/admin/domaines', label: "Domaines d'action", icon: <ShieldCheck className="w-4 h-4" /> },
+    { href: '/admin/domaines', label: "Domaines d'intervention", icon: <ShieldCheck className="w-4 h-4" /> },
     { href: '/admin/partenaires', label: 'Partenaires', icon: <Handshake className="w-4 h-4" /> },
     { href: '/admin/equipe', label: 'Équipe', icon: <Users className="w-4 h-4" /> },
     { href: '/admin/gouvernance', label: 'Gouvernance', icon: <Building className="w-4 h-4" /> },

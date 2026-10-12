@@ -1409,6 +1409,12 @@ export const supabaseStore = {
     return await this.getHistory();
   },
 
+  async deleteHistoryMilestone(id: string): Promise<HistoryMilestone[]> {
+    await mutateTable('history_milestones', 'delete', id);
+    invalidateCache('history');
+    return await this.getHistory();
+  },
+
   // Institutional Pages (Présentation, Histoire, Mission-Vision-Valeurs, Domaines)
   async getInstitutionalPages(): Promise<InstitutionalPage[]> {
     const cached = getCachedData<InstitutionalPage[]>('institutional_pages');
@@ -1420,10 +1426,24 @@ export const supabaseStore = {
           .from('institutional_pages')
           .select('*');
         if (!error && data && data.length > 0) {
-          const res = data as InstitutionalPage[];
-          setCachedData('institutional_pages', res);
-          setStoredItem('institutional_pages', res);
-          return res;
+          const fetchedMap = new Map<string, InstitutionalPage>();
+          (data as InstitutionalPage[]).forEach((p) => fetchedMap.set(p.slug, p));
+
+          // Ensure all standard initial pages exist in the array
+          const merged: InstitutionalPage[] = initialInstitutionalPages.map((init) => {
+            return fetchedMap.get(init.slug) || init;
+          });
+
+          // Add any additional slugs that might be in database
+          data.forEach((p: any) => {
+            if (!merged.some((m) => m.slug === p.slug)) {
+              merged.push(p);
+            }
+          });
+
+          setCachedData('institutional_pages', merged);
+          setStoredItem('institutional_pages', merged);
+          return merged;
         }
       } catch (e) {
         console.warn('Supabase institutional_pages fallback:', e);
