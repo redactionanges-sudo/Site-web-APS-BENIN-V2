@@ -2,14 +2,32 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { UserProfile, UserRole } from '@/types';
 
-let rawUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-if (rawUrl.endsWith('/')) rawUrl = rawUrl.slice(0, -1);
-if (rawUrl.endsWith('/rest/v1')) rawUrl = rawUrl.replace(/\/rest\/v1$/, '');
+export function normalizeSupabaseUrl(url?: string): string {
+  let cleaned = (url || '').trim();
+  while (cleaned.endsWith('/')) {
+    cleaned = cleaned.slice(0, -1);
+  }
+  if (cleaned.endsWith('/rest/v1')) {
+    cleaned = cleaned.slice(0, -8);
+  }
+  while (cleaned.endsWith('/')) {
+    cleaned = cleaned.slice(0, -1);
+  }
+  return cleaned;
+}
 
+const rawUrl = normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-export const adminSupabase = serviceKey && rawUrl ? createClient(rawUrl, serviceKey) : null;
+export const adminSupabase = serviceKey && rawUrl
+  ? createClient(rawUrl, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  : null;
 
 export interface AuthValidationResult {
   ok: boolean;

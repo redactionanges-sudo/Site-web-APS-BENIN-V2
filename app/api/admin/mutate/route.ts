@@ -93,7 +93,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
     'description_fr', 'description_en', 'is_published', 'created_at', 'updated_at'
   ],
   profiles: [
-    'id', 'email', 'full_name', 'role', 'created_at', 'last_sign_in'
+    'id', 'email', 'full_name', 'role', 'is_active', 'created_at', 'last_sign_in'
   ],
   history_milestones: [
     'id', 'year', 'title_fr', 'title_en', 'description_fr', 'description_en', 'order_index'

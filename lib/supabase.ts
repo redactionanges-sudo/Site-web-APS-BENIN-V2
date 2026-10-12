@@ -18,6 +18,7 @@ import {
   HistoryMilestone,
   ContactMessage,
   UserProfile,
+  UserRole,
   AuditLog,
   AuditActionType,
   AuditModule,
@@ -45,11 +46,12 @@ import {
   initialInstitutionalPages,
 } from './initial-data';
 
-let rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-if (rawSupabaseUrl.endsWith('/')) rawSupabaseUrl = rawSupabaseUrl.slice(0, -1);
-if (rawSupabaseUrl.endsWith('/rest/v1')) rawSupabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1$/, '');
+let rawSupabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+while (rawSupabaseUrl.endsWith('/')) rawSupabaseUrl = rawSupabaseUrl.slice(0, -1);
+if (rawSupabaseUrl.endsWith('/rest/v1')) rawSupabaseUrl = rawSupabaseUrl.slice(0, -8);
+while (rawSupabaseUrl.endsWith('/')) rawSupabaseUrl = rawSupabaseUrl.slice(0, -1);
 const supabaseUrl = rawSupabaseUrl;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && 
@@ -1882,14 +1884,143 @@ export const supabaseStore = {
     return local;
   },
 
-  async saveUser(user: UserProfile): Promise<UserProfile[]> {
-    await mutateTable('profiles', 'upsert', user);
+  async createUser(data: {
+    email: string;
+    full_name: string;
+    role: UserRole;
+    password?: string;
+    is_active?: boolean;
+  }): Promise<{ success: boolean; user?: UserProfile; initialPassword?: string; recoveryLink?: string; error?: string }> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (typeof window !== 'undefined' && supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      }
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return {
+          success: false,
+          error: json.error || 'Erreur lors de la création de l’utilisateur.',
+        };
+      }
+      invalidateCache('users');
+      return {
+        success: true,
+        user: json.user,
+        initialPassword: json.initialPassword,
+        recoveryLink: json.recoveryLink,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Impossible de joindre le serveur.',
+      };
+    }
+  },
+
+  async updateUser(data: {
+    id: string;
+    full_name?: string;
+    role?: UserRole;
+    is_active?: boolean;
+    password?: string;
+  }): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (typeof window !== 'undefined' && supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      }
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return {
+          success: false,
+          error: json.error || 'Erreur lors de la mise à jour de l’utilisateur.',
+        };
+      }
+      invalidateCache('users');
+      return {
+        success: true,
+        user: json.user,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err.message || 'Impossible de joindre le serveur.',
+      };
+    }
+  },
+
+  async saveUser(user: UserProfile & { password?: string }): Promise<UserProfile[]> {
+    const isNew = !user.id || user.id.startsWith('usr-');
+    if (isNew) {
+      const res = await this.createUser({
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+        password: user.password,
+        is_active: user.is_active,
+      });
+      if (!res.success) {
+        throw new Error(res.error || 'Erreur lors de la création de l’utilisateur.');
+      }
+    } else {
+      const res = await this.updateUser({
+        id: user.id,
+        full_name: user.full_name,
+        role: user.role,
+        is_active: user.is_active,
+        password: user.password,
+      });
+      if (!res.success) {
+        throw new Error(res.error || 'Erreur lors de la modification de l’utilisateur.');
+      }
+    }
     invalidateCache('users');
     return await this.getUsers();
   },
 
   async deleteUser(id: string): Promise<UserProfile[]> {
-    await mutateTable('profiles', 'delete', id);
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (typeof window !== 'undefined' && supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+      }
+      const res = await fetch(`/api/admin/users?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers,
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        console.warn('API delete user error:', json.error);
+      }
+    } catch (e) {
+      console.warn('API delete user exception:', e);
+    }
     invalidateCache('users');
     return await this.getUsers();
   },
