@@ -39,6 +39,12 @@ import {
   getVideoPlatformLabel,
   DEFAULT_VIDEO_FALLBACK_POSTER,
 } from '@/lib/video-utils';
+import {
+  MEDIA_CATEGORIES,
+  normalizeCategoryName,
+  getDefaultCategoryForModule,
+} from '@/lib/media-categories';
+import { MediaTargetModule } from '@/types';
 
 export default function AdminMediathequePage() {
   const [activeTab, setActiveTab] = useState<'photos' | 'videos' | 'albums'>('photos');
@@ -47,6 +53,8 @@ export default function AdminMediathequePage() {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [search, setSearch] = useState('');
   const [selectedAlbumFilter, setSelectedAlbumFilter] = useState('all');
+  const [galleryFilter, setGalleryFilter] = useState<'all' | 'public' | 'internal'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [heroFilterOnly, setHeroFilterOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 12;

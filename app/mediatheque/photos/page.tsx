@@ -9,6 +9,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { PhotoAlbum, MediaItem } from '@/types';
 import { Image as ImageIcon, Calendar, MapPin, X, ZoomIn, Folder } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function PhotosMediathequePage() {
   const { language, t } = useLanguage();
@@ -16,17 +17,34 @@ export default function PhotosMediathequePage() {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('all');
   const [activePhoto, setActivePhoto] = useState<MediaItem | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabaseStore.getAlbums().then(setAlbums);
-    supabaseStore.getMedia().then((items) => {
-      setMediaItems(items.filter((m) => m.type === 'photo'));
-    });
+    Promise.all([
+      supabaseStore.getAlbums(),
+      supabaseStore.getPublicGalleryPhotos(),
+    ])
+      .then(([albumList, publicPhotos]) => {
+        setAlbums(albumList);
+        setMediaItems(publicPhotos);
+      })
+      .catch((err) => {
+        console.error('Erreur chargement médiathèque publique:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const filteredPhotos = selectedAlbumId === 'all'
-    ? mediaItems
-    : mediaItems.filter((m) => m.album_id === selectedAlbumId);
+  // Filter albums that actually contain public photos
+  const availableAlbums = albums.filter((alb) =>
+    mediaItems.some((m) => m.album_id === alb.id)
+  );
+
+  const filteredPhotos =
+    selectedAlbumId === 'all'
+      ? mediaItems
+      : mediaItems.filter((m) => m.album_id === selectedAlbumId);
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -70,34 +88,66 @@ export default function PhotosMediathequePage() {
               >
                 {t('common.filter_all')} ({mediaItems.length})
               </button>
-              {albums.map((alb) => (
-                <button
-                  key={alb.id}
-                  type="button"
-                  onClick={() => setSelectedAlbumId(alb.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    selectedAlbumId === alb.id
-                      ? 'bg-[#92278F] text-white shadow-xs'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
-                  }`}
-                >
-                  {language === 'en' ? alb.title_en : alb.title_fr}
-                </button>
-              ))}
+              {availableAlbums.map((alb) => {
+                const count = mediaItems.filter((m) => m.album_id === alb.id).length;
+                return (
+                  <button
+                    key={alb.id}
+                    type="button"
+                    onClick={() => setSelectedAlbumId(alb.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      selectedAlbumId === alb.id
+                        ? 'bg-[#92278F] text-white shadow-xs'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {language === 'en' ? alb.title_en : alb.title_fr} ({count})
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>
 
         {/* Photos Grid */}
-        <section className="py-16 bg-white">
+        <section className="py-16 bg-white min-h-[400px]">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            {filteredPhotos.length === 0 ? (
-              <div className="text-center py-16 bg-gray-50 rounded-2xl border border-gray-200">
-                <p className="text-base text-gray-600 font-medium">
-                  {language === 'en'
-                    ? 'No photos found in this album.'
-                    : 'Aucune photographie répertoriée dans cet album pour le moment.'}
+            {loading ? (
+              <div className="text-center py-20 text-gray-500 text-sm">
+                Chargement de la médiathèque...
+              </div>
+            ) : filteredPhotos.length === 0 ? (
+              <div className="text-center py-16 bg-gray-50 rounded-2xl border border-gray-200 max-w-2xl mx-auto p-8">
+                <div className="w-14 h-14 rounded-2xl bg-purple-100 text-[#92278F] flex items-center justify-center mx-auto mb-4">
+                  <ImageIcon className="w-7 h-7" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900 font-heading mb-1.5">
+                  {selectedAlbumId === 'all'
+                    ? language === 'en'
+                      ? 'No public photos published yet'
+                      : 'Aucune photographie publique pour le moment'
+                    : language === 'en'
+                    ? 'No photos in this album'
+                    : 'Aucune photographie répertoriée dans cet album'}
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed max-w-md mx-auto">
+                  {selectedAlbumId === 'all'
+                    ? language === 'en'
+                      ? 'The visual archive is currently curated. New field activities and community albums will be showcased shortly.'
+                      : 'Les photographies de terrain et les albums d’activités communautaires autorisés pour la médiathèque publique seront publiés ici prochainement.'
+                    : language === 'en'
+                    ? 'Please select another album or view all photos.'
+                    : 'Sélectionnez un autre album ou affichez toutes les photos.'}
                 </p>
+                {selectedAlbumId !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAlbumId('all')}
+                    className="mt-4 px-4 py-2 text-xs font-bold rounded-lg bg-[#92278F] text-white hover:bg-[#741772] transition-colors"
+                  >
+                    Voir toutes les photos ({mediaItems.length})
+                  </button>
+                )}
               </div>
             ) : (
               <motion.div
@@ -117,15 +167,11 @@ export default function PhotosMediathequePage() {
                     className="group relative rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-xl transition-shadow duration-300"
                   >
                     <div className="h-64 w-full overflow-hidden relative">
-                      <motion.img
+                      <OptimizedImage
                         src={item.thumbnail_url || item.url}
                         alt={item.alt_fr || item.title_fr}
-                        className="w-full h-full object-cover"
-                        variants={{
-                          hover: { scale: 1.08 },
-                        }}
-                        transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        loading="lazy"
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
 
@@ -149,15 +195,21 @@ export default function PhotosMediathequePage() {
                           <ZoomIn className="w-3.5 h-3.5" />
                         </motion.div>
                       </div>
-                      <h3 className="font-bold text-sm line-clamp-2">
+                      <h3 className="font-bold text-base text-white line-clamp-2 font-heading leading-tight mb-2">
                         {language === 'en' ? item.title_en : item.title_fr}
                       </h3>
-                      {item.location && (
-                        <p className="text-[11px] text-gray-300 mt-1 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#FF8C00]" />
-                          <span>{item.location}</span>
-                        </p>
-                      )}
+                      <div className="flex items-center gap-4 text-[11px] text-gray-300 font-mono">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-[#FF8C00]" />
+                          {item.date}
+                        </span>
+                        {item.location && (
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 text-[#FF8C00]" />
+                            {item.location}
+                          </span>
+                        )}
+                      </div>
                     </motion.div>
                   </motion.div>
                 ))}
@@ -166,58 +218,60 @@ export default function PhotosMediathequePage() {
           </div>
         </section>
 
-        {/* Lightbox Modal */}
+        {/* Photo Lightbox Modal */}
         <AnimatePresence>
           {activePhoto && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
               onClick={() => setActivePhoto(null)}
-              className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
             >
               <motion.div
-                initial={{ opacity: 0, scale: 0.92, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.92, y: 10 }}
-                transition={{ duration: 0.25, ease: 'easeOut' }}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
                 onClick={(e) => e.stopPropagation()}
-                className="relative max-w-4xl w-full bg-gray-900 rounded-2xl overflow-hidden shadow-2xl border border-gray-800 flex flex-col max-h-[90vh]"
+                className="bg-gray-900 rounded-2xl overflow-hidden max-w-4xl w-full border border-gray-800 shadow-2xl relative"
               >
                 <button
                   type="button"
                   onClick={() => setActivePhoto(null)}
-                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-[#FF8C00] transition-colors"
+                  className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
                   aria-label="Fermer"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
-                <div className="flex-1 overflow-hidden bg-black flex items-center justify-center p-2">
+                <div className="max-h-[70vh] w-full bg-black flex items-center justify-center overflow-hidden">
                   <img
                     src={activePhoto.url}
                     alt={activePhoto.alt_fr || activePhoto.title_fr}
-                    className="max-h-[60vh] max-w-full object-contain"
+                    className="max-h-[70vh] w-auto max-w-full object-contain"
                   />
                 </div>
 
-                <div className="p-6 bg-gray-900 text-white space-y-2 border-t border-gray-800">
-                  <div className="flex items-center justify-between text-xs text-orange-400">
-                    <span className="font-bold uppercase tracking-wider">{activePhoto.category}</span>
-                    <span>{activePhoto.date}</span>
+                <div className="p-6 text-white bg-gray-900 border-t border-gray-800">
+                  <div className="flex items-center justify-between text-xs text-[#FF8C00] font-semibold mb-2">
+                    <span>{activePhoto.category}</span>
+                    <span className="font-mono text-gray-400">{activePhoto.date}</span>
                   </div>
-                  <h2 className="text-lg font-bold">
+                  <h3 className="text-lg sm:text-xl font-bold font-heading mb-2">
                     {language === 'en' ? activePhoto.title_en : activePhoto.title_fr}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                    {language === 'en' ? activePhoto.description_en : activePhoto.description_fr}
-                  </p>
-                  {activePhoto.location && (
-                    <p className="text-xs text-gray-400 flex items-center gap-1.5 pt-1">
-                      <MapPin className="w-3.5 h-3.5 text-[#FF8C00]" />
-                      <span>Lieu : {activePhoto.location}</span>
+                  </h3>
+                  {(activePhoto.description_fr || activePhoto.description_en) && (
+                    <p className="text-sm text-gray-300 leading-relaxed mb-3">
+                      {language === 'en'
+                        ? activePhoto.description_en || activePhoto.description_fr
+                        : activePhoto.description_fr}
                     </p>
+                  )}
+                  {activePhoto.location && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400 font-mono">
+                      <MapPin className="w-3.5 h-3.5 text-[#FF8C00]" />
+                      <span>{activePhoto.location}</span>
+                    </div>
                   )}
                 </div>
               </motion.div>

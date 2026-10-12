@@ -30,6 +30,8 @@ import {
   Folder,
 } from 'lucide-react';
 
+import { isMediaAllowedInPublicGallery } from '@/lib/media-categories';
+
 export default function VideosMediathequePage() {
   const { language, t } = useLanguage();
   const [videos, setVideos] = useState<MediaItem[]>([]);
@@ -47,14 +49,10 @@ export default function VideosMediathequePage() {
 
   useEffect(() => {
     Promise.all([
-      supabaseStore.getMedia(),
+      supabaseStore.getPublicGalleryVideos(),
       supabaseStore.getAlbums(),
       supabaseStore.getProjects(),
-    ]).then(([mediaItems, albumItems, projectItems]) => {
-      // Only active videos
-      const vidItems = mediaItems.filter(
-        (m) => m.type === 'video' && m.is_active !== false
-      );
+    ]).then(([vidItems, albumItems, projectItems]) => {
       setVideos(vidItems);
       setAlbums(albumItems);
       setProjects(projectItems);

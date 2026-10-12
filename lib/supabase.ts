@@ -2,6 +2,10 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { normalizeSocialLinks } from '@/lib/social';
 import type { UploadProgressData } from '@/components/admin/UploadProgressBar';
 import {
+  isMediaAllowedInPublicGallery,
+  normalizeCategoryName,
+} from '@/lib/media-categories';
+import {
   SiteSettings,
   BannerAnnouncement,
   KeyStatistic,
@@ -185,6 +189,8 @@ export function unpackMedia(row: any): MediaItem {
   let show_in_hero = false;
   let hero_order = 99;
   let is_active = true;
+  let show_in_public_gallery = false;
+  let target_module = undefined;
 
   // 1. Robust recursive unwrap of metadata in description_en
   while (typeof description_en === 'string' && description_en.trim().startsWith('{')) {
@@ -193,6 +199,12 @@ export function unpackMedia(row: any): MediaItem {
       if (parsed.show_in_hero !== undefined) show_in_hero = Boolean(parsed.show_in_hero);
       if (parsed.hero_order !== undefined) hero_order = Number(parsed.hero_order) || 99;
       if (parsed.is_active !== undefined) is_active = Boolean(parsed.is_active);
+      if (parsed.show_in_public_gallery !== undefined) {
+        show_in_public_gallery = Boolean(parsed.show_in_public_gallery);
+      }
+      if (parsed.target_module !== undefined) {
+        target_module = parsed.target_module;
+      }
       description_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
     } catch {
       break;
@@ -203,6 +215,10 @@ export function unpackMedia(row: any): MediaItem {
   if (row.show_in_hero !== undefined && row.show_in_hero !== null) show_in_hero = Boolean(row.show_in_hero);
   if (row.hero_order !== undefined && row.hero_order !== null) hero_order = Number(row.hero_order) || 99;
   if (row.is_active !== undefined && row.is_active !== null) is_active = row.is_active !== false;
+  if (row.show_in_public_gallery !== undefined && row.show_in_public_gallery !== null) {
+    show_in_public_gallery = Boolean(row.show_in_public_gallery);
+  }
+  if (row.target_module) target_module = row.target_module;
 
   return {
     id: row.id,
@@ -213,7 +229,7 @@ export function unpackMedia(row: any): MediaItem {
     thumbnail_url: row.thumbnail_url || row.url || '',
     album_id: row.album_id || undefined,
     project_id: row.project_id || undefined,
-    category: row.category || 'Médiathèque',
+    category: row.category || 'Médiathèque publique',
     date: row.date || new Date().toISOString().split('T')[0],
     location: row.location || 'APS-BÉNIN',
     alt_fr: row.alt_fr || row.title_fr || '',
@@ -224,6 +240,8 @@ export function unpackMedia(row: any): MediaItem {
     show_in_hero,
     hero_order,
     is_active,
+    show_in_public_gallery,
+    target_module,
   };
 }
 
@@ -232,6 +250,8 @@ export function packMedia(item: any): any {
   let show_in_hero = Boolean(item.show_in_hero);
   let hero_order = Number(item.hero_order) || 1;
   let is_active = item.is_active !== false;
+  let show_in_public_gallery = Boolean(item.show_in_public_gallery);
+  let target_module = item.target_module || undefined;
 
   // Unpack any nested JSON if description_en was already encapsulated
   while (typeof original_desc_en === 'string' && original_desc_en.trim().startsWith('{')) {
@@ -246,6 +266,12 @@ export function packMedia(item: any): any {
       if (parsed.is_active !== undefined && item.is_active === undefined) {
         is_active = Boolean(parsed.is_active);
       }
+      if (parsed.show_in_public_gallery !== undefined && item.show_in_public_gallery === undefined) {
+        show_in_public_gallery = Boolean(parsed.show_in_public_gallery);
+      }
+      if (parsed.target_module !== undefined && item.target_module === undefined) {
+        target_module = parsed.target_module;
+      }
       original_desc_en = parsed.desc_en !== undefined ? parsed.desc_en : (parsed.text !== undefined ? parsed.text : (parsed.description_en || ''));
     } catch {
       break;
@@ -257,6 +283,8 @@ export function packMedia(item: any): any {
     show_in_hero,
     hero_order,
     is_active,
+    show_in_public_gallery,
+    target_module,
     updated_at: new Date().toISOString(),
   });
 
@@ -265,6 +293,8 @@ export function packMedia(item: any): any {
     show_in_hero,
     hero_order,
     is_active,
+    show_in_public_gallery,
+    target_module,
     description_en: packedMeta,
   };
 }
@@ -482,7 +512,14 @@ async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId:
 
           if (table === 'media') {
             const packed = packMedia(dataOrId);
-            const { show_in_hero: _, hero_order: __, is_active: ___, ...sqlPayload } = packed;
+            const {
+              show_in_hero: _,
+              hero_order: __,
+              is_active: ___,
+              show_in_public_gallery: ____,
+              target_module: _____,
+              ...sqlPayload
+            } = packed;
             upsertPayload = sqlPayload;
           }
 
@@ -1310,9 +1347,30 @@ export const supabaseStore = {
   },
 
   async getPublishedVideos(): Promise<MediaItem[]> {
+    return await this.getPublicGalleryVideos();
+  },
+
+  async getPublicGalleryPhotos(albumId?: string): Promise<MediaItem[]> {
     const allMedia = await this.getMedia();
     return allMedia
-      .filter((m) => m.type === 'video' && m.is_active !== false)
+      .filter((m) => {
+        if (m.type !== 'photo') return false;
+        if (!isMediaAllowedInPublicGallery(m)) return false;
+        if (albumId && albumId !== 'all' && m.album_id !== albumId) return false;
+        return true;
+      })
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  },
+
+  async getPublicGalleryVideos(albumId?: string): Promise<MediaItem[]> {
+    const allMedia = await this.getMedia();
+    return allMedia
+      .filter((m) => {
+        if (m.type !== 'video') return false;
+        if (!isMediaAllowedInPublicGallery(m)) return false;
+        if (albumId && albumId !== 'all' && m.album_id !== albumId) return false;
+        return true;
+      })
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   },
 

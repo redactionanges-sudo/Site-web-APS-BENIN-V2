@@ -313,6 +313,17 @@ export interface PhotoAlbum {
   photo_count?: number;
 }
 
+export type MediaTargetModule =
+  | 'equipe'
+  | 'partenaires'
+  | 'projets'
+  | 'actualites'
+  | 'opportunites'
+  | 'institutionnel'
+  | 'documents'
+  | 'mediatheque'
+  | 'autre';
+
 export interface MediaItem {
   id: string;
   title_fr: string;
@@ -333,6 +344,8 @@ export interface MediaItem {
   show_in_hero?: boolean;
   hero_order?: number;
   is_active?: boolean;
+  show_in_public_gallery?: boolean;
+  target_module?: MediaTargetModule;
 }
 
 export interface HistoryMilestone {

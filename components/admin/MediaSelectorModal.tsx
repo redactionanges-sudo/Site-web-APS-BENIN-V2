@@ -15,6 +15,8 @@ import {
   Sparkles,
   ExternalLink,
 } from 'lucide-react';
+import { getDefaultCategoryForModule } from '@/lib/media-categories';
+import { MediaTargetModule } from '@/types';
 
 export interface SelectedMedia {
   url: string;
@@ -32,6 +34,7 @@ interface MediaSelectorModalProps {
   currentUrl?: string;
   initialSelectedUrls?: string[];
   allowedTypes?: ('photo' | 'video')[];
+  targetModule?: MediaTargetModule;
 }
 
 const DEFAULT_ALLOWED_TYPES: ('photo' | 'video')[] = ['photo'];
@@ -46,6 +49,7 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
   currentUrl = '',
   initialSelectedUrls,
   allowedTypes = DEFAULT_ALLOWED_TYPES,
+  targetModule = 'autre',
 }) => {
   const [activeTab, setActiveTab] = useState<'browse' | 'upload'>('browse');
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
@@ -162,6 +166,8 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
         .replace(/[-_]/g, ' ')
         .trim();
 
+      const catInfo = getDefaultCategoryForModule(targetModule);
+
       // Persist as a MediaItem in database so it is saved in library
       const newMedia: MediaItem = {
         id: 'med-' + Date.now(),
@@ -170,7 +176,9 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
         type: 'photo',
         url: result.publicUrl,
         thumbnail_url: result.thumbnailUrl || result.publicUrl,
-        category: 'Médiathèque',
+        category: catInfo.category,
+        target_module: catInfo.targetModule,
+        show_in_public_gallery: false, // Prudent : non affiché par défaut dans la médiathèque publique
         date: new Date().toISOString().split('T')[0],
         location: 'APS-BÉNIN',
         alt_fr: generatedTitle,
@@ -572,6 +580,7 @@ interface ImagePickerFieldProps {
   required?: boolean;
   helpText?: string;
   placeholder?: string;
+  targetModule?: MediaTargetModule;
 }
 
 /**
@@ -585,6 +594,7 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
   required = false,
   helpText,
   placeholder = 'https://... ou choisir dans la médiathèque',
+  targetModule,
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -660,6 +670,7 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
         onClose={() => setModalOpen(false)}
         currentUrl={value}
         allowedTypes={DEFAULT_ALLOWED_TYPES}
+        targetModule={targetModule}
         onSelect={(media) => {
           onChange(media.url, media.alt_fr);
         }}
