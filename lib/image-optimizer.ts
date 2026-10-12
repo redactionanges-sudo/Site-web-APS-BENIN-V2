@@ -145,8 +145,8 @@ export async function optimizeImageBuffer(
     buffer: optimizedBuffer,
     contentType: 'image/webp',
     extension: 'webp',
-    width: optimizedMeta.width || targetMaxWidth,
-    height: optimizedMeta.height || targetMaxHeight,
+    width: optimizedMeta.width || targetMaxWidth || originalWidth,
+    height: optimizedMeta.height || targetMaxHeight || originalHeight,
     sizeBytes: optimizedBuffer.length,
   };
 

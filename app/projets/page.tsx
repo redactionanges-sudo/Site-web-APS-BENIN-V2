@@ -9,6 +9,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem } from '@/types';
 import { Search, MapPin, Calendar, ArrowRight, Filter } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function ProjetsPage() {
   const { language, t } = useLanguage();
@@ -170,12 +171,14 @@ export default function ProjetsPage() {
                     className="bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-[#92278F] transition-all hover:shadow-lg flex flex-col group"
                   >
                     <div className="relative h-56 w-full overflow-hidden bg-gray-100">
-                      <img
-                        src={proj.main_image || 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=800&q=80'}
+                      <OptimizedImage
+                        src={proj.main_image}
                         alt={language === 'en' ? proj.title_en : proj.title_fr}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="group-hover:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute top-3 left-3">
+                      <div className="absolute top-3 left-3 z-10">
                         {getStatusBadge(proj.status)}
                       </div>
                     </div>

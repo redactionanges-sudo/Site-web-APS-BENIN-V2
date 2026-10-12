@@ -622,6 +622,11 @@ export default function AdminMediathequePage() {
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#92278F] text-white shadow-xs">
                             {item.category}
                           </span>
+                          {item.type === 'photo' && item.url?.includes('.webp') && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white shadow-xs" title="Format WebP optimisé automatiquement">
+                              WebP
+                            </span>
+                          )}
                           {platformInfo && (
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold shadow-xs ${platformInfo.color}`}>
                               {platformInfo.label}

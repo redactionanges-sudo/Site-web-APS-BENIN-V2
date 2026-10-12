@@ -118,7 +118,7 @@ export default function PhotosMediathequePage() {
                   >
                     <div className="h-64 w-full overflow-hidden relative">
                       <motion.img
-                        src={item.url}
+                        src={item.thumbnail_url || item.url}
                         alt={item.alt_fr || item.title_fr}
                         className="w-full h-full object-cover"
                         variants={{
