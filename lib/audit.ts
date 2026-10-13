@@ -1,5 +1,6 @@
 import { AuditLog, AuditActionType, AuditModule, UserProfile } from '@/types';
-import { supabase, isSupabaseConfigured } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase-client';
+
 
 export const MODULE_META: Record<
   AuditModule,

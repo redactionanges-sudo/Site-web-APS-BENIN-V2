@@ -52,23 +52,15 @@ import {
   initialInstitutionalPages,
 } from './initial-data';
 
-let rawSupabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
-while (rawSupabaseUrl.endsWith('/')) rawSupabaseUrl = rawSupabaseUrl.slice(0, -1);
-if (rawSupabaseUrl.endsWith('/rest/v1')) rawSupabaseUrl = rawSupabaseUrl.slice(0, -8);
-while (rawSupabaseUrl.endsWith('/')) rawSupabaseUrl = rawSupabaseUrl.slice(0, -1);
-const supabaseUrl = rawSupabaseUrl;
-const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim();
+import {
+  supabaseUrl,
+  supabaseAnonKey,
+  isSupabaseConfigured,
+  supabase,
+} from './supabase-client';
 
-export const isSupabaseConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  !supabaseUrl.includes('your-project') &&
-  !supabaseAnonKey.includes('your-anon-key')
-);
+export { supabaseUrl, supabaseAnonKey, isSupabaseConfigured, supabase };
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
 
 // Local persistent storage key prefixes
 const STORAGE_PREFIX = 'aps_benin_';
