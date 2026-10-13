@@ -30,6 +30,8 @@ import {
   TrashModule,
   InstitutionalPage,
   InstitutionalPageSlug,
+  InstitutionalPageImage,
+  InstitutionalPageBlock,
 } from '@/types';
 import { getAuditLogs, recordAuditLog } from './audit';
 import {
@@ -296,6 +298,150 @@ export function packMedia(item: any): any {
     show_in_public_gallery,
     target_module,
     description_en: packedMeta,
+  };
+}
+
+export function resolveMediaUrl(urlOrPath?: string | null): string {
+  if (!urlOrPath || typeof urlOrPath !== 'string') return '';
+  const trimmed = urlOrPath.trim();
+  if (!trimmed) return '';
+
+  // Already a full URL or data URI
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+
+  const base = supabaseUrl || 'https://ezbpbjtddeytbyedfioo.supabase.co';
+
+  // Relative storage path starting with /storage/v1/
+  if (trimmed.startsWith('/storage/v1/')) {
+    return `${base}${trimmed}`;
+  }
+
+  // Relative storage path starting with storage/v1/
+  if (trimmed.startsWith('storage/v1/')) {
+    return `${base}/${trimmed}`;
+  }
+
+  // Supabase object paths like "uploads/..." or "images/uploads/..."
+  if (trimmed.startsWith('uploads/')) {
+    return `${base}/storage/v1/object/public/images/${trimmed}`;
+  }
+  if (trimmed.startsWith('images/')) {
+    return `${base}/storage/v1/object/public/${trimmed}`;
+  }
+
+  // Local static root assets starting with /
+  if (trimmed.startsWith('/')) {
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
+export function unpackInstitutionalPage(row: any): InstitutionalPage {
+  if (!row) return row;
+  let images = row.images;
+  if (typeof images === 'string') {
+    try {
+      images = JSON.parse(images);
+    } catch {
+      images = [];
+    }
+  }
+  if (!Array.isArray(images)) images = [];
+
+  const cleanedImages: InstitutionalPageImage[] = images
+    .filter((img: any) => img && (typeof img === 'object' || typeof img === 'string'))
+    .map((img: any, idx: number): InstitutionalPageImage => {
+      if (typeof img === 'string') {
+        const url = resolveMediaUrl(img);
+        return {
+          id: `img-${idx + 1}`,
+          slot_key: `image_${idx + 1}`,
+          label_fr: 'Photo illustrative',
+          label_en: 'Illustrative photo',
+          url,
+          alt_fr: 'Photo descriptive APS-BÉNIN',
+          alt_en: 'Descriptive photo APS-BENIN',
+          caption_fr: '',
+          caption_en: '',
+          order_index: idx + 1,
+        };
+      }
+      return {
+        id: img.id || `img-${idx + 1}`,
+        slot_key: img.slot_key || `image_${idx + 1}`,
+        label_fr: img.label_fr || 'Photo illustrative',
+        label_en: img.label_en || img.label_fr || 'Illustrative photo',
+        url: resolveMediaUrl(img.url),
+        alt_fr: img.alt_fr || img.label_fr || 'Photo descriptive APS-BÉNIN',
+        alt_en: img.alt_en || img.label_en || img.alt_fr || 'Descriptive photo APS-BENIN',
+        caption_fr: img.caption_fr || '',
+        caption_en: img.caption_en || '',
+        order_index: Number(img.order_index ?? idx + 1),
+      };
+    })
+    .sort((a: InstitutionalPageImage, b: InstitutionalPageImage) => (a.order_index ?? 0) - (b.order_index ?? 0));
+
+  let blocks = row.blocks;
+  if (typeof blocks === 'string') {
+    try {
+      blocks = JSON.parse(blocks);
+    } catch {
+      blocks = [];
+    }
+  }
+  if (!Array.isArray(blocks)) blocks = [];
+
+  const cleanedBlocks: InstitutionalPageBlock[] = blocks
+    .filter((blk: any) => blk && typeof blk === 'object')
+    .map((blk: any, idx: number): InstitutionalPageBlock => ({
+      id: blk.id || `blk-${idx + 1}`,
+      type: blk.type || 'pillar',
+      title_fr: blk.title_fr || '',
+      title_en: blk.title_en || blk.title_fr || '',
+      content_fr: blk.content_fr || '',
+      content_en: blk.content_en || blk.content_fr || '',
+      image_url: resolveMediaUrl(blk.image_url) || undefined,
+      image_alt_fr: blk.image_alt_fr || undefined,
+      image_alt_en: blk.image_alt_en || undefined,
+      caption_fr: blk.caption_fr || undefined,
+      caption_en: blk.caption_en || undefined,
+      icon_name: blk.icon_name || 'ShieldCheck',
+      button_text_fr: blk.button_text_fr || undefined,
+      button_text_en: blk.button_text_en || undefined,
+      button_url: blk.button_url || undefined,
+      order_index: Number(blk.order_index ?? idx + 1),
+    }))
+    .sort((a: InstitutionalPageBlock, b: InstitutionalPageBlock) => (a.order_index ?? 0) - (b.order_index ?? 0));
+
+  return {
+    id: row.id || `page-${row.slug}`,
+    slug: row.slug,
+    title_fr: row.title_fr || '',
+    title_en: row.title_en || row.title_fr || '',
+    subtitle_fr: row.subtitle_fr || '',
+    subtitle_en: row.subtitle_en || '',
+    badge_fr: row.badge_fr || "L'Organisation",
+    badge_en: row.badge_en || 'The Organization',
+    quote_fr: row.quote_fr || '',
+    quote_en: row.quote_en || '',
+    intro_fr: row.intro_fr || '',
+    intro_en: row.intro_en || '',
+    body_html_fr: row.body_html_fr || '',
+    body_html_en: row.body_html_en || '',
+    hero_image: resolveMediaUrl(row.hero_image),
+    hero_image_alt_fr: row.hero_image_alt_fr || '',
+    hero_image_alt_en: row.hero_image_alt_en || '',
+    images: cleanedImages,
+    blocks: cleanedBlocks,
+    meta_title_fr: row.meta_title_fr || '',
+    meta_title_en: row.meta_title_en || '',
+    meta_description_fr: row.meta_description_fr || '',
+    meta_description_en: row.meta_description_en || '',
+    is_published: row.is_published !== false,
+    updated_at: row.updated_at,
   };
 }
 
@@ -1476,9 +1622,11 @@ export const supabaseStore = {
   },
 
   // Institutional Pages (Présentation, Histoire, Mission-Vision-Valeurs, Domaines)
-  async getInstitutionalPages(): Promise<InstitutionalPage[]> {
-    const cached = getCachedData<InstitutionalPage[]>('institutional_pages');
-    if (cached) return cached;
+  async getInstitutionalPages(forceRefresh = false): Promise<InstitutionalPage[]> {
+    if (!forceRefresh) {
+      const cached = getCachedData<InstitutionalPage[]>('institutional_pages');
+      if (cached) return cached;
+    }
 
     if (supabase) {
       try {
@@ -1487,17 +1635,28 @@ export const supabaseStore = {
           .select('*');
         if (!error && data && data.length > 0) {
           const fetchedMap = new Map<string, InstitutionalPage>();
-          (data as InstitutionalPage[]).forEach((p) => fetchedMap.set(p.slug, p));
+          data.forEach((p: any) => {
+            const unpacked = unpackInstitutionalPage(p);
+            fetchedMap.set(unpacked.slug, unpacked);
+          });
 
-          // Ensure all standard initial pages exist in the array
+          // Ensure all standard initial pages exist in the array with defaults merged
           const merged: InstitutionalPage[] = initialInstitutionalPages.map((init) => {
-            return fetchedMap.get(init.slug) || init;
+            const dbPage = fetchedMap.get(init.slug);
+            if (!dbPage) return unpackInstitutionalPage(init);
+            return {
+              ...unpackInstitutionalPage(init),
+              ...dbPage,
+              // Strictly respect db images/blocks if defined on database row
+              images: Array.isArray(dbPage.images) ? dbPage.images : unpackInstitutionalPage(init).images,
+              blocks: Array.isArray(dbPage.blocks) ? dbPage.blocks : unpackInstitutionalPage(init).blocks,
+            };
           });
 
           // Add any additional slugs that might be in database
           data.forEach((p: any) => {
             if (!merged.some((m) => m.slug === p.slug)) {
-              merged.push(p);
+              merged.push(unpackInstitutionalPage(p));
             }
           });
 
@@ -1510,33 +1669,67 @@ export const supabaseStore = {
       }
     }
 
-    const local = getStoredItem('institutional_pages', initialInstitutionalPages);
+    const localRaw = getStoredItem<any[]>('institutional_pages', initialInstitutionalPages);
+    const local = localRaw.map(unpackInstitutionalPage);
     setCachedData('institutional_pages', local);
     return local;
   },
 
-  async getInstitutionalPageBySlug(slug: InstitutionalPageSlug | string): Promise<InstitutionalPage | null> {
-    const pages = await this.getInstitutionalPages();
+  async getInstitutionalPageBySlug(slug: InstitutionalPageSlug | string, forceRefresh = false): Promise<InstitutionalPage | null> {
+    if (forceRefresh && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('institutional_pages')
+          .select('*')
+          .eq('slug', slug)
+          .maybeSingle();
+        if (!error && data) {
+          const unpacked = unpackInstitutionalPage(data);
+          const currentList = getCachedData<InstitutionalPage[]>('institutional_pages') || [];
+          const updated = currentList.filter((p) => p.slug !== slug).concat([unpacked]);
+          setCachedData('institutional_pages', updated);
+          setStoredItem('institutional_pages', updated);
+          return unpacked;
+        }
+      } catch (e) {
+        console.warn(`Direct fetch for slug ${slug} fallback:`, e);
+      }
+    }
+
+    const pages = await this.getInstitutionalPages(forceRefresh);
     const found = pages.find((p) => p.slug === slug);
     if (found) return found;
 
     // Fallback to initial pages if not found
     const initial = initialInstitutionalPages.find((p) => p.slug === slug);
-    return initial || null;
+    return initial ? unpackInstitutionalPage(initial) : null;
   },
 
   async saveInstitutionalPage(page: InstitutionalPage): Promise<InstitutionalPage> {
+    const unpacked = unpackInstitutionalPage(page);
     const payload = {
-      ...page,
+      ...unpacked,
       updated_at: new Date().toISOString(),
     };
 
     await mutateTable('institutional_pages', 'upsert', payload);
     invalidateCache('institutional_pages');
 
-    // Trigger custom events so public and admin views update immediately in real-time
+    // Immediately synchronize local storage and session cache so any view updates without delay
     if (typeof window !== 'undefined') {
       try {
+        const currentList = getStoredItem<any[]>('institutional_pages', initialInstitutionalPages).map(unpackInstitutionalPage);
+        const idx = currentList.findIndex((p) => p.slug === payload.slug);
+        let updatedList: InstitutionalPage[];
+        if (idx >= 0) {
+          updatedList = [...currentList];
+          updatedList[idx] = payload;
+        } else {
+          updatedList = [...currentList, payload];
+        }
+        setStoredItem('institutional_pages', updatedList);
+        setCachedData('institutional_pages', updatedList);
+
         window.dispatchEvent(new CustomEvent('aps_page_changed', { detail: payload }));
         localStorage.setItem('aps_page_last_updated', Date.now().toString());
       } catch {}

@@ -15,38 +15,57 @@ import { PartnersCarousel } from '@/components/PartnersCarousel';
 import { CallToAction } from '@/components/CallToAction';
 import { HomeMediathequeSection } from '@/components/HomeMediathequeSection';
 import { useLanguage } from '@/lib/i18n';
-import { supabaseStore } from '@/lib/supabase';
+import { supabaseStore, resolveMediaUrl, unpackInstitutionalPage } from '@/lib/supabase';
+import { initialInstitutionalPages } from '@/lib/initial-data';
 import { InstitutionalPage } from '@/types';
 import { ShieldCheck, HeartHandshake, Eye, Award, ArrowRight } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function HomePage() {
   const { language, t } = useLanguage();
-  const [presPage, setPresPage] = useState<InstitutionalPage | null>(null);
+  const fallbackPres = initialInstitutionalPages.find((p) => p.slug === 'presentation');
+  const [presPage, setPresPage] = useState<InstitutionalPage | null>(() =>
+    fallbackPres ? unpackInstitutionalPage(fallbackPres) : null
+  );
 
   useEffect(() => {
-    supabaseStore.getInstitutionalPageBySlug('presentation').then(setPresPage);
+    supabaseStore.getInstitutionalPageBySlug('presentation', true).then((res) => {
+      if (res) setPresPage(res);
+    });
 
     const handlePageChanged = (e: any) => {
       if (e?.detail?.slug === 'presentation') {
         setPresPage(e.detail);
       }
     };
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'aps_page_last_updated' || e.key === 'aps_benin_institutional_pages') {
+        supabaseStore.getInstitutionalPageBySlug('presentation', true).then((res) => {
+          if (res) setPresPage(res);
+        });
+      }
+    };
     window.addEventListener('aps_page_changed', handlePageChanged);
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
       window.removeEventListener('aps_page_changed', handlePageChanged);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
-  const presImage =
+  const presImage = resolveMediaUrl(
     presPage?.images?.find((img) => img.slot_key === 'community_action')?.url ||
     presPage?.images?.[1]?.url ||
     presPage?.images?.[0]?.url ||
-    'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=1000&q=80';
+    presPage?.hero_image ||
+    'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=1000&q=80'
+  );
 
   const presAlt =
-    presPage?.images?.find((img) => img.slot_key === 'community_action')?.alt_fr ||
+    (language === 'en'
+      ? presPage?.images?.find((img) => img.slot_key === 'community_action')?.alt_en
+      : presPage?.images?.find((img) => img.slot_key === 'community_action')?.alt_fr) ||
     'APS-BÉNIN Activités de terrain à Comè';
 
   return (

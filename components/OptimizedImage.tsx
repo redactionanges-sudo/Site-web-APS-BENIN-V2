@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { resolveMediaUrl } from '@/lib/supabase';
 
 export interface OptimizedImageProps {
   src?: string | null;
@@ -24,14 +25,6 @@ const DEFAULT_FALLBACK =
 
 /**
  * OptimizedImage - Composant universel haute performance pour APS-BÉNIN
- *
- * Fonctionnalités clés :
- * 1. Priorisation intelligente : LCP / Hero chargé en priority={true} (eager, pré-chargé).
- * 2. Chargement différé natif (loading="lazy") pour tout le contenu hors écran.
- * 3. Formats modernes (WebP/AVIF) avec dimensions optimisées automatiques et responsive `sizes`.
- * 4. Prévention du CLS (Cumulative Layout Shift) grâce à la réservation stricte de ratio d'affichage.
- * 5. Gestion robuste des erreurs de chargement avec fallback élégant sans casser la mise en page.
- * 6. Protection referrerPolicy="no-referrer" exigée par l'environnement.
  */
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
@@ -48,10 +41,19 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   fallbackSrc = DEFAULT_FALLBACK,
   onClick,
 }) => {
+  const [useRawImg, setUseRawImg] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const effectiveSrc = (hasError || !src) ? fallbackSrc : src;
+  // Réinitialiser les états si la source change dynamiquement
+  useEffect(() => {
+    setUseRawImg(false);
+    setHasError(false);
+    setIsLoaded(false);
+  }, [src]);
+
+  const rawSrc = resolveMediaUrl(src);
+  const effectiveSrc = hasError || !rawSrc ? fallbackSrc : rawSrc;
 
   // Déterminer les classes de conteneur d'aspect ratio
   let ratioClass = '';
@@ -81,10 +83,47 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   // Si l'image est distante mais hors domaines configurés, on utilise unoptimized={true} pour éviter les blocages Next.js
   const shouldUnoptimize = !isSupabaseOrUnsplashOrPicsum && isRemote;
 
+  // Fallback direct <img> natif si le proxy Next.js a rencontré un problème sur l'URL source réelle
+  if (useRawImg && !hasError && rawSrc) {
+    if (fill) {
+      return (
+        <div
+          className={`relative w-full h-full overflow-hidden ${ratioClass} ${containerClassName}`}
+          onClick={onClick}
+        >
+          <img
+            src={rawSrc}
+            alt={alt || 'APS-BÉNIN'}
+            className={`w-full h-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
+            referrerPolicy="no-referrer"
+            onError={() => setHasError(true)}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`relative inline-block overflow-hidden ${ratioClass} ${containerClassName}`}
+        onClick={onClick}
+      >
+        <img
+          src={rawSrc}
+          alt={alt || 'APS-BÉNIN'}
+          width={width || 600}
+          height={height || 400}
+          className={`w-full h-auto ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
+          referrerPolicy="no-referrer"
+          onError={() => setHasError(true)}
+        />
+      </div>
+    );
+  }
+
   if (fill) {
     return (
       <div
-        className={`relative overflow-hidden ${ratioClass} ${containerClassName}`}
+        className={`relative w-full h-full overflow-hidden ${ratioClass} ${containerClassName}`}
         onClick={onClick}
       >
         <Image
@@ -99,7 +138,13 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           referrerPolicy="no-referrer"
           unoptimized={shouldUnoptimize}
           onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
+          onError={() => {
+            if (!useRawImg && rawSrc && rawSrc !== fallbackSrc) {
+              setUseRawImg(true);
+            } else {
+              setHasError(true);
+            }
+          }}
         />
         {!isLoaded && (
           <div className="absolute inset-0 bg-gray-100 animate-pulse" aria-hidden="true" />
@@ -126,7 +171,13 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         referrerPolicy="no-referrer"
         unoptimized={shouldUnoptimize}
         onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
+        onError={() => {
+          if (!useRawImg && rawSrc && rawSrc !== fallbackSrc) {
+            setUseRawImg(true);
+          } else {
+            setHasError(true);
+          }
+        }}
       />
       {!isLoaded && (
         <div

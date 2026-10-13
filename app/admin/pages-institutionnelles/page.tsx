@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { MediaSelectorModal, SelectedMedia } from '@/components/admin/MediaSelectorModal';
-import { supabaseStore } from '@/lib/supabase';
+import { supabaseStore, resolveMediaUrl } from '@/lib/supabase';
 import {
   InstitutionalPage,
   InstitutionalPageSlug,
@@ -398,13 +398,29 @@ export default function AdminInstitutionalPages() {
     });
   };
 
+  const handleMovePageImage = (index: number, direction: 'up' | 'down') => {
+    if (!currentPage || !currentPage.images) return;
+    const newImages = [...currentPage.images];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newImages.length) return;
+    const temp = newImages[index];
+    newImages[index] = newImages[targetIndex];
+    newImages[targetIndex] = temp;
+    newImages.forEach((img, i) => {
+      img.order_index = i + 1;
+    });
+    setCurrentPage({ ...currentPage, images: newImages });
+  };
+
   const handleMediaSelect = (media: SelectedMedia) => {
     if (!currentPage || !mediaTarget) return;
+
+    const resolvedUrl = resolveMediaUrl(media.url);
 
     if (mediaTarget.type === 'hero') {
       setCurrentPage({
         ...currentPage,
-        hero_image: media.url,
+        hero_image: resolvedUrl,
         hero_image_alt_fr: media.alt_fr || currentPage.hero_image_alt_fr || media.title_fr,
       });
     } else if (mediaTarget.type === 'page_image' && mediaTarget.imageId) {
@@ -412,7 +428,7 @@ export default function AdminInstitutionalPages() {
         if (img.id === mediaTarget.imageId) {
           return {
             ...img,
-            url: media.url,
+            url: resolvedUrl,
             alt_fr: media.alt_fr || img.alt_fr || media.title_fr || '',
             alt_en: img.alt_en || 'APS-BÉNIN photo',
             caption_fr: img.caption_fr || media.title_fr || '',
@@ -893,25 +909,61 @@ export default function AdminInstitutionalPages() {
                       {currentPage.images.map((img, idx) => (
                         <div
                           key={img.id || idx}
-                          className="p-5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-4 hover:border-purple-200 transition-all"
+                          className="p-5 rounded-xl border border-gray-200 bg-gray-50/50 space-y-4 hover:border-purple-200 transition-all shadow-2xs"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-bold text-[#92278F] uppercase tracking-wider">
-                              Emplacement {idx + 1} : {img.label_fr || 'Photo illustrative'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePageImage(img.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 rounded-md transition-colors"
-                              title="Supprimer cet emplacement"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-[#92278F] uppercase tracking-wider">
+                                #{idx + 1}
+                              </span>
+                              <select
+                                value={img.slot_key || (idx === 0 ? 'community_action' : (idx === 1 ? 'headquarters_photo' : `gallery_${idx + 1}`))}
+                                onChange={(e) => {
+                                  const updated = (currentPage.images || []).map((item) =>
+                                    item.id === img.id ? { ...item, slot_key: e.target.value } : item
+                                  );
+                                  setCurrentPage({ ...currentPage, images: updated });
+                                }}
+                                className="text-xs font-semibold text-purple-900 bg-white border border-purple-200 rounded-md px-2 py-0.5 shadow-2xs focus:outline-hidden"
+                              >
+                                <option value="community_action">Photo Principale (Terrain / Action)</option>
+                                <option value="headquarters_photo">Siège Social (Fiche latérale)</option>
+                                <option value={`gallery_${idx + 1}`}>Galerie Complémentaire</option>
+                              </select>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleMovePageImage(idx, 'up')}
+                                disabled={idx === 0}
+                                className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                title="Monter ce visuel"
+                              >
+                                <ArrowUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMovePageImage(idx, 'down')}
+                                disabled={idx === (currentPage.images || []).length - 1}
+                                className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                title="Descendre ce visuel"
+                              >
+                                <ArrowDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemovePageImage(img.id)}
+                                className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors ml-1"
+                                title="Supprimer cet emplacement"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
 
                           <div className="flex flex-col sm:flex-row gap-4 items-start">
                             {img.url ? (
-                              <div className="relative w-full sm:w-40 h-28 rounded-lg overflow-hidden border border-gray-300 shadow-2xs shrink-0 group">
+                              <div className="relative w-full sm:w-40 h-32 rounded-lg overflow-hidden border border-gray-300 shadow-2xs shrink-0 group">
                                 <img
                                   src={img.url}
                                   alt={img.alt_fr || 'Photo'}
@@ -928,21 +980,49 @@ export default function AdminInstitutionalPages() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="w-full sm:w-40 h-28 rounded-lg border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-gray-400 shrink-0">
-                                <ImageIcon className="w-6 h-6 mb-1" />
+                              <div className="w-full sm:w-40 h-32 rounded-lg border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center text-gray-400 shrink-0">
+                                <ImageIcon className="w-6 h-6 mb-1 text-gray-300" />
                                 <span className="text-[10px]">Photo vide</span>
                               </div>
                             )}
 
-                            <div className="flex-1 space-y-3 w-full">
+                            <div className="flex-1 space-y-2.5 w-full">
                               <button
                                 type="button"
                                 onClick={() => handleOpenPageImagePicker(img.id)}
                                 className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:border-[#92278F] text-xs font-semibold text-gray-800 transition-colors shadow-2xs"
                               >
                                 <ImageIcon className="w-3.5 h-3.5 text-[#FF8C00]" />
-                                <span>Sélectionner dans la Médiathèque</span>
+                                <span>{img.url ? 'Changer de visuel' : 'Sélectionner dans la Médiathèque'}</span>
                               </button>
+
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
+                                  Titre du visuel ({editingLang.toUpperCase()})
+                                </label>
+                                <input
+                                  type="text"
+                                  value={
+                                    editingLang === 'fr'
+                                      ? img.label_fr || ''
+                                      : img.label_en || ''
+                                  }
+                                  onChange={(e) => {
+                                    const updated = (currentPage.images || []).map((item) =>
+                                      item.id === img.id
+                                        ? {
+                                            ...item,
+                                            [editingLang === 'fr' ? 'label_fr' : 'label_en']:
+                                              e.target.value,
+                                          }
+                                        : item
+                                    );
+                                    setCurrentPage({ ...currentPage, images: updated });
+                                  }}
+                                  placeholder="Ex: Siège social de Djacoṭé-Comè..."
+                                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 bg-white focus:border-[#92278F] focus:outline-hidden"
+                                />
+                              </div>
 
                               <div>
                                 <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
@@ -967,7 +1047,35 @@ export default function AdminInstitutionalPages() {
                                     );
                                     setCurrentPage({ ...currentPage, images: updated });
                                   }}
-                                  placeholder="Légende sous la photo..."
+                                  placeholder="Légende explicative sous la photo..."
+                                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 bg-white focus:border-[#92278F] focus:outline-hidden"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
+                                  Texte alternatif / SEO ({editingLang.toUpperCase()})
+                                </label>
+                                <input
+                                  type="text"
+                                  value={
+                                    editingLang === 'fr'
+                                      ? img.alt_fr || ''
+                                      : img.alt_en || ''
+                                  }
+                                  onChange={(e) => {
+                                    const updated = (currentPage.images || []).map((item) =>
+                                      item.id === img.id
+                                        ? {
+                                            ...item,
+                                            [editingLang === 'fr' ? 'alt_fr' : 'alt_en']:
+                                              e.target.value,
+                                          }
+                                        : item
+                                    );
+                                    setCurrentPage({ ...currentPage, images: updated });
+                                  }}
+                                  placeholder="Description pour accessibilité et moteurs de recherche..."
                                   className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 bg-white focus:border-[#92278F] focus:outline-hidden"
                                 />
                               </div>
