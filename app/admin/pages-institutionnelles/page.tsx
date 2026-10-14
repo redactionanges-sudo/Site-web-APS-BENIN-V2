@@ -5,7 +5,15 @@ import Link from 'next/link';
 import { AdminAuthGuard } from '@/components/admin/AdminAuthGuard';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { MediaSelectorModal, SelectedMedia } from '@/components/admin/MediaSelectorModal';
-import { supabaseStore, resolveMediaUrl } from '@/lib/supabase';
+import { supabaseStore, resolveMediaUrl, unpackInstitutionalPage } from '@/lib/supabase';
+import {
+  initialInstitutionalPages,
+  defaultInstitutionalVision,
+  defaultInstitutionalMission,
+  defaultInstitutionalGoal,
+  defaultInstitutionalObjectives,
+  defaultInstitutionalValues,
+} from '@/lib/initial-pages';
 import {
   InstitutionalPage,
   InstitutionalPageSlug,
@@ -37,6 +45,12 @@ import {
   Clock,
   RotateCcw,
   Check,
+  Target,
+  Award,
+  Heart,
+  Scale,
+  Users,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface TabDefinition {
@@ -64,10 +78,10 @@ const PAGE_TABS: TabDefinition[] = [
   },
   {
     slug: 'mission-vision-valeurs',
-    label: 'Mission, Vision & Valeurs',
-    badge: 'Socle Éthique',
+    label: 'Vision, Mission, But, Objectifs & Valeurs',
+    badge: 'Socle Statutaire & Éthique',
     publicUrl: '/organisation/mission-vision-valeurs',
-    description: 'Piliers éthiques, mission statutaire et vision sociétale pour le Bénin.',
+    description: 'Gestion indépendante et complète des cinq composantes institutionnelles officielles d’APS-BÉNIN.',
   },
 ];
 
@@ -80,6 +94,9 @@ const AVAILABLE_ICONS = [
   'Compass',
   'ShieldCheck',
   'Sparkles',
+  'Target',
+  'Award',
+  'Eye',
 ];
 
 export default function AdminInstitutionalPages() {
@@ -133,28 +150,12 @@ export default function AdminInstitutionalPages() {
       if (found) {
         setCurrentPage(JSON.parse(JSON.stringify(found)));
       } else {
-        // Fallback default structure if not yet in list
-        const fallback = {
-          id: `page-${slugToFind}`,
-          slug: slugToFind,
-          title_fr: slugToFind === 'histoire' ? 'Notre Histoire & Évolution' : (slugToFind === 'mission-vision-valeurs' ? 'Mission, Vision & Valeurs' : 'Présentation Institutionnelle'),
-          title_en: slugToFind === 'histoire' ? 'Our History & Evolution' : (slugToFind === 'mission-vision-valeurs' ? 'Mission, Vision & Values' : 'Overview & Identity'),
-          badge_fr: slugToFind === 'histoire' ? 'Notre Trajectoire' : (slugToFind === 'mission-vision-valeurs' ? 'Identité Institutionnelle' : "L'Organisation"),
-          badge_en: slugToFind === 'histoire' ? 'Our Trajectory' : (slugToFind === 'mission-vision-valeurs' ? 'Institutional Identity' : 'The Organization'),
-          subtitle_fr: '',
-          subtitle_en: '',
-          quote_fr: '',
-          quote_en: '',
-          intro_fr: '',
-          intro_en: '',
-          body_html_fr: '',
-          body_html_en: '',
-          hero_image: '',
-          images: [],
-          blocks: [],
-          is_published: true,
-        };
-        setCurrentPage(fallback);
+        const initialMatch = initialInstitutionalPages.find((p) => p.slug === slugToFind);
+        if (initialMatch) {
+          setCurrentPage(JSON.parse(JSON.stringify(unpackInstitutionalPage(initialMatch))));
+        } else {
+          setErrorMessage(`Page institutionnelle « ${slugToFind} » introuvable.`);
+        }
       }
     } catch (err: any) {
       console.error('Erreur chargement pages institutionnelles:', err);
@@ -311,6 +312,209 @@ export default function AdminInstitutionalPages() {
       console.error('Erreur suppression étape:', err);
       setErrorMessage(err.message || 'Impossible de supprimer cette étape.');
     }
+  };
+
+  // -------------------------------------------------------------
+  // GESTION INDÉPENDANTE DES 5 COMPOSANTES INSTITUTIONNELLES
+  // -------------------------------------------------------------
+  const handleSaveRubrique = async (rubrique: 'vision' | 'mission' | 'goal' | 'objectives' | 'values' | 'header') => {
+    if (!currentPage) return;
+    setSaving(true);
+    setErrorMessage(null);
+    try {
+      const pageToSave = { ...currentPage };
+      let label = 'Rubrique';
+
+      if (rubrique === 'vision') {
+        label = 'La Vision';
+      } else if (rubrique === 'mission') {
+        label = 'La Mission';
+      } else if (rubrique === 'goal') {
+        label = 'Le But Statutaire (Art. 9)';
+      } else if (rubrique === 'objectives') {
+        label = 'Les Objectifs Statutaires (Art. 10)';
+      } else if (rubrique === 'values') {
+        label = 'Les Valeurs Fondamentales';
+      } else if (rubrique === 'header') {
+        label = 'L’en-tête de la page';
+      }
+
+      const saved = await supabaseStore.saveInstitutionalPage(pageToSave);
+      setPages((prev) => {
+        const idx = prev.findIndex((p) => p.slug === pageToSave.slug);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = saved;
+          return next;
+        }
+        return [...prev, saved];
+      });
+      setCurrentPage(JSON.parse(JSON.stringify(saved)));
+      setSuccessMessage(`${label} a été enregistrée avec succès dans Supabase !`);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4500);
+    } catch (err: any) {
+      console.error(`Erreur enregistrement ${rubrique}:`, err);
+      setErrorMessage(err?.message || `Impossible d’enregistrer ${rubrique} dans Supabase.`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateVisionField = (field: 'title_fr' | 'title_en' | 'content_fr' | 'content_en', val: string) => {
+    if (!currentPage) return;
+    let blocks = [...(currentPage.blocks || [])];
+    const idx = blocks.findIndex((b) => b.type === 'vision');
+    if (idx >= 0) {
+      blocks[idx] = { ...blocks[idx], [field]: val };
+    } else {
+      blocks.unshift({
+        id: 'inst-vision',
+        type: 'vision',
+        title_fr: defaultInstitutionalVision.title_fr,
+        title_en: defaultInstitutionalVision.title_en,
+        content_fr: defaultInstitutionalVision.content_fr,
+        content_en: defaultInstitutionalVision.content_en,
+        icon_name: 'Eye',
+        order_index: 1,
+        [field]: val,
+      });
+    }
+    setCurrentPage({ ...currentPage, blocks });
+  };
+
+  const updateMissionField = (field: 'title_fr' | 'title_en' | 'content_fr' | 'content_en', val: string) => {
+    if (!currentPage) return;
+    let blocks = [...(currentPage.blocks || [])];
+    const idx = blocks.findIndex((b) => b.type === 'mission');
+    if (idx >= 0) {
+      blocks[idx] = { ...blocks[idx], [field]: val };
+    } else {
+      blocks.push({
+        id: 'inst-mission',
+        type: 'mission',
+        title_fr: defaultInstitutionalMission.title_fr,
+        title_en: defaultInstitutionalMission.title_en,
+        content_fr: defaultInstitutionalMission.content_fr,
+        content_en: defaultInstitutionalMission.content_en,
+        icon_name: 'Compass',
+        order_index: 2,
+        [field]: val,
+      });
+    }
+    const updatePayload: any = { blocks };
+    if (field === 'content_fr') updatePayload.intro_fr = val;
+    if (field === 'content_en') updatePayload.intro_en = val;
+    setCurrentPage({ ...currentPage, ...updatePayload });
+  };
+
+  const updateGoalField = (field: 'title_fr' | 'title_en' | 'content_fr' | 'content_en', val: string) => {
+    if (!currentPage) return;
+    let blocks = [...(currentPage.blocks || [])];
+    const idx = blocks.findIndex((b) => b.type === 'goal');
+    if (idx >= 0) {
+      blocks[idx] = { ...blocks[idx], [field]: val };
+    } else {
+      blocks.push({
+        id: 'inst-but',
+        type: 'goal',
+        title_fr: defaultInstitutionalGoal.title_fr,
+        title_en: defaultInstitutionalGoal.title_en,
+        content_fr: defaultInstitutionalGoal.content_fr,
+        content_en: defaultInstitutionalGoal.content_en,
+        icon_name: 'ShieldCheck',
+        order_index: 3,
+        [field]: val,
+      });
+    }
+    const updatePayload: any = { blocks };
+    if (field === 'content_fr') updatePayload.body_html_fr = val;
+    if (field === 'content_en') updatePayload.body_html_en = val;
+    setCurrentPage({ ...currentPage, ...updatePayload });
+  };
+
+  const handleAddObjectiveItem = () => {
+    if (!currentPage) return;
+    const existingObjs = (currentPage.blocks || []).filter((b) => b.type === 'objective');
+    const newObj: InstitutionalPageBlock = {
+      id: `obj-${Date.now()}`,
+      type: 'objective',
+      title_fr: `Nouvel objectif statutaire #${existingObjs.length + 1}`,
+      title_en: `New statutory objective #${existingObjs.length + 1}`,
+      content_fr: '',
+      content_en: '',
+      icon_name: 'ShieldCheck',
+      order_index: 10 + existingObjs.length,
+    };
+    setCurrentPage({ ...currentPage, blocks: [...(currentPage.blocks || []), newObj] });
+  };
+
+  const handleRemoveObjectiveItem = (id: string) => {
+    if (!currentPage) return;
+    const blocks = (currentPage.blocks || []).filter((b) => b.id !== id);
+    setCurrentPage({ ...currentPage, blocks });
+  };
+
+  const handleMoveObjectiveItem = (id: string, direction: 'up' | 'down') => {
+    if (!currentPage || !currentPage.blocks) return;
+    const objs = currentPage.blocks.filter((b) => b.type === 'objective');
+    const idx = objs.findIndex((b) => b.id === id);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= objs.length) return;
+
+    const newObjs = [...objs];
+    const temp = newObjs[idx];
+    newObjs[idx] = newObjs[targetIdx];
+    newObjs[targetIdx] = temp;
+    newObjs.forEach((o, i) => {
+      o.order_index = 10 + i;
+    });
+
+    const otherBlocks = currentPage.blocks.filter((b) => b.type !== 'objective');
+    setCurrentPage({ ...currentPage, blocks: [...otherBlocks, ...newObjs] });
+  };
+
+  const handleAddValueItem = () => {
+    if (!currentPage) return;
+    const existingVals = (currentPage.blocks || []).filter((b) => b.type === 'pillar' || b.type === 'value');
+    const newVal: InstitutionalPageBlock = {
+      id: `val-${Date.now()}`,
+      type: 'pillar',
+      title_fr: `Nouvelle valeur éthique #${existingVals.length + 1}`,
+      title_en: `New ethical value #${existingVals.length + 1}`,
+      content_fr: '',
+      content_en: '',
+      icon_name: 'Scale',
+      order_index: 20 + existingVals.length,
+    };
+    setCurrentPage({ ...currentPage, blocks: [...(currentPage.blocks || []), newVal] });
+  };
+
+  const handleRemoveValueItem = (id: string) => {
+    if (!currentPage) return;
+    const blocks = (currentPage.blocks || []).filter((b) => b.id !== id);
+    setCurrentPage({ ...currentPage, blocks });
+  };
+
+  const handleMoveValueItem = (id: string, direction: 'up' | 'down') => {
+    if (!currentPage || !currentPage.blocks) return;
+    const vals = currentPage.blocks.filter((b) => b.type === 'pillar' || b.type === 'value');
+    const idx = vals.findIndex((b) => b.id === id);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= vals.length) return;
+
+    const newVals = [...vals];
+    const temp = newVals[idx];
+    newVals[idx] = newVals[targetIdx];
+    newVals[targetIdx] = temp;
+    newVals.forEach((v, i) => {
+      v.order_index = 20 + i;
+    });
+
+    const otherBlocks = currentPage.blocks.filter((b) => b.type !== 'pillar' && b.type !== 'value');
+    setCurrentPage({ ...currentPage, blocks: [...otherBlocks, ...newVals] });
   };
 
   // -------------------------------------------------------------
@@ -713,12 +917,10 @@ export default function AdminInstitutionalPages() {
                   />
                 </div>
 
-                {/* Sous-titre descriptif (ou vision pour mission-vision-valeurs) */}
+                {/* Sous-titre descriptif du bandeau (strictement distinct de la Vision) */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    {activeSlug === 'mission-vision-valeurs'
-                      ? `Vision prospective (${editingLang.toUpperCase()})`
-                      : `Sous-titre descriptif (${editingLang.toUpperCase()})`}
+                    Sous-titre descriptif du bandeau ({editingLang.toUpperCase()})
                   </label>
                   <textarea
                     rows={2}
@@ -734,13 +936,12 @@ export default function AdminInstitutionalPages() {
                         setCurrentPage({ ...currentPage, subtitle_en: e.target.value });
                       }
                     }}
-                    placeholder={
-                      activeSlug === 'mission-vision-valeurs'
-                        ? 'Un Bénin et une Afrique où chaque femme, chaque jeune fille...'
-                        : "Brève phrase d'introduction sous le titre..."
-                    }
+                    placeholder="Brève phrase d'accroche institutionnelle affichée sous le grand titre..."
                     className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#92278F] focus:outline-hidden"
                   />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Accroche descriptive du bandeau d’en-tête (indépendante de la Vision, de la Mission et du But).
+                  </p>
                 </div>
               </div>
 
@@ -1432,130 +1633,341 @@ export default function AdminInstitutionalPages() {
             )}
 
             {/* ============================================================== */}
-            {/* SPÉCIFIQUE 3 : SOCLE ÉTHIQUE (MISSION, VISION, VALEURS)        */}
+            {/* SPÉCIFIQUE 3 : LES 5 COMPOSANTES INSTITUTIONNELLES OFFICIELLES  */}
+            {/* (1. Vision, 2. Mission, 3. But, 4. Objectifs, 5. Valeurs)      */}
             {/* ============================================================== */}
-            {activeSlug === 'mission-vision-valeurs' && (
-              <>
-                {/* Textes statutaires : Mission & Vision */}
-                <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-2xs space-y-6">
-                  <div className="border-b border-gray-100 pb-4">
-                    <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
-                      <Compass className="w-5 h-5 text-[#92278F]" />
-                      <span>Mission Statutaire & Vision Prospective</span>
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Définissez la mission opérationnelle fondamentale et la vision sociétale d&apos;APS-BÉNIN.
-                    </p>
-                  </div>
+            {activeSlug === 'mission-vision-valeurs' && (() => {
+              const visionBlock = currentPage.blocks?.find((b) => b.type === 'vision') || {
+                id: 'inst-vision',
+                type: 'vision' as const,
+                title_fr: defaultInstitutionalVision.title_fr,
+                title_en: defaultInstitutionalVision.title_en,
+                content_fr: defaultInstitutionalVision.content_fr,
+                content_en: defaultInstitutionalVision.content_en,
+                icon_name: 'Eye',
+                order_index: 1,
+              };
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                        Notre Mission ({editingLang.toUpperCase()})
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={
-                          editingLang === 'fr'
-                            ? currentPage.intro_fr || ''
-                            : currentPage.intro_en || ''
-                        }
-                        onChange={(e) => {
-                          if (editingLang === 'fr') {
-                            setCurrentPage({ ...currentPage, intro_fr: e.target.value });
-                          } else {
-                            setCurrentPage({ ...currentPage, intro_en: e.target.value });
-                          }
-                        }}
-                        placeholder="Défendre les droits humains, promouvoir la justice et l’égalité de genre..."
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#92278F] focus:outline-hidden leading-relaxed"
-                      />
-                      <p className="text-[11px] text-gray-400 mt-1">
-                        Affichée dans la carte violette « Notre Mission » sur la page publique.
-                      </p>
+              const missionBlock = currentPage.blocks?.find((b) => b.type === 'mission') || {
+                id: 'inst-mission',
+                type: 'mission' as const,
+                title_fr: defaultInstitutionalMission.title_fr,
+                title_en: defaultInstitutionalMission.title_en,
+                content_fr: currentPage.intro_fr || defaultInstitutionalMission.content_fr,
+                content_en: currentPage.intro_en || defaultInstitutionalMission.content_en,
+                icon_name: 'Compass',
+                order_index: 2,
+              };
+
+              const goalBlock = currentPage.blocks?.find((b) => b.type === 'goal') || {
+                id: 'inst-but',
+                type: 'goal' as const,
+                title_fr: defaultInstitutionalGoal.title_fr,
+                title_en: defaultInstitutionalGoal.title_en,
+                content_fr: currentPage.body_html_fr || defaultInstitutionalGoal.content_fr,
+                content_en: currentPage.body_html_en || defaultInstitutionalGoal.content_en,
+                icon_name: 'Target',
+                order_index: 3,
+              };
+
+              const objectiveBlocks = (currentPage.blocks || []).filter((b) => b.type === 'objective');
+              const valueBlocks = (currentPage.blocks || []).filter((b) => b.type === 'pillar' || b.type === 'value');
+
+              return (
+                <div className="space-y-8">
+                  {/* Bannière explicative */}
+                  <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-5 flex items-start gap-4 shadow-2xs">
+                    <div className="w-10 h-10 rounded-xl bg-[#92278F] text-white flex items-center justify-center shrink-0">
+                      <Sparkles className="w-5 h-5 text-[#FF8C00]" />
                     </div>
-
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                        Notre Vision ({editingLang.toUpperCase()})
-                      </label>
-                      <textarea
-                        rows={4}
-                        value={
-                          editingLang === 'fr'
-                            ? currentPage.subtitle_fr || ''
-                            : currentPage.subtitle_en || ''
-                        }
-                        onChange={(e) => {
-                          if (editingLang === 'fr') {
-                            setCurrentPage({ ...currentPage, subtitle_fr: e.target.value });
-                          } else {
-                            setCurrentPage({ ...currentPage, subtitle_en: e.target.value });
-                          }
-                        }}
-                        placeholder="Un Bénin et une Afrique où chaque femme, chaque jeune fille et chaque citoyen vit à l’abri des violences..."
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#92278F] focus:outline-hidden leading-relaxed"
-                      />
-                      <p className="text-[11px] text-gray-400 mt-1">
-                        Affichée dans la carte orange « Notre Vision » sur la page publique.
+                      <h4 className="text-sm font-bold text-gray-900 font-heading">
+                        Présentation Institutionnelle Officielle APS-BÉNIN
+                      </h4>
+                      <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                        Chaque composante ci-dessous dispose de ses propres champs et de son propre enregistrement indépendant dans Supabase. Modifier une composante n’écrase jamais le contenu des autres.
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Les Valeurs fondamentales du Socle Éthique */}
-                <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-2xs space-y-6">
-                  <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
-                        <ShieldCheck className="w-5 h-5 text-[#FF8C00]" />
-                        <span>Valeurs Fondamentales & Piliers Éthiques</span>
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Principes intangibles structurants affichés sur la grille du Socle Éthique.
-                      </p>
-                    </div>
+                  {/* 1. VISION PROSPECTIVE */}
+                  <div className="bg-white rounded-2xl p-6 sm:p-8 border border-orange-200 shadow-2xs space-y-5">
+                    <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#FF8C00] flex items-center justify-center font-bold">
+                          <Eye className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
+                            <span>1. Notre Vision</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
+                              Composante 1/5
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Vision sociétale pour le Bénin et l’Afrique, affichée dans la carte orange sur le site public.
+                          </p>
+                        </div>
+                      </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleAddBlock('pillar')}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-purple-50 text-[#92278F] hover:bg-[#92278F] hover:text-white text-xs font-bold transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Ajouter une valeur</span>
-                    </button>
-                  </div>
-
-                  {(currentPage.blocks || []).length === 0 ? (
-                    <div className="p-8 rounded-xl bg-gray-50 border border-gray-200 text-center text-xs text-gray-500">
-                      <p>Aucune valeur personnalisée n&apos;est enregistrée.</p>
                       <button
                         type="button"
-                        onClick={() => handleAddBlock('pillar')}
-                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-semibold hover:bg-gray-100"
+                        onClick={() => handleSaveRubrique('vision')}
+                        disabled={saving}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FF8C00] hover:bg-[#e07b00] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
                       >
-                        <Plus className="w-3.5 h-3.5 text-[#FF8C00]" />
-                        <span>Ajouter une valeur</span>
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Enregistrer la Vision</span>
                       </button>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {currentPage.blocks.map((block, index) => (
-                        <div
-                          key={block.id || index}
-                          className="p-5 rounded-xl border border-gray-200 bg-white space-y-3 hover:border-purple-200 transition-all shadow-2xs flex flex-col justify-between"
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <div className="md:col-span-12">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                          Titre de la Vision ({editingLang.toUpperCase()})
+                        </label>
+                        <input
+                          type="text"
+                          value={editingLang === 'fr' ? visionBlock.title_fr || 'Notre Vision' : visionBlock.title_en || 'Our Vision'}
+                          onChange={(e) => updateVisionField(editingLang === 'fr' ? 'title_fr' : 'title_en', e.target.value)}
+                          placeholder="Notre Vision"
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 font-semibold focus:border-[#FF8C00] focus:outline-hidden"
+                        />
+                      </div>
+
+                      <div className="md:col-span-12">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                          Formulation officielle de la Vision ({editingLang.toUpperCase()})
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={editingLang === 'fr' ? visionBlock.content_fr || '' : visionBlock.content_en || ''}
+                          onChange={(e) => updateVisionField(editingLang === 'fr' ? 'content_fr' : 'content_en', e.target.value)}
+                          placeholder="Un Bénin et une Afrique où chaque femme, chaque jeune fille et chaque citoyen vit à l’abri des violences..."
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#FF8C00] focus:outline-hidden leading-relaxed"
+                        />
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          Formulation prospective officielle de la société équitable visée par APS-BÉNIN.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. MISSION STATUTAIRE */}
+                  <div className="bg-white rounded-2xl p-6 sm:p-8 border border-purple-200 shadow-2xs space-y-5">
+                    <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#92278F] flex items-center justify-center font-bold">
+                          <Compass className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
+                            <span>2. Notre Mission</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                              Composante 2/5
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Mandat opérationnel fondamental, affiché dans la carte violette sur le site public.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSaveRubrique('mission')}
+                        disabled={saving}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Enregistrer la Mission</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <div className="md:col-span-12">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                          Titre de la Mission ({editingLang.toUpperCase()})
+                        </label>
+                        <input
+                          type="text"
+                          value={editingLang === 'fr' ? missionBlock.title_fr || 'Notre Mission' : missionBlock.title_en || 'Our Mission'}
+                          onChange={(e) => updateMissionField(editingLang === 'fr' ? 'title_fr' : 'title_en', e.target.value)}
+                          placeholder="Notre Mission"
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 font-semibold focus:border-[#92278F] focus:outline-hidden"
+                        />
+                      </div>
+
+                      <div className="md:col-span-12">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                          Formulation officielle de la Mission ({editingLang.toUpperCase()})
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={editingLang === 'fr' ? missionBlock.content_fr || '' : missionBlock.content_en || ''}
+                          onChange={(e) => updateMissionField(editingLang === 'fr' ? 'content_fr' : 'content_en', e.target.value)}
+                          placeholder="Défendre les droits humains, promouvoir la justice et l’égalité de genre..."
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#92278F] focus:outline-hidden leading-relaxed"
+                        />
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          Actions concrètes, assistance juridique, autonomisation et ancrage territorial au Bénin.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. BUT STATUTAIRE (ARTICLE 9) */}
+                  <div className="bg-white rounded-2xl p-6 sm:p-8 border border-amber-200 shadow-2xs space-y-5">
+                    <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                          <Target className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
+                            <span>3. Notre But Statutaire (Article 9 des statuts)</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                              Composante 3/5
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Finalité légale et statutaire suprême de l’organisation selon l’Article 9 des statuts officiels.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSaveRubrique('goal')}
+                        disabled={saving}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Enregistrer le But</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <div className="md:col-span-12">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                          Intitulé de la rubrique ({editingLang.toUpperCase()})
+                        </label>
+                        <input
+                          type="text"
+                          value={editingLang === 'fr' ? goalBlock.title_fr || defaultInstitutionalGoal.title_fr : goalBlock.title_en || defaultInstitutionalGoal.title_en}
+                          onChange={(e) => updateGoalField(editingLang === 'fr' ? 'title_fr' : 'title_en', e.target.value)}
+                          placeholder="Notre But Statutaire (Article 9)"
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 font-semibold focus:border-amber-500 focus:outline-hidden"
+                        />
+                      </div>
+
+                      <div className="md:col-span-12">
+                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                          Texte officiel du But Statutaire ({editingLang.toUpperCase()})
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={editingLang === 'fr' ? goalBlock.content_fr || '' : goalBlock.content_en || ''}
+                          onChange={(e) => updateGoalField(editingLang === 'fr' ? 'content_fr' : 'content_en', e.target.value)}
+                          placeholder="L'ONG AGISSONS POUR SAUVER (APS-BÉNIN) a pour but d'œuvrer à l'amélioration durable des conditions de vie..."
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-amber-500 focus:outline-hidden leading-relaxed"
+                        />
+                        <p className="text-[11px] text-gray-400 mt-1">
+                          Conforme à l’Article 9 des statuts d’APS-BÉNIN. Mis en valeur dans une section dédiée sur le site public.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. OBJECTIFS STATUTAIRES (ARTICLE 10) */}
+                  <div className="bg-white rounded-2xl p-6 sm:p-8 border border-emerald-200 shadow-2xs space-y-6">
+                    <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
+                            <span>4. Objectifs Statutaires (Article 10 des statuts)</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              Composante 4/5 ({objectiveBlocks.length} objectifs)
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Les 4 objectifs statutaires sous forme de liste structurée et ordonnée.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAddObjectiveItem}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-xs font-bold transition-colors"
                         >
-                          <div>
-                            <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 mb-3">
-                              <span className="text-xs font-bold text-[#92278F] uppercase tracking-wider">
-                                Valeur #{index + 1}
-                              </span>
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Ajouter un objectif</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSaveRubrique('objectives')}
+                          disabled={saving}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Enregistrer les Objectifs</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {objectiveBlocks.length === 0 ? (
+                      <div className="p-8 rounded-xl bg-gray-50 border border-gray-200 text-center text-xs text-gray-500 space-y-3">
+                        <p>Aucun objectif statutaire n&apos;est actuellement listé.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newObjs = defaultInstitutionalObjectives.map((o) => ({
+                              id: o.id,
+                              type: 'objective' as const,
+                              title_fr: o.title_fr,
+                              title_en: o.title_en,
+                              content_fr: o.description_fr,
+                              content_en: o.description_en,
+                              icon_name: o.icon_name,
+                              order_index: o.order_index,
+                            }));
+                            const others = (currentPage.blocks || []).filter((b) => b.type !== 'objective');
+                            setCurrentPage({ ...currentPage, blocks: [...others, ...newObjs] });
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restaurer les 4 objectifs statutaires officiels</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {objectiveBlocks.map((obj, idx) => (
+                          <div
+                            key={obj.id || idx}
+                            className="p-5 rounded-xl border border-gray-200 bg-gray-50/60 hover:bg-white hover:border-emerald-300 transition-all shadow-2xs space-y-3"
+                          >
+                            <div className="flex items-center justify-between gap-2 border-b border-gray-200 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold">
+                                  {idx + 1}
+                                </span>
+                                <span className="text-xs font-bold text-gray-800">
+                                  Objectif Statutaire #{idx + 1}
+                                </span>
+                              </div>
 
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => handleMoveBlock(index, 'up')}
-                                  disabled={index === 0}
+                                  onClick={() => handleMoveObjectiveItem(obj.id, 'up')}
+                                  disabled={idx === 0}
                                   className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30"
                                   title="Monter"
                                 >
@@ -1563,8 +1975,8 @@ export default function AdminInstitutionalPages() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleMoveBlock(index, 'down')}
-                                  disabled={index === (currentPage.blocks || []).length - 1}
+                                  onClick={() => handleMoveObjectiveItem(obj.id, 'down')}
+                                  disabled={idx === objectiveBlocks.length - 1}
                                   className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30"
                                   title="Descendre"
                                 >
@@ -1572,94 +1984,274 @@ export default function AdminInstitutionalPages() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveBlock(block.id)}
+                                  onClick={() => handleRemoveObjectiveItem(obj.id)}
                                   className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors ml-2"
-                                  title="Supprimer cette valeur"
+                                  title="Supprimer cet objectif"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             </div>
 
-                            <div className="space-y-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                                <div className="sm:col-span-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                              <div className="sm:col-span-8">
+                                <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
+                                  Titre de l’objectif ({editingLang.toUpperCase()})
+                                </label>
+                                <input
+                                  type="text"
+                                  value={editingLang === 'fr' ? obj.title_fr || '' : obj.title_en || ''}
+                                  onChange={(e) => {
+                                    const updated = (currentPage.blocks || []).map((b) =>
+                                      b.id === obj.id
+                                        ? { ...b, [editingLang === 'fr' ? 'title_fr' : 'title_en']: e.target.value }
+                                        : b
+                                    );
+                                    setCurrentPage({ ...currentPage, blocks: updated });
+                                  }}
+                                  placeholder="Ex: Promotion des droits humains & Lutte contre les VBG"
+                                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 font-semibold focus:border-emerald-500 focus:outline-hidden"
+                                />
+                              </div>
+
+                              <div className="sm:col-span-4">
+                                <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
+                                  Icône
+                                </label>
+                                <select
+                                  value={obj.icon_name || 'ShieldCheck'}
+                                  onChange={(e) => {
+                                    const updated = (currentPage.blocks || []).map((b) =>
+                                      b.id === obj.id ? { ...b, icon_name: e.target.value } : b
+                                    );
+                                    setCurrentPage({ ...currentPage, blocks: updated });
+                                  }}
+                                  className="w-full px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white"
+                                >
+                                  {AVAILABLE_ICONS.map((ic) => (
+                                    <option key={ic} value={ic}>
+                                      {ic}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="sm:col-span-12">
+                                <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
+                                  Description statutaire détaillée ({editingLang.toUpperCase()})
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  value={editingLang === 'fr' ? obj.content_fr || '' : obj.content_en || ''}
+                                  onChange={(e) => {
+                                    const updated = (currentPage.blocks || []).map((b) =>
+                                      b.id === obj.id
+                                        ? { ...b, [editingLang === 'fr' ? 'content_fr' : 'content_en']: e.target.value }
+                                        : b
+                                    );
+                                    setCurrentPage({ ...currentPage, blocks: updated });
+                                  }}
+                                  placeholder="Défendre et promouvoir les droits inaliénables..."
+                                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 leading-relaxed focus:border-emerald-500 focus:outline-hidden"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. VALEURS FONDAMENTALES (6 PILIERS ÉTHIQUES) */}
+                  <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-2xs space-y-6">
+                    <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#92278F] flex items-center justify-center font-bold">
+                          <Heart className="w-5 h-5 text-[#FF8C00]" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
+                            <span>5. Valeurs Fondamentales & Piliers Éthiques</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                              Composante 5/5 ({valueBlocks.length} valeurs)
+                            </span>
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Les 6 piliers éthiques intangibles guidant l’attitude de chaque collaborateur et partenaire.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAddValueItem}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-[#92278F] hover:bg-[#92278F] hover:text-white text-xs font-bold transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Ajouter une valeur</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSaveRubrique('values')}
+                          disabled={saving}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Enregistrer les Valeurs</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {valueBlocks.length === 0 ? (
+                      <div className="p-8 rounded-xl bg-gray-50 border border-gray-200 text-center text-xs text-gray-500 space-y-3">
+                        <p>Aucune valeur éthique n&apos;est actuellement enregistrée.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newVals = defaultInstitutionalValues.map((v) => ({
+                              id: v.id,
+                              type: 'pillar' as const,
+                              title_fr: v.title_fr,
+                              title_en: v.title_en,
+                              content_fr: v.desc_fr,
+                              content_en: v.desc_en,
+                              icon_name: v.icon_name,
+                              order_index: v.order_index,
+                            }));
+                            const others = (currentPage.blocks || []).filter((b) => b.type !== 'pillar' && b.type !== 'value');
+                            setCurrentPage({ ...currentPage, blocks: [...others, ...newVals] });
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#92278F] text-white text-xs font-bold hover:bg-[#741772]"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restaurer les 6 valeurs institutionnelles officielles</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {valueBlocks.map((block, index) => (
+                          <div
+                            key={block.id || index}
+                            className="p-5 rounded-xl border border-gray-200 bg-white space-y-3 hover:border-purple-200 transition-all shadow-2xs flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 mb-3">
+                                <span className="text-xs font-bold text-[#92278F] uppercase tracking-wider">
+                                  Valeur #{index + 1}
+                                </span>
+
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveValueItem(block.id, 'up')}
+                                    disabled={index === 0}
+                                    className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                    title="Monter"
+                                  >
+                                    <ArrowUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveValueItem(block.id, 'down')}
+                                    disabled={index === valueBlocks.length - 1}
+                                    className="p-1 rounded text-gray-400 hover:text-gray-700 disabled:opacity-30"
+                                    title="Descendre"
+                                  >
+                                    <ArrowDown className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveValueItem(block.id)}
+                                    className="p-1 rounded text-gray-400 hover:text-red-600 transition-colors ml-2"
+                                    title="Supprimer cette valeur"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                  <div className="sm:col-span-8">
+                                    <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
+                                      Intitulé ({editingLang.toUpperCase()})
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={editingLang === 'fr' ? block.title_fr || '' : block.title_en || ''}
+                                      onChange={(e) => {
+                                        const updated = (currentPage.blocks || []).map((b) =>
+                                          b.id === block.id
+                                            ? {
+                                                ...b,
+                                                [editingLang === 'fr' ? 'title_fr' : 'title_en']: e.target.value,
+                                              }
+                                            : b
+                                        );
+                                        setCurrentPage({ ...currentPage, blocks: updated });
+                                      }}
+                                      placeholder="Ex: Justice & Équité"
+                                      className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 font-semibold focus:border-[#92278F] focus:outline-hidden"
+                                    />
+                                  </div>
+
+                                  <div className="sm:col-span-4">
+                                    <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
+                                      Icône
+                                    </label>
+                                    <select
+                                      value={block.icon_name || 'Scale'}
+                                      onChange={(e) => {
+                                        const updated = (currentPage.blocks || []).map((b) =>
+                                          b.id === block.id ? { ...b, icon_name: e.target.value } : b
+                                        );
+                                        setCurrentPage({ ...currentPage, blocks: updated });
+                                      }}
+                                      className="w-full px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white"
+                                    >
+                                      {AVAILABLE_ICONS.map((ic) => (
+                                        <option key={ic} value={ic}>
+                                          {ic}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div>
                                   <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
-                                    Intitulé ({editingLang.toUpperCase()})
+                                    Description / Sens éthique ({editingLang.toUpperCase()})
                                   </label>
-                                  <input
-                                    type="text"
-                                    value={editingLang === 'fr' ? block.title_fr || '' : block.title_en || ''}
+                                  <textarea
+                                    rows={2}
+                                    value={editingLang === 'fr' ? block.content_fr || '' : block.content_en || ''}
                                     onChange={(e) => {
                                       const updated = (currentPage.blocks || []).map((b) =>
                                         b.id === block.id
                                           ? {
                                               ...b,
-                                              [editingLang === 'fr' ? 'title_fr' : 'title_en']: e.target.value,
+                                              [editingLang === 'fr' ? 'content_fr' : 'content_en']: e.target.value,
                                             }
                                           : b
                                       );
                                       setCurrentPage({ ...currentPage, blocks: updated });
                                     }}
-                                    placeholder="Ex: Justice & Équité"
-                                    className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 font-semibold focus:border-[#92278F] focus:outline-hidden"
+                                    placeholder="Défense inconditionnelle de l’accès équitable aux droits fondamentaux..."
+                                    className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 leading-relaxed focus:border-[#92278F] focus:outline-hidden"
                                   />
                                 </div>
-
-                                <div className="sm:col-span-4">
-                                  <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
-                                    Icône
-                                  </label>
-                                  <select
-                                    value={block.icon_name || 'Scale'}
-                                    onChange={(e) => {
-                                      const updated = (currentPage.blocks || []).map((b) =>
-                                        b.id === block.id ? { ...b, icon_name: e.target.value } : b
-                                      );
-                                      setCurrentPage({ ...currentPage, blocks: updated });
-                                    }}
-                                    className="w-full px-2 py-1.5 text-xs rounded-md border border-gray-300 bg-white"
-                                  >
-                                    {AVAILABLE_ICONS.map((ic) => (
-                                      <option key={ic} value={ic}>
-                                        {ic}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
-                                  Description / Sens éthique ({editingLang.toUpperCase()})
-                                </label>
-                                <textarea
-                                  rows={2}
-                                  value={editingLang === 'fr' ? block.content_fr || '' : block.content_en || ''}
-                                  onChange={(e) => {
-                                    const updated = (currentPage.blocks || []).map((b) =>
-                                      b.id === block.id
-                                        ? {
-                                            ...b,
-                                            [editingLang === 'fr' ? 'content_fr' : 'content_en']: e.target.value,
-                                          }
-                                        : b
-                                    );
-                                    setCurrentPage({ ...currentPage, blocks: updated });
-                                  }}
-                                  placeholder="Défense inconditionnelle de l’accès équitable aux droits fondamentaux..."
-                                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 leading-relaxed focus:border-[#92278F] focus:outline-hidden"
-                                />
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </>
-            )}
+              );
+            })()}
 
             {/* Barre de navigation rapide vers les autres modules */}
             <div className="bg-purple-50/60 rounded-2xl p-6 border border-purple-100 flex flex-col sm:flex-row items-center justify-between gap-4">

@@ -408,30 +408,60 @@ export function unpackInstitutionalPage(row: any): InstitutionalPage {
     }))
     .sort((a: InstitutionalPageBlock, b: InstitutionalPageBlock) => (a.order_index ?? 0) - (b.order_index ?? 0));
 
+  // Special resilience for mission-vision-valeurs: ensure all 5 components exist in blocks
+  if (row.slug === 'mission-vision-valeurs') {
+    const initialMvv = initialInstitutionalPages.find((p) => p.slug === 'mission-vision-valeurs');
+    if (initialMvv) {
+      if (!cleanedBlocks.some((b) => b.type === 'vision')) {
+        const defaultVisionBlock = initialMvv.blocks.find((b) => b.type === 'vision');
+        if (defaultVisionBlock) cleanedBlocks.push(defaultVisionBlock);
+      }
+      if (!cleanedBlocks.some((b) => b.type === 'mission')) {
+        const defaultMissionBlock = initialMvv.blocks.find((b) => b.type === 'mission');
+        if (defaultMissionBlock) cleanedBlocks.push(defaultMissionBlock);
+      }
+      if (!cleanedBlocks.some((b) => b.type === 'goal')) {
+        const defaultGoalBlock = initialMvv.blocks.find((b) => b.type === 'goal');
+        if (defaultGoalBlock) cleanedBlocks.push(defaultGoalBlock);
+      }
+      if (!cleanedBlocks.some((b) => b.type === 'objective')) {
+        const defaultObjectiveBlocks = initialMvv.blocks.filter((b) => b.type === 'objective');
+        cleanedBlocks.push(...defaultObjectiveBlocks);
+      }
+      if (!cleanedBlocks.some((b) => b.type === 'pillar' || b.type === 'value')) {
+        const defaultValueBlocks = initialMvv.blocks.filter((b) => b.type === 'pillar' || b.type === 'value');
+        cleanedBlocks.push(...defaultValueBlocks);
+      }
+      cleanedBlocks.sort((a: InstitutionalPageBlock, b: InstitutionalPageBlock) => (a.order_index ?? 0) - (b.order_index ?? 0));
+    }
+  }
+
+  const initialMatch = initialInstitutionalPages.find((p) => p.slug === row.slug);
+
   return {
     id: row.id || `page-${row.slug}`,
     slug: row.slug,
-    title_fr: row.title_fr || '',
-    title_en: row.title_en || row.title_fr || '',
-    subtitle_fr: row.subtitle_fr || '',
-    subtitle_en: row.subtitle_en || '',
-    badge_fr: row.badge_fr || "L'Organisation",
-    badge_en: row.badge_en || 'The Organization',
-    quote_fr: row.quote_fr || '',
-    quote_en: row.quote_en || '',
-    intro_fr: row.intro_fr || '',
-    intro_en: row.intro_en || '',
-    body_html_fr: row.body_html_fr || '',
-    body_html_en: row.body_html_en || '',
-    hero_image: resolveMediaUrl(row.hero_image),
-    hero_image_alt_fr: row.hero_image_alt_fr || '',
-    hero_image_alt_en: row.hero_image_alt_en || '',
-    images: cleanedImages,
-    blocks: cleanedBlocks,
-    meta_title_fr: row.meta_title_fr || '',
-    meta_title_en: row.meta_title_en || '',
-    meta_description_fr: row.meta_description_fr || '',
-    meta_description_en: row.meta_description_en || '',
+    title_fr: row.title_fr || initialMatch?.title_fr || '',
+    title_en: row.title_en || initialMatch?.title_en || row.title_fr || '',
+    subtitle_fr: row.subtitle_fr || initialMatch?.subtitle_fr || '',
+    subtitle_en: row.subtitle_en || initialMatch?.subtitle_en || '',
+    badge_fr: row.badge_fr || initialMatch?.badge_fr || "L'Organisation",
+    badge_en: row.badge_en || initialMatch?.badge_en || 'The Organization',
+    quote_fr: row.quote_fr || initialMatch?.quote_fr || '',
+    quote_en: row.quote_en || initialMatch?.quote_en || '',
+    intro_fr: (row.intro_fr && row.intro_fr.trim()) || initialMatch?.intro_fr || '',
+    intro_en: (row.intro_en && row.intro_en.trim()) || initialMatch?.intro_en || '',
+    body_html_fr: (row.body_html_fr && row.body_html_fr.trim()) || initialMatch?.body_html_fr || '',
+    body_html_en: (row.body_html_en && row.body_html_en.trim()) || initialMatch?.body_html_en || '',
+    hero_image: resolveMediaUrl(row.hero_image) || initialMatch?.hero_image || '',
+    hero_image_alt_fr: row.hero_image_alt_fr || initialMatch?.hero_image_alt_fr || '',
+    hero_image_alt_en: row.hero_image_alt_en || initialMatch?.hero_image_alt_en || '',
+    images: cleanedImages.length > 0 ? cleanedImages : (initialMatch?.images || []),
+    blocks: cleanedBlocks.length > 0 ? cleanedBlocks : (initialMatch?.blocks || []),
+    meta_title_fr: row.meta_title_fr || initialMatch?.meta_title_fr || '',
+    meta_title_en: row.meta_title_en || initialMatch?.meta_title_en || '',
+    meta_description_fr: row.meta_description_fr || initialMatch?.meta_description_fr || '',
+    meta_description_en: row.meta_description_en || initialMatch?.meta_description_en || '',
     is_published: row.is_published !== false,
     updated_at: row.updated_at,
   };
@@ -1632,16 +1662,22 @@ export const supabaseStore = {
             fetchedMap.set(unpacked.slug, unpacked);
           });
 
-          // Ensure all standard initial pages exist in the array with defaults merged
+          // Ensure all standard initial pages exist in the array with defaults merged safely
           const merged: InstitutionalPage[] = initialInstitutionalPages.map((init) => {
             const dbPage = fetchedMap.get(init.slug);
-            if (!dbPage) return unpackInstitutionalPage(init);
+            const unpackedInit = unpackInstitutionalPage(init);
+            if (!dbPage) return unpackedInit;
             return {
-              ...unpackInstitutionalPage(init),
+              ...unpackedInit,
               ...dbPage,
-              // Strictly respect db images/blocks if defined on database row
-              images: Array.isArray(dbPage.images) ? dbPage.images : unpackInstitutionalPage(init).images,
-              blocks: Array.isArray(dbPage.blocks) ? dbPage.blocks : unpackInstitutionalPage(init).blocks,
+              images: Array.isArray(dbPage.images) && dbPage.images.length > 0 ? dbPage.images : unpackedInit.images,
+              blocks: Array.isArray(dbPage.blocks) && dbPage.blocks.length > 0 ? dbPage.blocks : unpackedInit.blocks,
+              intro_fr: (dbPage.intro_fr && dbPage.intro_fr.trim()) || unpackedInit.intro_fr,
+              intro_en: (dbPage.intro_en && dbPage.intro_en.trim()) || unpackedInit.intro_en,
+              body_html_fr: (dbPage.body_html_fr && dbPage.body_html_fr.trim()) || unpackedInit.body_html_fr,
+              body_html_en: (dbPage.body_html_en && dbPage.body_html_en.trim()) || unpackedInit.body_html_en,
+              subtitle_fr: (dbPage.subtitle_fr && dbPage.subtitle_fr.trim()) || unpackedInit.subtitle_fr,
+              subtitle_en: (dbPage.subtitle_en && dbPage.subtitle_en.trim()) || unpackedInit.subtitle_en,
             };
           });
 

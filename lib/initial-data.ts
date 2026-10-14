@@ -1083,6 +1083,13 @@ export const initialAdminUsers: UserProfile[] = [
     last_sign_in: '2026-10-05T10:23:56.583Z',
   }
 ];
-export { initialInstitutionalPages } from './initial-pages';
+export {
+  initialInstitutionalPages,
+  defaultInstitutionalVision,
+  defaultInstitutionalMission,
+  defaultInstitutionalGoal,
+  defaultInstitutionalObjectives,
+  defaultInstitutionalValues,
+} from './initial-pages';
 
 

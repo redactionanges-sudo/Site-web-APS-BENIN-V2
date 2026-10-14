@@ -506,9 +506,22 @@ export type InstitutionalPageSlug =
   | 'mission-vision-valeurs'
   | 'domaines';
 
+export type InstitutionalBlockType =
+  | 'paragraph'
+  | 'pillar'
+  | 'quote'
+  | 'image'
+  | 'callout'
+  | 'cta'
+  | 'vision'
+  | 'mission'
+  | 'goal'
+  | 'objective'
+  | 'value';
+
 export interface InstitutionalPageBlock {
   id: string;
-  type: 'paragraph' | 'pillar' | 'quote' | 'image' | 'callout' | 'cta';
+  type: InstitutionalBlockType;
   title_fr?: string;
   title_en?: string;
   content_fr?: string;
@@ -522,6 +535,26 @@ export interface InstitutionalPageBlock {
   button_text_fr?: string;
   button_text_en?: string;
   button_url?: string;
+  order_index: number;
+}
+
+export interface InstitutionalObjective {
+  id: string;
+  title_fr: string;
+  title_en: string;
+  description_fr: string;
+  description_en: string;
+  icon_name?: string;
+  order_index: number;
+}
+
+export interface InstitutionalValue {
+  id: string;
+  title_fr: string;
+  title_en: string;
+  desc_fr: string;
+  desc_en: string;
+  icon_name: string;
   order_index: number;
 }
 

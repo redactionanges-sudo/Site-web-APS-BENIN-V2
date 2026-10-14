@@ -1,12 +1,20 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { InstitutionalPage } from '@/types';
+import {
+  defaultInstitutionalVision,
+  defaultInstitutionalMission,
+  defaultInstitutionalGoal,
+  defaultInstitutionalObjectives,
+  defaultInstitutionalValues,
+} from '@/lib/initial-pages';
 import {
   Compass,
   Eye,
@@ -17,6 +25,12 @@ import {
   CheckCircle2,
   Sparkles,
   EyeOff,
+  Target,
+  ShieldCheck,
+  Award,
+  ArrowRight,
+  BookOpen,
+  BookmarkCheck,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -26,52 +40,11 @@ const iconMap: Record<string, React.ReactNode> = {
   Users: <Users className="w-6 h-6 text-[#FF8C00]" />,
   ShieldAlert: <ShieldAlert className="w-6 h-6 text-[#92278F]" />,
   Compass: <Compass className="w-6 h-6 text-[#FF8C00]" />,
+  Target: <Target className="w-6 h-6 text-amber-600" />,
+  ShieldCheck: <ShieldCheck className="w-6 h-6 text-emerald-600" />,
+  Eye: <Eye className="w-6 h-6 text-[#FF8C00]" />,
+  Award: <Award className="w-6 h-6 text-[#92278F]" />,
 };
-
-const defaultValues = [
-  {
-    title_fr: 'Justice & Équité',
-    title_en: 'Justice & Equity',
-    desc_fr: 'Défense inconditionnelle de l’accès équitable aux droits fondamentaux pour chaque femme, jeune fille et personne vulnérable.',
-    desc_en: 'Unconditional defense of equitable access to fundamental rights for every woman, girl, and vulnerable person.',
-    icon_name: 'Scale',
-  },
-  {
-    title_fr: 'Solidarité Agissante',
-    title_en: 'Active Solidarity',
-    desc_fr: 'Entraide communautaire, filets de protection pour les personnes en situation d’extrême vulnérabilité et écoute empathique.',
-    desc_en: 'Community mutual aid, safety nets for persons in extreme distress, and empathetic supportive listening.',
-    icon_name: 'Heart',
-  },
-  {
-    title_fr: 'Intégrité & Transparence',
-    title_en: 'Integrity & Transparency',
-    desc_fr: 'Gestion rigoureuse, fidélité aux engagements statutaires, tolérance zéro contre la corruption et reddition scrupuleuse des comptes.',
-    desc_en: 'Rigorous management, loyalty to statutory commitments, zero tolerance for corruption, and thorough accountability.',
-    icon_name: 'CheckCircle2',
-  },
-  {
-    title_fr: 'Inclusion & Non-discrimination',
-    title_en: 'Inclusion & Non-Discrimination',
-    desc_fr: 'Refus absolu de toute stigmatisation fondée sur le sexe, l’origine sociale, la situation matrimoniale, le handicap ou l’âge.',
-    desc_en: 'Absolute rejection of any discrimination based on gender, background, marital status, disability or age.',
-    icon_name: 'Users',
-  },
-  {
-    title_fr: 'Courage & Engagement',
-    title_en: 'Courage & Commitment',
-    desc_fr: 'Détermination à dénoncer les violences basées sur le genre et à bousculer les normes coutumières discriminatoires.',
-    desc_en: 'Determination to speak out against gender violence and dismantle discriminatory traditional norms.',
-    icon_name: 'ShieldAlert',
-  },
-  {
-    title_fr: 'Autonomie & Durabilité',
-    title_en: 'Autonomy & Sustainability',
-    desc_fr: 'Apporter aux bénéficiaires les compétences et moyens nécessaires pour qu’ils soient acteurs de leur propre émancipation pérenne.',
-    desc_en: 'Empowering beneficiaries with skills and resources so they become leaders of their own sustainable emancipation.',
-    icon_name: 'Compass',
-  },
-];
 
 export default function MissionVisionValeursPage() {
   const { language } = useLanguage();
@@ -92,6 +65,7 @@ export default function MissionVisionValeursPage() {
     };
   }, []);
 
+  // Header data
   const badge = pageData
     ? language === 'en'
       ? pageData.badge_en || pageData.badge_fr || 'Institutional Identity'
@@ -102,11 +76,11 @@ export default function MissionVisionValeursPage() {
 
   const title = pageData
     ? language === 'en'
-      ? pageData.title_en || pageData.title_fr || 'Mission, Vision & Values'
-      : pageData.title_fr || 'Mission, Vision & Valeurs'
+      ? pageData.title_en || pageData.title_fr || 'Mission, Vision, Purpose, Objectives & Values'
+      : pageData.title_fr || 'Mission, Vision, But, Objectifs & Valeurs'
     : language === 'en'
-    ? 'Mission, Vision & Values'
-    : 'Mission, Vision & Valeurs';
+    ? 'Mission, Vision, Purpose, Objectives & Values'
+    : 'Mission, Vision, But, Objectifs & Valeurs';
 
   const quote = pageData
     ? language === 'en'
@@ -116,31 +90,86 @@ export default function MissionVisionValeursPage() {
     ? 'For a more just and egalitarian world'
     : 'Pour un monde plus juste et égalitaire';
 
-  const missionText = pageData
+  const subtitle = pageData
     ? language === 'en'
-      ? pageData.intro_en || pageData.intro_fr || ''
-      : pageData.intro_fr || ''
+      ? pageData.subtitle_en || pageData.subtitle_fr || 'Strategic orientations and intangible principles guiding every single intervention.'
+      : pageData.subtitle_fr || 'Les orientations stratégiques et les principes intangibles guidant chacune de nos interventions.'
     : language === 'en'
-    ? 'To defend human rights, advance gender justice, eradicate gender-based violence, preserve sexual and reproductive health, and build economic independence for women, girls, and vulnerable community members in Benin through proximity-driven action, legal support, and grassroots capacity building.'
-    : "Défendre les droits humains, promouvoir la justice et l’égalité de genre, éradiquer les violences basées sur le genre, préserver la santé sexuelle et reproductive et bâtir l'autonomie économique des femmes, des filles et des communautés vulnérables au Bénin à travers des actions de proximité, une assistance juridique continue et le renforcement des capacités locales.";
+    ? 'Strategic orientations and intangible principles guiding every single intervention.'
+    : 'Les orientations stratégiques et les principes intangibles guidant chacune de nos interventions.';
 
-  const visionText = pageData
-    ? language === 'en'
-      ? pageData.subtitle_en || pageData.subtitle_fr || ''
-      : pageData.subtitle_fr || ''
-    : language === 'en'
-    ? 'A Benin and an African continent where every woman, young girl, and citizen lives free from violence and discrimination, actively participates in decision-making, and enjoys full economic, physical, and social autonomy in a just and equitable society.'
-    : "Un Bénin et une Afrique où chaque femme, chaque jeune fille et chaque citoyen vit à l’abri des violences et de la discrimination, participe pleinement aux décisions qui engagent la cité, et jouit d'une totale autonomie économique, physique et sociale au sein d’une société juste, égalitaire et inclusive.";
+  // 1. VISION
+  const visionBlock = pageData?.blocks?.find((b) => b.type === 'vision');
+  const visionTitle =
+    (language === 'en' ? visionBlock?.title_en || visionBlock?.title_fr : visionBlock?.title_fr) ||
+    (language === 'en' ? defaultInstitutionalVision.title_en : defaultInstitutionalVision.title_fr);
+  const visionText =
+    (language === 'en' ? visionBlock?.content_en || visionBlock?.content_fr : visionBlock?.content_fr) ||
+    (language === 'en' ? defaultInstitutionalVision.content_en : defaultInstitutionalVision.content_fr);
 
-  const values = pageData?.blocks && pageData.blocks.length > 0
-    ? pageData.blocks.map((b) => ({
-        title_fr: b.title_fr || '',
-        title_en: b.title_en || b.title_fr || '',
-        desc_fr: b.content_fr || '',
-        desc_en: b.content_en || b.content_fr || '',
-        icon_name: b.icon_name || 'Scale',
-      }))
-    : defaultValues;
+  // 2. MISSION
+  const missionBlock = pageData?.blocks?.find((b) => b.type === 'mission');
+  const missionTitle =
+    (language === 'en' ? missionBlock?.title_en || missionBlock?.title_fr : missionBlock?.title_fr) ||
+    (language === 'en' ? defaultInstitutionalMission.title_en : defaultInstitutionalMission.title_fr);
+  const missionText =
+    (language === 'en'
+      ? missionBlock?.content_en || missionBlock?.content_fr || pageData?.intro_en || pageData?.intro_fr
+      : missionBlock?.content_fr || pageData?.intro_fr) ||
+    (language === 'en' ? defaultInstitutionalMission.content_en : defaultInstitutionalMission.content_fr);
+
+  // 3. BUT STATUTAIRE (ARTICLE 9)
+  const goalBlock = pageData?.blocks?.find((b) => b.type === 'goal');
+  const goalTitle =
+    (language === 'en' ? goalBlock?.title_en || goalBlock?.title_fr : goalBlock?.title_fr) ||
+    (language === 'en' ? defaultInstitutionalGoal.title_en : defaultInstitutionalGoal.title_fr);
+  const goalText =
+    (language === 'en'
+      ? goalBlock?.content_en || goalBlock?.content_fr || pageData?.body_html_en || pageData?.body_html_fr
+      : goalBlock?.content_fr || pageData?.body_html_fr) ||
+    (language === 'en' ? defaultInstitutionalGoal.content_en : defaultInstitutionalGoal.content_fr);
+
+  // 4. OBJECTIFS STATUTAIRES (ARTICLE 10)
+  const rawObjectiveBlocks = (pageData?.blocks || []).filter((b) => b.type === 'objective');
+  const objectives =
+    rawObjectiveBlocks.length > 0
+      ? rawObjectiveBlocks
+          .map((b, idx) => ({
+            id: b.id || `obj-${idx + 1}`,
+            title: language === 'en' ? b.title_en || b.title_fr || '' : b.title_fr || '',
+            description: language === 'en' ? b.content_en || b.content_fr || '' : b.content_fr || '',
+            icon_name: b.icon_name || 'ShieldCheck',
+            order_index: b.order_index ?? idx + 1,
+          }))
+          .sort((a, b) => a.order_index - b.order_index)
+      : defaultInstitutionalObjectives.map((obj) => ({
+          id: obj.id,
+          title: language === 'en' ? obj.title_en : obj.title_fr,
+          description: language === 'en' ? obj.description_en : obj.description_fr,
+          icon_name: obj.icon_name,
+          order_index: obj.order_index,
+        }));
+
+  // 5. VALEURS FONDAMENTALES (6 PILIERS ÉTHIQUES)
+  const rawValueBlocks = (pageData?.blocks || []).filter((b) => b.type === 'pillar' || b.type === 'value');
+  const values =
+    rawValueBlocks.length > 0
+      ? rawValueBlocks
+          .map((b, idx) => ({
+            id: b.id || `val-${idx + 1}`,
+            title: language === 'en' ? b.title_en || b.title_fr || '' : b.title_fr || '',
+            description: language === 'en' ? b.content_en || b.content_fr || '' : b.content_fr || '',
+            icon_name: b.icon_name || 'Scale',
+            order_index: b.order_index ?? idx + 1,
+          }))
+          .sort((a, b) => a.order_index - b.order_index)
+      : defaultInstitutionalValues.map((v) => ({
+          id: v.id,
+          title: language === 'en' ? v.title_en : v.title_fr,
+          description: language === 'en' ? v.desc_en : v.desc_fr,
+          icon_name: v.icon_name,
+          order_index: v.order_index,
+        }));
 
   const heroImage = pageData?.hero_image;
 
@@ -160,7 +189,9 @@ export default function MissionVisionValeursPage() {
       )}
 
       <main className="flex-1">
-        {/* Header */}
+        {/* ============================================================== */}
+        {/* EN-TÊTE / HERO BANNER                                         */}
+        {/* ============================================================== */}
         <section className="bg-gray-900 text-white py-16 sm:py-20 relative overflow-hidden">
           {heroImage && (
             <div
@@ -183,72 +214,314 @@ export default function MissionVisionValeursPage() {
                 « {quote} »
               </p>
             )}
+            {subtitle && (
+              <p className="text-sm sm:text-base text-gray-300 max-w-3xl mt-4 leading-relaxed">
+                {subtitle}
+              </p>
+            )}
+
+            {/* Quick anchors bar for the 5 components */}
+            <div className="pt-6 flex flex-wrap gap-2 text-xs font-bold">
+              <a
+                href="#vision"
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-[#FF8C00] transition-colors border border-white/15 inline-flex items-center gap-1.5"
+              >
+                <Eye className="w-3.5 h-3.5 text-[#FF8C00]" />
+                <span>1. {language === 'en' ? 'Vision' : 'Vision'}</span>
+              </a>
+              <a
+                href="#mission"
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-[#92278F] transition-colors border border-white/15 inline-flex items-center gap-1.5"
+              >
+                <Compass className="w-3.5 h-3.5 text-purple-300" />
+                <span>2. {language === 'en' ? 'Mission' : 'Mission'}</span>
+              </a>
+              <a
+                href="#but"
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-amber-600 transition-colors border border-white/15 inline-flex items-center gap-1.5"
+              >
+                <Target className="w-3.5 h-3.5 text-amber-300" />
+                <span>3. {language === 'en' ? 'Statutory Purpose' : 'But Statutaire'}</span>
+              </a>
+              <a
+                href="#objectifs"
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-emerald-600 transition-colors border border-white/15 inline-flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
+                <span>4. {language === 'en' ? 'Statutory Objectives' : 'Objectifs'}</span>
+              </a>
+              <a
+                href="#valeurs"
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-[#92278F] transition-colors border border-white/15 inline-flex items-center gap-1.5"
+              >
+                <Heart className="w-3.5 h-3.5 text-[#FF8C00]" />
+                <span>5. {language === 'en' ? 'Core Values' : 'Valeurs'}</span>
+              </a>
+            </div>
           </div>
         </section>
 
-        {/* Mission & Vision Grid */}
-        <section className="py-20 bg-white">
+        {/* ============================================================== */}
+        {/* SECTIONS 1 & 2: VISION & MISSION                               */}
+        {/* ============================================================== */}
+        <section className="py-16 sm:py-20 bg-white border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 mb-20">
-              {/* Mission */}
-              <div className="p-8 sm:p-10 rounded-2xl bg-purple-50/60 border-2 border-purple-100 relative overflow-hidden shadow-2xs">
-                <div className="w-14 h-14 rounded-xl bg-[#92278F] text-white flex items-center justify-center mb-6 shadow-sm">
-                  <Compass className="w-7 h-7 text-[#FF8C00]" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+              {/* 1. VISION */}
+              <div
+                id="vision"
+                className="p-8 sm:p-10 rounded-2xl bg-orange-50/70 border-2 border-orange-200 relative overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-6">
+                    <div className="w-14 h-14 rounded-xl bg-[#FF8C00] text-white flex items-center justify-center shadow-sm">
+                      <Eye className="w-7 h-7 text-white" />
+                    </div>
+                    <span className="text-[11px] font-extrabold uppercase px-3 py-1 rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+                      {language === 'en' ? 'Component 1/5' : 'Composante 1/5'}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
+                    {visionTitle}
+                  </h2>
+                  <p className="text-base text-gray-700 leading-relaxed">
+                    {visionText}
+                  </p>
                 </div>
-                <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
-                  {language === 'en' ? 'Our Mission' : 'Notre Mission'}
-                </h2>
-                <p className="text-base text-gray-700 leading-relaxed">
-                  {missionText}
-                </p>
+                <div className="pt-6 mt-6 border-t border-orange-200/60 flex items-center gap-2 text-xs font-bold text-orange-800">
+                  <BookmarkCheck className="w-4 h-4 text-[#FF8C00]" />
+                  <span>{language === 'en' ? 'Societal horizon for Benin & Africa' : 'Horizon sociétal pour le Bénin et l’Afrique'}</span>
+                </div>
               </div>
 
-              {/* Vision */}
-              <div className="p-8 sm:p-10 rounded-2xl bg-orange-50/60 border-2 border-orange-100 relative overflow-hidden shadow-2xs">
-                <div className="w-14 h-14 rounded-xl bg-[#FF8C00] text-white flex items-center justify-center mb-6 shadow-sm">
-                  <Eye className="w-7 h-7 text-white" />
+              {/* 2. MISSION */}
+              <div
+                id="mission"
+                className="p-8 sm:p-10 rounded-2xl bg-purple-50/70 border-2 border-purple-200 relative overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-6">
+                    <div className="w-14 h-14 rounded-xl bg-[#92278F] text-white flex items-center justify-center shadow-sm">
+                      <Compass className="w-7 h-7 text-[#FF8C00]" />
+                    </div>
+                    <span className="text-[11px] font-extrabold uppercase px-3 py-1 rounded-full bg-purple-100 text-[#92278F] border border-purple-300">
+                      {language === 'en' ? 'Component 2/5' : 'Composante 2/5'}
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
+                    {missionTitle}
+                  </h2>
+                  <p className="text-base text-gray-700 leading-relaxed">
+                    {missionText}
+                  </p>
                 </div>
-                <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
-                  {language === 'en' ? 'Our Vision' : 'Notre Vision'}
-                </h2>
-                <p className="text-base text-gray-700 leading-relaxed">
-                  {visionText}
-                </p>
+                <div className="pt-6 mt-6 border-t border-purple-200/60 flex items-center gap-2 text-xs font-bold text-[#92278F]">
+                  <BookmarkCheck className="w-4 h-4 text-[#FF8C00]" />
+                  <span>{language === 'en' ? 'Operational mandate on the ground' : 'Mandat d’action opérationnel sur le terrain'}</span>
+                </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Values Section */}
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#92278F]">
-                {language === 'en' ? 'Ethical Foundations' : 'Socle Éthique'}
+        {/* ============================================================== */}
+        {/* SECTION 3: NOTRE BUT STATUTAIRE (ARTICLE 9)                    */}
+        {/* ============================================================== */}
+        <section id="but" className="py-16 sm:py-20 bg-linear-to-b from-amber-50/60 via-white to-amber-50/30 border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8">
+            <div className="max-w-4xl mx-auto bg-white rounded-3xl p-8 sm:p-12 border-2 border-amber-200 shadow-md relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-100/50 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none" />
+
+              <div className="relative z-10">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold">
+                    <Target className="w-4 h-4 text-amber-700" />
+                    <span>{language === 'en' ? 'Component 3/5 — Article 9 of Statutes' : 'Composante 3/5 — Article 9 des Statuts'}</span>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-gray-400">
+                    APS-BÉNIN / STATUTS OFFICIELS
+                  </span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 font-heading mb-6">
+                  {goalTitle}
+                </h2>
+
+                <div className="p-6 sm:p-8 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-gray-800 leading-relaxed text-base sm:text-lg font-serif italic relative">
+                  <span className="text-4xl text-amber-400 font-serif absolute top-2 left-3 select-none leading-none">«</span>
+                  <p className="pl-6 pr-2">
+                    {goalText}
+                  </p>
+                  <span className="text-4xl text-amber-400 font-serif absolute bottom-0 right-3 select-none leading-none">»</span>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500 pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-2 font-medium">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>
+                      {language === 'en'
+                        ? 'Legally validated and officially registered in the Republic of Benin.'
+                        : 'Légalement enregistré et publié au Journal Officiel de la République du Bénin.'}
+                    </span>
+                  </div>
+                  <Link
+                    href="/organisation/documents"
+                    className="inline-flex items-center gap-1 font-bold text-[#92278F] hover:underline"
+                  >
+                    <span>{language === 'en' ? 'Consult official statutes' : 'Consulter les statuts officiels'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================== */}
+        {/* SECTION 4: NOS OBJECTIFS STATUTAIRES (ARTICLE 10)              */}
+        {/* ============================================================== */}
+        <section id="objectifs" className="py-16 sm:py-20 bg-gray-50 border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-14">
+              <span className="inline-block text-xs font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-300 px-3.5 py-1.5 rounded-full mb-3">
+                {language === 'en' ? 'Component 4/5 — Article 10 of Statutes' : 'Composante 4/5 — Article 10 des Statuts'}
               </span>
-              <h2 className="text-3xl font-extrabold text-gray-900 mt-1 font-heading">
-                {language === 'en' ? 'Our Core Values' : 'Nos Valeurs Fondamentales'}
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 font-heading">
+                {language === 'en' ? 'Our 4 Statutory Objectives' : 'Nos 4 Objectifs Statutaires'}
               </h2>
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed">
                 {language === 'en'
-                  ? 'The guiding principles that dictate every action, project, and relationship at APS-BENIN.'
+                  ? 'Fundamental intervention pillars established by the Constitutive Assembly to achieve our institutional purpose.'
+                  : 'Les axes d’action fondamentaux définis par l’Assemblée Générale Constitutive pour accomplir notre but.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+              {objectives.map((obj, idx) => (
+                <div
+                  key={obj.id || idx}
+                  className="bg-white rounded-2xl p-7 sm:p-8 border border-gray-200 hover:border-emerald-500 transition-all shadow-2xs hover:shadow-md flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-3 mb-5 border-b border-gray-100 pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 font-bold">
+                          {iconMap[obj.icon_name] || <ShieldCheck className="w-5 h-5 text-emerald-600" />}
+                        </div>
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider font-mono">
+                          {language === 'en' ? `Objective #${idx + 1}` : `Objectif Statutaire #${idx + 1}`}
+                        </span>
+                      </div>
+                      <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold flex items-center justify-center">
+                        {idx + 1}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-900 font-heading mb-3 leading-snug">
+                      {obj.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {obj.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 mt-5 border-t border-gray-100 flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{language === 'en' ? 'Article 10 statutory commitment' : 'Engagement statutaire Article 10'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================== */}
+        {/* SECTION 5: NOS VALEURS FONDAMENTALES (6 PILIERS ÉTHIQUES)       */}
+        {/* ============================================================== */}
+        <section id="valeurs" className="py-16 sm:py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-14">
+              <span className="inline-block text-xs font-extrabold uppercase tracking-wider text-[#92278F] bg-purple-100 border border-purple-200 px-3.5 py-1.5 rounded-full mb-3">
+                {language === 'en' ? 'Component 5/5 — Ethical Core' : 'Composante 5/5 — Socle Éthique'}
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 font-heading">
+                {language === 'en' ? 'Our 6 Core Values' : 'Nos 6 Valeurs Fondamentales'}
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed">
+                {language === 'en'
+                  ? 'The non-negotiable ethical pillars that guide the posture, partnerships, and daily fieldwork of APS-BENIN.'
                   : 'Les repères intangibles qui guident l’attitude de chaque collaborateur et partenaire d’APS-BÉNIN.'}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {values.map((v, idx) => (
                 <div
-                  key={idx}
-                  className="bg-white rounded-xl p-6 border border-gray-200 hover:border-[#92278F] transition-all hover:shadow-md shadow-2xs"
+                  key={v.id || idx}
+                  className="bg-white rounded-2xl p-6 sm:p-7 border border-gray-200 hover:border-[#92278F] transition-all hover:shadow-md shadow-2xs flex flex-col justify-between"
                 >
-                  <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center mb-4 border border-gray-100">
-                    {iconMap[v.icon_name] || <Scale className="w-6 h-6 text-[#92278F]" />}
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                      <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
+                        {iconMap[v.icon_name] || <Scale className="w-6 h-6 text-[#92278F]" />}
+                      </div>
+                      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-purple-50 text-[#92278F] border border-purple-200">
+                        {language === 'en' ? `Pillar ${idx + 1}` : `Pilier ${idx + 1}`}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-900 font-heading mb-2">
+                      {v.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      {v.description}
+                    </p>
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 font-heading mb-2">
-                    {language === 'en' ? v.title_en : v.title_fr}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                    {language === 'en' ? v.desc_en : v.desc_fr}
-                  </p>
+
+                  <div className="pt-4 mt-4 border-t border-gray-100 flex items-center gap-1.5 text-[11px] text-[#92278F] font-bold">
+                    <Sparkles className="w-3.5 h-3.5 text-[#FF8C00]" />
+                    <span>{language === 'en' ? 'Ethical foundation' : 'Socle éthique institutionnel'}</span>
+                  </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Quick Cross-Links */}
+        <section className="py-10 bg-gray-50 border-t border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                {language === 'en' ? 'Institutional Architecture' : 'Architecture Institutionnelle'}
+              </p>
+              <h4 className="text-base font-bold text-gray-900 font-heading">
+                {language === 'en' ? 'Learn more about APS-BENIN' : 'Poursuivre la découverte d’APS-BÉNIN'}
+              </h4>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/organisation/presentation"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:text-[#92278F] hover:border-purple-300 transition-colors shadow-2xs"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-[#92278F]" />
+                <span>{language === 'en' ? 'Overview & Identity' : 'Présentation Institutionnelle'}</span>
+              </Link>
+              <Link
+                href="/organisation/histoire"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:text-[#92278F] hover:border-purple-300 transition-colors shadow-2xs"
+              >
+                <Compass className="w-3.5 h-3.5 text-[#FF8C00]" />
+                <span>{language === 'en' ? 'History & Milestones' : 'Histoire & Jalons'}</span>
+              </Link>
+              <Link
+                href="/organisation/gouvernance"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-700 hover:text-[#92278F] hover:border-purple-300 transition-colors shadow-2xs"
+              >
+                <Users className="w-3.5 h-3.5 text-[#92278F]" />
+                <span>{language === 'en' ? 'Governance' : 'Gouvernance'}</span>
+              </Link>
             </div>
           </div>
         </section>
