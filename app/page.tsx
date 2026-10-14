@@ -16,7 +16,8 @@ import { CallToAction } from '@/components/CallToAction';
 import { HomeMediathequeSection } from '@/components/HomeMediathequeSection';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore, resolveMediaUrl, unpackInstitutionalPage } from '@/lib/supabase';
-import { initialInstitutionalPages } from '@/lib/initial-data';
+import { initialInstitutionalPages } from '@/lib/initial-pages';
+
 import { InstitutionalPage } from '@/types';
 import { ShieldCheck, HeartHandshake, Eye, Award, ArrowRight } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';

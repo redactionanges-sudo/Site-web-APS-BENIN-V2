@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '@/types';
 import { supabase, isSupabaseConfigured } from './supabase-client';
-import { recordAuditLog } from './audit';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -295,20 +294,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(activeProfile);
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(activeProfile));
 
-      try {
-        recordAuditLog({
-          user_id: activeProfile.id,
-          user_email: activeProfile.email,
-          user_name: activeProfile.full_name,
-          user_role: activeProfile.role,
-          action_type: 'connexion',
-          module: 'authentification',
-          summary: `Connexion réussie de ${activeProfile.full_name} (${activeProfile.role})`,
-          metadata: { login_method: 'password_credentials' },
+      // Asynchronous non-blocking audit logging
+      import('./audit')
+        .then(({ recordAuditLog }) => {
+          recordAuditLog({
+            user_id: activeProfile.id,
+            user_email: activeProfile.email,
+            user_name: activeProfile.full_name,
+            user_role: activeProfile.role,
+            action_type: 'connexion',
+            module: 'authentification',
+            summary: `Connexion réussie de ${activeProfile.full_name} (${activeProfile.role})`,
+            metadata: { login_method: 'password_credentials' },
+          });
+        })
+        .catch((logErr) => {
+          console.warn('Audit login non-bloquant:', logErr);
         });
-      } catch (logErr) {
-        console.warn('Audit login non-bloquant:', logErr);
-      }
 
       return { success: true };
     } catch (err: any) {
@@ -324,19 +326,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     if (user) {
-      try {
-        recordAuditLog({
-          user_id: user.id,
-          user_email: user.email,
-          user_name: user.full_name,
-          user_role: user.role,
-          action_type: 'deconnexion',
-          module: 'authentification',
-          summary: `Déconnexion de ${user.full_name} (${user.role})`,
+      import('./audit')
+        .then(({ recordAuditLog }) => {
+          recordAuditLog({
+            user_id: user.id,
+            user_email: user.email,
+            user_name: user.full_name,
+            user_role: user.role,
+            action_type: 'deconnexion',
+            module: 'authentification',
+            summary: `Déconnexion de ${user.full_name} (${user.role})`,
+          });
+        })
+        .catch((logErr) => {
+          console.warn('Audit logout non-bloquant:', logErr);
         });
-      } catch (logErr) {
-        console.warn('Audit logout non-bloquant:', logErr);
-      }
     }
     if (isSupabaseConfigured && supabase) {
       try {

@@ -41,8 +41,12 @@ const nextConfig: NextConfig = {
         ignored: /.*/,
       };
     }
+    if (dev) {
+      config.devtool = false;
+    }
     return config;
   },
+
 };
 
 export default nextConfig;

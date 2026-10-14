@@ -8,7 +8,8 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { supabaseStore, resolveMediaUrl, unpackInstitutionalPage } from '@/lib/supabase';
-import { initialInstitutionalPages } from '@/lib/initial-data';
+import { initialInstitutionalPages } from '@/lib/initial-pages';
+
 import { InstitutionalPage, InstitutionalPageImage, InstitutionalPageBlock } from '@/types';
 import {
   ShieldCheck,

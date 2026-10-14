@@ -11,9 +11,30 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const isChunkError =
+    error?.name === 'ChunkLoadError' ||
+    Boolean(error?.message && (error.message.includes('ChunkLoadError') || error.message.includes('Loading chunk')));
+
   useEffect(() => {
+    if (isChunkError && typeof window !== 'undefined') {
+      const retryKey = 'chunk_reload_' + window.location.pathname;
+      const lastRetry = sessionStorage.getItem(retryKey);
+      if (!lastRetry || Date.now() - parseInt(lastRetry, 10) > 15000) {
+        sessionStorage.setItem(retryKey, Date.now().toString());
+        window.location.reload();
+        return;
+      }
+    }
     console.error('Application error:', error);
-  }, [error]);
+  }, [error, isChunkError]);
+
+  const handleRetry = () => {
+    if (isChunkError && typeof window !== 'undefined') {
+      window.location.reload();
+    } else {
+      reset();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -34,7 +55,7 @@ export default function GlobalError({
         <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
           <button
             type="button"
-            onClick={() => reset()}
+            onClick={handleRetry}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-colors shadow-xs"
           >
             <RotateCcw className="w-4 h-4 text-[#FF8C00]" />
