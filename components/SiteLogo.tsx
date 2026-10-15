@@ -133,14 +133,25 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
 }) => {
   const { logoUrl, orgName } = useSiteLogo(overrideUrl);
   const [loadError, setLoadError] = useState(false);
+  const [triedLocalFallback, setTriedLocalFallback] = useState(false);
 
   // Réinitialiser l'état d'erreur si l'URL change (ex: nouveau logo téléversé)
   useEffect(() => {
     setLoadError(false);
+    setTriedLocalFallback(false);
   }, [logoUrl]);
 
+  const handleImageError = () => {
+    if (!triedLocalFallback && logoUrl !== '/logo-aps-benin.png') {
+      setTriedLocalFallback(true);
+    } else {
+      setLoadError(true);
+    }
+  };
+
+  const activeSrc = (!loadError && triedLocalFallback) ? '/logo-aps-benin.png' : logoUrl;
   const effectiveAlt = alt || `${orgName || 'APS-BÉNIN'} Logo Officiel`;
-  const hasValidLogo = Boolean(logoUrl && !loadError);
+  const hasValidLogo = Boolean(activeSrc && !loadError);
 
   // Configurations contextuelles de dimensions maximales, clear space et conteneur
   switch (variant) {
@@ -158,11 +169,15 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               className="flex items-center justify-center p-0.5 rounded-lg max-h-11 sm:max-h-12 max-w-[160px] sm:max-w-[200px]"
             >
               <img
-                src={logoUrl}
+                src={activeSrc}
                 alt={effectiveAlt}
+                width={160}
+                height={44}
                 loading={priority ? 'eager' : 'lazy'}
+                fetchPriority={priority ? 'high' : 'auto'}
+                decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => setLoadError(true)}
+                onError={handleImageError}
                 suppressHydrationWarning
                 className={`max-h-10 sm:max-h-11 max-w-[150px] sm:max-w-[190px] w-auto h-auto object-contain select-none transition-all ${imgClassName}`}
               />
@@ -188,11 +203,15 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               className="bg-white p-2 rounded-xl shadow-md border-2 border-[#FF8C00]/80 inline-flex items-center justify-center max-w-[220px] max-h-16 sm:max-h-20 min-w-[56px] min-h-[56px]"
             >
               <img
-                src={logoUrl}
+                src={activeSrc}
                 alt={effectiveAlt}
+                width={180}
+                height={56}
                 loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => setLoadError(true)}
+                onError={handleImageError}
                 suppressHydrationWarning
                 className={`max-h-12 sm:max-h-14 max-w-[180px] sm:max-w-[200px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
@@ -220,11 +239,14 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               className="bg-white p-1 rounded-lg border border-purple-300/40 shadow-xs inline-flex items-center justify-center max-w-[160px] max-h-11 min-w-[42px] min-h-[42px]"
             >
               <img
-                src={logoUrl}
+                src={activeSrc}
                 alt={effectiveAlt}
+                width={140}
+                height={40}
                 loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => setLoadError(true)}
+                onError={handleImageError}
                 suppressHydrationWarning
                 className={`max-h-9 sm:max-h-10 max-w-[140px] sm:max-w-[150px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
@@ -251,11 +273,15 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               className="bg-white p-1 rounded-lg border border-[#FF8C00]/60 inline-flex items-center justify-center max-w-[100px] max-h-10 min-w-[36px] min-h-[36px] shadow-2xs"
             >
               <img
-                src={logoUrl}
+                src={activeSrc}
                 alt={effectiveAlt}
+                width={88}
+                height={32}
                 loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 referrerPolicy="no-referrer"
-                onError={() => setLoadError(true)}
+                onError={handleImageError}
                 suppressHydrationWarning
                 className={`max-h-8 max-w-[88px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
@@ -279,11 +305,15 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
         >
           {hasValidLogo ? (
             <img
-              src={logoUrl}
+              src={activeSrc}
               alt={effectiveAlt}
+              width={220}
+              height={88}
               loading="eager"
+              fetchPriority="high"
+              decoding="async"
               referrerPolicy="no-referrer"
-              onError={() => setLoadError(true)}
+              onError={handleImageError}
               suppressHydrationWarning
               className={`max-h-20 sm:max-h-24 max-w-[220px] sm:max-w-[240px] w-auto h-auto object-contain select-none transition-all ${imgClassName}`}
             />
@@ -303,11 +333,14 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
         >
           {hasValidLogo ? (
             <img
-              src={logoUrl}
+              src={activeSrc}
               alt={effectiveAlt}
+              width={100}
+              height={32}
               loading="lazy"
+              decoding="async"
               referrerPolicy="no-referrer"
-              onError={() => setLoadError(true)}
+              onError={handleImageError}
               suppressHydrationWarning
               className={`max-h-8 max-w-[120px] w-auto h-auto object-contain select-none ${imgClassName}`}
             />

@@ -23,14 +23,10 @@ import {
   ShieldAlert,
   Users,
   CheckCircle2,
-  Sparkles,
   EyeOff,
   Target,
   ShieldCheck,
-  Award,
-  ArrowRight,
   BookOpen,
-  BookmarkCheck,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -43,7 +39,6 @@ const iconMap: Record<string, React.ReactNode> = {
   Target: <Target className="w-6 h-6 text-amber-600" />,
   ShieldCheck: <ShieldCheck className="w-6 h-6 text-emerald-600" />,
   Eye: <Eye className="w-6 h-6 text-[#FF8C00]" />,
-  Award: <Award className="w-6 h-6 text-[#92278F]" />,
 };
 
 export default function MissionVisionValeursPage() {
@@ -76,11 +71,11 @@ export default function MissionVisionValeursPage() {
 
   const title = pageData
     ? language === 'en'
-      ? pageData.title_en || pageData.title_fr || 'Mission, Vision, Purpose, Objectives & Values'
-      : pageData.title_fr || 'Mission, Vision, But, Objectifs & Valeurs'
+      ? pageData.title_en || pageData.title_fr || 'Vision, Mission, Purpose, Objectives & Values'
+      : pageData.title_fr || 'Vision, Mission, But, Objectifs & Valeurs'
     : language === 'en'
-    ? 'Mission, Vision, Purpose, Objectives & Values'
-    : 'Mission, Vision, But, Objectifs & Valeurs';
+    ? 'Vision, Mission, Purpose, Objectives & Values'
+    : 'Vision, Mission, But, Objectifs & Valeurs';
 
   const quote = pageData
     ? language === 'en'
@@ -92,81 +87,108 @@ export default function MissionVisionValeursPage() {
 
   const subtitle = pageData
     ? language === 'en'
-      ? pageData.subtitle_en || pageData.subtitle_fr || 'Strategic orientations and intangible principles guiding every single intervention.'
-      : pageData.subtitle_fr || 'Les orientations stratégiques et les principes intangibles guidant chacune de nos interventions.'
+      ? pageData.subtitle_en || pageData.subtitle_fr || 'Strategic orientations and fundamental principles guiding our work.'
+      : pageData.subtitle_fr || 'Les orientations stratégiques et les principes fondamentaux guidant notre action.'
     : language === 'en'
-    ? 'Strategic orientations and intangible principles guiding every single intervention.'
-    : 'Les orientations stratégiques et les principes intangibles guidant chacune de nos interventions.';
+    ? 'Strategic orientations and fundamental principles guiding our work.'
+    : 'Les orientations stratégiques et les principes fondamentaux guidant notre action.';
+
+  // Nettoyage strict des intitulés et textes institutionnels pour un professionnalisme maximal
+  const cleanInstitutionalText = (text?: string | null): string => {
+    if (!text) return '';
+    return text
+      .replace(/Mandat d’action opérationnel sur le terrain/gi, 'Notre Mission')
+      .replace(/Mandat d'action opérationnel sur le terrain/gi, 'Notre Mission')
+      .replace(/Horizon sociétal pour le Bénin et l’Afrique/gi, 'Notre Vision')
+      .replace(/Horizon sociétal pour le Bénin et l'Afrique/gi, 'Notre Vision')
+      .replace(/Composante\s*[0-9]+(\/[0-9]+)?(\s*—\s*Article\s*[0-9]+(\s*des\s*Statuts)?)?/gi, '')
+      .replace(/Composante\s*[0-9]+(\/[0-9]+)?/gi, '')
+      .replace(/Socle éthique institutionnel/gi, 'Nos Valeurs')
+      .replace(/Socle éthique/gi, 'Nos Valeurs')
+      .replace(/—\s*Article\s*[0-9]+(\s*des\s*Statuts)?/gi, '')
+      .replace(/\(Article\s*[0-9]+\)/gi, '')
+      .replace(/Article\s*[0-9]+(\s*des\s*statuts|\s*du\s*règlement)?/gi, '')
+      .replace(/statutaire(s)?/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  };
 
   // 1. VISION
   const visionBlock = pageData?.blocks?.find((b) => b.type === 'vision');
-  const visionTitle =
+  const rawVisionTitle =
     (language === 'en' ? visionBlock?.title_en || visionBlock?.title_fr : visionBlock?.title_fr) ||
     (language === 'en' ? defaultInstitutionalVision.title_en : defaultInstitutionalVision.title_fr);
-  const visionText =
+  const visionTitle = cleanInstitutionalText(rawVisionTitle) || (language === 'en' ? 'Our Vision' : 'Notre Vision');
+  const visionText = cleanInstitutionalText(
     (language === 'en' ? visionBlock?.content_en || visionBlock?.content_fr : visionBlock?.content_fr) ||
-    (language === 'en' ? defaultInstitutionalVision.content_en : defaultInstitutionalVision.content_fr);
+    (language === 'en' ? defaultInstitutionalVision.content_en : defaultInstitutionalVision.content_fr)
+  );
 
   // 2. MISSION
   const missionBlock = pageData?.blocks?.find((b) => b.type === 'mission');
-  const missionTitle =
+  const rawMissionTitle =
     (language === 'en' ? missionBlock?.title_en || missionBlock?.title_fr : missionBlock?.title_fr) ||
     (language === 'en' ? defaultInstitutionalMission.title_en : defaultInstitutionalMission.title_fr);
-  const missionText =
+  const missionTitle = cleanInstitutionalText(rawMissionTitle) || (language === 'en' ? 'Our Mission' : 'Notre Mission');
+  const missionText = cleanInstitutionalText(
     (language === 'en'
       ? missionBlock?.content_en || missionBlock?.content_fr || pageData?.intro_en || pageData?.intro_fr
       : missionBlock?.content_fr || pageData?.intro_fr) ||
-    (language === 'en' ? defaultInstitutionalMission.content_en : defaultInstitutionalMission.content_fr);
+    (language === 'en' ? defaultInstitutionalMission.content_en : defaultInstitutionalMission.content_fr)
+  );
 
-  // 3. BUT STATUTAIRE (ARTICLE 9)
+  // 3. BUT
   const goalBlock = pageData?.blocks?.find((b) => b.type === 'goal');
-  const goalTitle =
+  const rawGoalTitle =
     (language === 'en' ? goalBlock?.title_en || goalBlock?.title_fr : goalBlock?.title_fr) ||
     (language === 'en' ? defaultInstitutionalGoal.title_en : defaultInstitutionalGoal.title_fr);
-  const goalText =
+  const goalTitle = cleanInstitutionalText(rawGoalTitle) || (language === 'en' ? 'Our Purpose' : 'Notre But');
+
+  const goalText = cleanInstitutionalText(
     (language === 'en'
       ? goalBlock?.content_en || goalBlock?.content_fr || pageData?.body_html_en || pageData?.body_html_fr
       : goalBlock?.content_fr || pageData?.body_html_fr) ||
-    (language === 'en' ? defaultInstitutionalGoal.content_en : defaultInstitutionalGoal.content_fr);
+    (language === 'en' ? defaultInstitutionalGoal.content_en : defaultInstitutionalGoal.content_fr)
+  );
 
-  // 4. OBJECTIFS STATUTAIRES (ARTICLE 10)
+  // 4. OBJECTIFS
   const rawObjectiveBlocks = (pageData?.blocks || []).filter((b) => b.type === 'objective');
   const objectives =
     rawObjectiveBlocks.length > 0
       ? rawObjectiveBlocks
           .map((b, idx) => ({
             id: b.id || `obj-${idx + 1}`,
-            title: language === 'en' ? b.title_en || b.title_fr || '' : b.title_fr || '',
-            description: language === 'en' ? b.content_en || b.content_fr || '' : b.content_fr || '',
+            title: cleanInstitutionalText(language === 'en' ? b.title_en || b.title_fr || '' : b.title_fr || ''),
+            description: cleanInstitutionalText(language === 'en' ? b.content_en || b.content_fr || '' : b.content_fr || ''),
             icon_name: b.icon_name || 'ShieldCheck',
             order_index: b.order_index ?? idx + 1,
           }))
           .sort((a, b) => a.order_index - b.order_index)
       : defaultInstitutionalObjectives.map((obj) => ({
           id: obj.id,
-          title: language === 'en' ? obj.title_en : obj.title_fr,
-          description: language === 'en' ? obj.description_en : obj.description_fr,
+          title: cleanInstitutionalText(language === 'en' ? obj.title_en : obj.title_fr),
+          description: cleanInstitutionalText(language === 'en' ? obj.description_en : obj.description_fr),
           icon_name: obj.icon_name,
           order_index: obj.order_index,
         }));
 
-  // 5. VALEURS FONDAMENTALES (6 PILIERS ÉTHIQUES)
+  // 5. VALEURS
   const rawValueBlocks = (pageData?.blocks || []).filter((b) => b.type === 'pillar' || b.type === 'value');
   const values =
     rawValueBlocks.length > 0
       ? rawValueBlocks
           .map((b, idx) => ({
             id: b.id || `val-${idx + 1}`,
-            title: language === 'en' ? b.title_en || b.title_fr || '' : b.title_fr || '',
-            description: language === 'en' ? b.content_en || b.content_fr || '' : b.content_fr || '',
+            title: cleanInstitutionalText(language === 'en' ? b.title_en || b.title_fr || '' : b.title_fr || ''),
+            description: cleanInstitutionalText(language === 'en' ? b.content_en || b.content_fr || '' : b.content_fr || ''),
             icon_name: b.icon_name || 'Scale',
             order_index: b.order_index ?? idx + 1,
           }))
           .sort((a, b) => a.order_index - b.order_index)
       : defaultInstitutionalValues.map((v) => ({
           id: v.id,
-          title: language === 'en' ? v.title_en : v.title_fr,
-          description: language === 'en' ? v.desc_en : v.desc_fr,
+          title: cleanInstitutionalText(language === 'en' ? v.title_en : v.title_fr),
+          description: cleanInstitutionalText(language === 'en' ? v.desc_en : v.desc_fr),
           icon_name: v.icon_name,
           order_index: v.order_index,
         }));
@@ -188,7 +210,7 @@ export default function MissionVisionValeursPage() {
         </div>
       )}
 
-      <main className="flex-1">
+      <main className="flex-1 font-sans">
         {/* ============================================================== */}
         {/* EN-TÊTE / HERO BANNER                                         */}
         {/* ============================================================== */}
@@ -210,52 +232,52 @@ export default function MissionVisionValeursPage() {
               {title}
             </h1>
             {quote && (
-              <p className="text-lg text-purple-100 font-serif italic border-l-4 border-[#FF8C00] pl-4 mt-3">
+              <p className="text-lg text-purple-100 font-sans italic border-l-4 border-[#FF8C00] pl-4 mt-3">
                 « {quote} »
               </p>
             )}
             {subtitle && (
-              <p className="text-sm sm:text-base text-gray-300 max-w-3xl mt-4 leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-300 max-w-3xl mt-4 leading-relaxed font-sans">
                 {subtitle}
               </p>
             )}
 
-            {/* Quick anchors bar for the 5 components */}
-            <div className="pt-6 flex flex-wrap gap-2 text-xs font-bold">
+            {/* Quick anchors bar for navigation */}
+            <div className="pt-6 flex flex-wrap gap-2 text-xs font-bold font-sans">
               <a
                 href="#vision"
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-[#FF8C00] transition-colors border border-white/15 inline-flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-[#FF8C00] transition-colors border border-white/15 inline-flex items-center gap-1.5"
               >
                 <Eye className="w-3.5 h-3.5 text-[#FF8C00]" />
-                <span>1. {language === 'en' ? 'Vision' : 'Vision'}</span>
+                <span>{language === 'en' ? 'Vision' : 'Vision'}</span>
               </a>
               <a
                 href="#mission"
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-[#92278F] transition-colors border border-white/15 inline-flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-[#92278F] transition-colors border border-white/15 inline-flex items-center gap-1.5"
               >
                 <Compass className="w-3.5 h-3.5 text-purple-300" />
-                <span>2. {language === 'en' ? 'Mission' : 'Mission'}</span>
+                <span>{language === 'en' ? 'Mission' : 'Mission'}</span>
               </a>
               <a
                 href="#but"
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-amber-600 transition-colors border border-white/15 inline-flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-amber-600 transition-colors border border-white/15 inline-flex items-center gap-1.5"
               >
                 <Target className="w-3.5 h-3.5 text-amber-300" />
-                <span>3. {language === 'en' ? 'Statutory Purpose' : 'But Statutaire'}</span>
+                <span>{language === 'en' ? 'Purpose' : 'But'}</span>
               </a>
               <a
                 href="#objectifs"
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-emerald-600 transition-colors border border-white/15 inline-flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-emerald-600 transition-colors border border-white/15 inline-flex items-center gap-1.5"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-                <span>4. {language === 'en' ? 'Statutory Objectives' : 'Objectifs'}</span>
+                <span>{language === 'en' ? 'Objectives' : 'Objectifs'}</span>
               </a>
               <a
                 href="#valeurs"
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-[#92278F] transition-colors border border-white/15 inline-flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-[#92278F] transition-colors border border-white/15 inline-flex items-center gap-1.5"
               >
                 <Heart className="w-3.5 h-3.5 text-[#FF8C00]" />
-                <span>5. {language === 'en' ? 'Core Values' : 'Valeurs'}</span>
+                <span>{language === 'en' ? 'Values' : 'Valeurs'}</span>
               </a>
             </div>
           </div>
@@ -270,107 +292,64 @@ export default function MissionVisionValeursPage() {
               {/* 1. VISION */}
               <div
                 id="vision"
-                className="p-8 sm:p-10 rounded-2xl bg-orange-50/70 border-2 border-orange-200 relative overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
+                className="p-8 sm:p-10 rounded-2xl bg-orange-50/70 border border-orange-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-6">
-                    <div className="w-14 h-14 rounded-xl bg-[#FF8C00] text-white flex items-center justify-center shadow-sm">
-                      <Eye className="w-7 h-7 text-white" />
-                    </div>
-                    <span className="text-[11px] font-extrabold uppercase px-3 py-1 rounded-full bg-orange-100 text-orange-800 border border-orange-300">
-                      {language === 'en' ? 'Component 1/5' : 'Composante 1/5'}
-                    </span>
+                  <div className="w-14 h-14 rounded-xl bg-[#FF8C00] text-white flex items-center justify-center shadow-sm mb-6">
+                    <Eye className="w-7 h-7 text-white" />
                   </div>
                   <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
                     {visionTitle}
                   </h2>
-                  <p className="text-base text-gray-700 leading-relaxed">
+                  <p className="text-base text-gray-700 leading-relaxed font-sans">
                     {visionText}
                   </p>
-                </div>
-                <div className="pt-6 mt-6 border-t border-orange-200/60 flex items-center gap-2 text-xs font-bold text-orange-800">
-                  <BookmarkCheck className="w-4 h-4 text-[#FF8C00]" />
-                  <span>{language === 'en' ? 'Societal horizon for Benin & Africa' : 'Horizon sociétal pour le Bénin et l’Afrique'}</span>
                 </div>
               </div>
 
               {/* 2. MISSION */}
               <div
                 id="mission"
-                className="p-8 sm:p-10 rounded-2xl bg-purple-50/70 border-2 border-purple-200 relative overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
+                className="p-8 sm:p-10 rounded-2xl bg-purple-50/70 border border-purple-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-6">
-                    <div className="w-14 h-14 rounded-xl bg-[#92278F] text-white flex items-center justify-center shadow-sm">
-                      <Compass className="w-7 h-7 text-[#FF8C00]" />
-                    </div>
-                    <span className="text-[11px] font-extrabold uppercase px-3 py-1 rounded-full bg-purple-100 text-[#92278F] border border-purple-300">
-                      {language === 'en' ? 'Component 2/5' : 'Composante 2/5'}
-                    </span>
+                  <div className="w-14 h-14 rounded-xl bg-[#92278F] text-white flex items-center justify-center shadow-sm mb-6">
+                    <Compass className="w-7 h-7 text-[#FF8C00]" />
                   </div>
                   <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
                     {missionTitle}
                   </h2>
-                  <p className="text-base text-gray-700 leading-relaxed">
+                  <p className="text-base text-gray-700 leading-relaxed font-sans">
                     {missionText}
                   </p>
                 </div>
-                <div className="pt-6 mt-6 border-t border-purple-200/60 flex items-center gap-2 text-xs font-bold text-[#92278F]">
-                  <BookmarkCheck className="w-4 h-4 text-[#FF8C00]" />
-                  <span>{language === 'en' ? 'Operational mandate on the ground' : 'Mandat d’action opérationnel sur le terrain'}</span>
-                </div>
               </div>
             </div>
           </div>
         </section>
 
         {/* ============================================================== */}
-        {/* SECTION 3: NOTRE BUT STATUTAIRE (ARTICLE 9)                    */}
+        {/* SECTION 3: NOTRE BUT                                           */}
+        {/* (Police Open Sans / font-sans garantie pour le texte)          */}
         {/* ============================================================== */}
-        <section id="but" className="py-16 sm:py-20 bg-linear-to-b from-amber-50/60 via-white to-amber-50/30 border-b border-gray-100">
+        <section id="but" className="py-16 sm:py-20 bg-linear-to-b from-amber-50/40 via-white to-amber-50/20 border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            <div className="max-w-4xl mx-auto bg-white rounded-3xl p-8 sm:p-12 border-2 border-amber-200 shadow-md relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-100/50 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none" />
-
+            <div className="max-w-4xl mx-auto bg-white rounded-3xl p-8 sm:p-12 border border-amber-200 shadow-xs relative overflow-hidden">
               <div className="relative z-10">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold">
-                    <Target className="w-4 h-4 text-amber-700" />
-                    <span>{language === 'en' ? 'Component 3/5 — Article 9 of Statutes' : 'Composante 3/5 — Article 9 des Statuts'}</span>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                    <Target className="w-5 h-5 text-amber-700" />
                   </div>
-                  <span className="text-xs font-mono font-bold text-gray-400">
-                    APS-BÉNIN / STATUTS OFFICIELS
-                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 font-heading">
+                    {goalTitle}
+                  </h2>
                 </div>
 
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 font-heading mb-6">
-                  {goalTitle}
-                </h2>
-
-                <div className="p-6 sm:p-8 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-gray-800 leading-relaxed text-base sm:text-lg font-serif italic relative">
-                  <span className="text-4xl text-amber-400 font-serif absolute top-2 left-3 select-none leading-none">«</span>
-                  <p className="pl-6 pr-2">
+                {/* Typography: Open Sans (font-sans) as required by APS-BÉNIN corporate identity */}
+                <div className="p-6 sm:p-8 rounded-2xl bg-amber-50/60 border border-amber-200/70">
+                  <p className="text-gray-800 leading-relaxed text-base sm:text-lg font-sans">
                     {goalText}
                   </p>
-                  <span className="text-4xl text-amber-400 font-serif absolute bottom-0 right-3 select-none leading-none">»</span>
-                </div>
-
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500 pt-4 border-t border-gray-100">
-                  <div className="flex items-center gap-2 font-medium">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>
-                      {language === 'en'
-                        ? 'Legally validated and officially registered in the Republic of Benin.'
-                        : 'Légalement enregistré et publié au Journal Officiel de la République du Bénin.'}
-                    </span>
-                  </div>
-                  <Link
-                    href="/organisation/documents"
-                    className="inline-flex items-center gap-1 font-bold text-[#92278F] hover:underline"
-                  >
-                    <span>{language === 'en' ? 'Consult official statutes' : 'Consulter les statuts officiels'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
                 </div>
               </div>
             </div>
@@ -378,21 +357,18 @@ export default function MissionVisionValeursPage() {
         </section>
 
         {/* ============================================================== */}
-        {/* SECTION 4: NOS OBJECTIFS STATUTAIRES (ARTICLE 10)              */}
+        {/* SECTION 4: NOS OBJECTIFS                                       */}
         {/* ============================================================== */}
         <section id="objectifs" className="py-16 sm:py-20 bg-gray-50 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
             <div className="text-center max-w-3xl mx-auto mb-14">
-              <span className="inline-block text-xs font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-300 px-3.5 py-1.5 rounded-full mb-3">
-                {language === 'en' ? 'Component 4/5 — Article 10 of Statutes' : 'Composante 4/5 — Article 10 des Statuts'}
-              </span>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 font-heading">
-                {language === 'en' ? 'Our 4 Statutory Objectives' : 'Nos 4 Objectifs Statutaires'}
+                {language === 'en' ? 'Our Objectives' : 'Nos Objectifs'}
               </h2>
-              <p className="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed font-sans">
                 {language === 'en'
-                  ? 'Fundamental intervention pillars established by the Constitutive Assembly to achieve our institutional purpose.'
-                  : 'Les axes d’action fondamentaux définis par l’Assemblée Générale Constitutive pour accomplir notre but.'}
+                  ? 'Our primary focus areas to advance rights, autonomy, and community well-being.'
+                  : 'Nos axes d’action prioritaires au service des droits, de l’autonomie et du bien-être des populations.'}
               </p>
             </div>
 
@@ -404,15 +380,10 @@ export default function MissionVisionValeursPage() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-3 mb-5 border-b border-gray-100 pb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 font-bold">
-                          {iconMap[obj.icon_name] || <ShieldCheck className="w-5 h-5 text-emerald-600" />}
-                        </div>
-                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider font-mono">
-                          {language === 'en' ? `Objective #${idx + 1}` : `Objectif Statutaire #${idx + 1}`}
-                        </span>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 font-bold">
+                        {iconMap[obj.icon_name] || <ShieldCheck className="w-5 h-5 text-emerald-600" />}
                       </div>
-                      <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold flex items-center justify-center">
+                      <span className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold flex items-center justify-center font-sans">
                         {idx + 1}
                       </span>
                     </div>
@@ -420,14 +391,9 @@ export default function MissionVisionValeursPage() {
                     <h3 className="text-lg font-bold text-gray-900 font-heading mb-3 leading-snug">
                       {obj.title}
                     </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    <p className="text-sm text-gray-600 leading-relaxed font-sans">
                       {obj.description}
                     </p>
-                  </div>
-
-                  <div className="pt-4 mt-5 border-t border-gray-100 flex items-center gap-1.5 text-xs text-emerald-700 font-semibold">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{language === 'en' ? 'Article 10 statutory commitment' : 'Engagement statutaire Article 10'}</span>
                   </div>
                 </div>
               ))}
@@ -436,21 +402,18 @@ export default function MissionVisionValeursPage() {
         </section>
 
         {/* ============================================================== */}
-        {/* SECTION 5: NOS VALEURS FONDAMENTALES (6 PILIERS ÉTHIQUES)       */}
+        {/* SECTION 5: NOS VALEURS                                         */}
         {/* ============================================================== */}
         <section id="valeurs" className="py-16 sm:py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
             <div className="text-center max-w-3xl mx-auto mb-14">
-              <span className="inline-block text-xs font-extrabold uppercase tracking-wider text-[#92278F] bg-purple-100 border border-purple-200 px-3.5 py-1.5 rounded-full mb-3">
-                {language === 'en' ? 'Component 5/5 — Ethical Core' : 'Composante 5/5 — Socle Éthique'}
-              </span>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 font-heading">
-                {language === 'en' ? 'Our 6 Core Values' : 'Nos 6 Valeurs Fondamentales'}
+                {language === 'en' ? 'Our Values' : 'Nos Valeurs'}
               </h2>
-              <p className="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed font-sans">
                 {language === 'en'
-                  ? 'The non-negotiable ethical pillars that guide the posture, partnerships, and daily fieldwork of APS-BENIN.'
-                  : 'Les repères intangibles qui guident l’attitude de chaque collaborateur et partenaire d’APS-BÉNIN.'}
+                  ? 'The core principles that guide our everyday interactions, choices, and commitments.'
+                  : 'Les principes fondamentaux qui guident nos relations, nos choix et nos actions au quotidien.'}
               </p>
             </div>
 
@@ -461,26 +424,16 @@ export default function MissionVisionValeursPage() {
                   className="bg-white rounded-2xl p-6 sm:p-7 border border-gray-200 hover:border-[#92278F] transition-all hover:shadow-md shadow-2xs flex flex-col justify-between"
                 >
                   <div>
-                    <div className="flex items-center justify-between gap-2 mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
-                        {iconMap[v.icon_name] || <Scale className="w-6 h-6 text-[#92278F]" />}
-                      </div>
-                      <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-purple-50 text-[#92278F] border border-purple-200">
-                        {language === 'en' ? `Pillar ${idx + 1}` : `Pilier ${idx + 1}`}
-                      </span>
+                    <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100 mb-4">
+                      {iconMap[v.icon_name] || <Scale className="w-6 h-6 text-[#92278F]" />}
                     </div>
 
                     <h3 className="text-lg font-bold text-gray-900 font-heading mb-2">
                       {v.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-sans">
                       {v.description}
                     </p>
-                  </div>
-
-                  <div className="pt-4 mt-4 border-t border-gray-100 flex items-center gap-1.5 text-[11px] text-[#92278F] font-bold">
-                    <Sparkles className="w-3.5 h-3.5 text-[#FF8C00]" />
-                    <span>{language === 'en' ? 'Ethical foundation' : 'Socle éthique institutionnel'}</span>
                   </div>
                 </div>
               ))}
@@ -488,12 +441,12 @@ export default function MissionVisionValeursPage() {
           </div>
         </section>
 
-        {/* Quick Cross-Links */}
+        {/* Navigation vers les autres pages */}
         <section className="py-10 bg-gray-50 border-t border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 flex flex-wrap items-center justify-between gap-4 font-sans">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                {language === 'en' ? 'Institutional Architecture' : 'Architecture Institutionnelle'}
+                {language === 'en' ? 'Institutional Information' : 'Informations Institutionnelles'}
               </p>
               <h4 className="text-base font-bold text-gray-900 font-heading">
                 {language === 'en' ? 'Learn more about APS-BENIN' : 'Poursuivre la découverte d’APS-BÉNIN'}

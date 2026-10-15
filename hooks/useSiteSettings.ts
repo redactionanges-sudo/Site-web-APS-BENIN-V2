@@ -158,7 +158,9 @@ export function useSiteSettings(): UseSiteSettingsResult {
     addressLocality: typeof settings.address_locality === 'string' ? settings.address_locality : '',
     postalBox: typeof settings.postal_box === 'string' ? settings.postal_box : '',
     email: typeof settings.email === 'string' ? settings.email : '',
-    logoUrl: typeof settings.logo_url === 'string' ? settings.logo_url : '',
+    logoUrl: settings.logo_url && !settings.logo_url.includes('images.unsplash.com') && !settings.logo_url.includes('picsum.photos')
+      ? settings.logo_url
+      : '/logo-aps-benin.png',
 
     phones: Array.isArray(settings.phones) ? settings.phones : [],
     validPhones,

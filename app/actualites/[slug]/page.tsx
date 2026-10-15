@@ -135,14 +135,16 @@ export default function NewsDetailPage({ params }: PageProps) {
         {/* Article Body */}
         <section className="py-12 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-8 space-y-8">
-            {/* Featured Image */}
-            <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm max-h-[460px] bg-gray-100">
-              <img
-                src={article.main_image || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80'}
-                alt={article.title_fr}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            {/* Featured Image - Only rendered if an authentic image is published */}
+            {article.main_image && (
+              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm max-h-[460px] bg-gray-100">
+                <img
+                  src={article.main_image}
+                  alt={article.title_fr}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
 
             {/* Excerpt */}
             <div className="p-6 rounded-xl bg-purple-50/60 border-l-4 border-[#92278F] text-sm sm:text-base text-gray-800 font-medium leading-relaxed italic">

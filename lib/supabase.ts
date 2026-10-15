@@ -293,10 +293,50 @@ export function packMedia(item: any): any {
   };
 }
 
+export function isFakeOrDemoMediaUrl(urlOrPath?: string | null): boolean {
+  if (!urlOrPath || typeof urlOrPath !== 'string') return true;
+  const lower = urlOrPath.trim().toLowerCase();
+  return (
+    lower.includes('images.unsplash.com') ||
+    lower.includes('picsum.photos') ||
+    lower.includes('via.placeholder') ||
+    lower.includes('placeholder.com')
+  );
+}
+
+/**
+ * Valide strictement si une URL correspond à un logo officiel légitime
+ * (soit /logo-aps-benin.png, soit dans le bucket 'logos', soit portant explicitement 'logo', 'sigle' ou 'emblem').
+ * Empêche qu'une photo de la médiathèque ou photo de terrain soit utilisée comme logo.
+ */
+export function isValidOfficialLogoUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  const lower = trimmed.toLowerCase();
+  if (isFakeOrDemoMediaUrl(lower)) return false;
+
+  return (
+    lower === '/logo-aps-benin.png' ||
+    lower.endsWith('/logo-aps-benin.png') ||
+    lower.includes('/logos/') ||
+    lower.includes('logo') ||
+    lower.includes('emblem') ||
+    lower.includes('sigle') ||
+    lower.includes('brand') ||
+    lower.endsWith('.svg')
+  );
+}
+
 export function resolveMediaUrl(urlOrPath?: string | null): string {
   if (!urlOrPath || typeof urlOrPath !== 'string') return '';
   const trimmed = urlOrPath.trim();
   if (!trimmed) return '';
+
+  // Intercept and purge demo Unsplash / Picsum images entirely
+  if (isFakeOrDemoMediaUrl(trimmed)) {
+    return '';
+  }
 
   // Already a full URL or data URI
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
@@ -834,14 +874,22 @@ export const supabaseStore = {
   // Settings
   async getSettings(): Promise<SiteSettings> {
     const cached = getCachedData<SiteSettings>('settings');
-    if (cached) return cached;
+    if (cached) {
+      if (!isValidOfficialLogoUrl(cached.logo_url)) {
+        cached.logo_url = '/logo-aps-benin.png';
+      }
+      return cached;
+    }
 
     if (supabase) {
       try {
         const { data, error } = await supabase.from('site_settings').select('*').single();
         if (!error && data) {
-          const res = {
+          const rawLogo = (data as SiteSettings).logo_url;
+          const cleanLogo = !isValidOfficialLogoUrl(rawLogo) ? '/logo-aps-benin.png' : rawLogo;
+          const res: SiteSettings = {
             ...(data as SiteSettings),
+            logo_url: cleanLogo,
             social_links: normalizeSocialLinks(data.social_links),
           };
           setCachedData('settings', res);
@@ -853,18 +901,32 @@ export const supabaseStore = {
       }
     }
     const localRaw = getStoredItem('settings', initialSiteSettings);
+    const cleanLocalLogo = !isValidOfficialLogoUrl(localRaw.logo_url) ? '/logo-aps-benin.png' : localRaw.logo_url;
     const local = {
       ...localRaw,
+      logo_url: cleanLocalLogo,
       social_links: normalizeSocialLinks(localRaw.social_links),
     };
     setCachedData('settings', local);
+    setStoredItem('settings', local);
     return local;
   },
 
   getCachedSettings(): SiteSettings | null {
     const mem = getCachedData<SiteSettings>('settings');
-    if (mem) return mem;
-    return getStoredItem<SiteSettings | null>('settings', null);
+    if (mem) {
+      if (!isValidOfficialLogoUrl(mem.logo_url)) mem.logo_url = '/logo-aps-benin.png';
+      return mem;
+    }
+    const stored = getStoredItem<SiteSettings | null>('settings', null);
+    if (stored) {
+      if (!isValidOfficialLogoUrl(stored.logo_url)) {
+        stored.logo_url = '/logo-aps-benin.png';
+        setStoredItem('settings', stored);
+      }
+      return stored;
+    }
+    return null;
   },
 
   async updateSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
@@ -1471,13 +1533,17 @@ export const supabaseStore = {
 
   async getMedia(): Promise<MediaItem[]> {
     const cached = getCachedData<MediaItem[]>('media');
-    if (cached) return cached;
+    if (cached) {
+      return cached.filter((m) => m && m.url && !isFakeOrDemoMediaUrl(m.url));
+    }
 
     if (supabase) {
       try {
         const { data, error } = await supabase.from('media').select('*').order('date', { ascending: false });
         if (!error && data) {
-          const res = (data as any[]).map(unpackMedia);
+          const res = (data as any[])
+            .map(unpackMedia)
+            .filter((m) => m && m.url && !isFakeOrDemoMediaUrl(m.url));
           setCachedData('media', res);
           setStoredItem('media', res);
           return res;
@@ -1486,7 +1552,9 @@ export const supabaseStore = {
         console.warn('Supabase media fallback:', e);
       }
     }
-    const local = getStoredItem<any[]>('media', initialMedia).map(unpackMedia);
+    const local = getStoredItem<any[]>('media', initialMedia)
+      .map(unpackMedia)
+      .filter((m) => m && m.url && !isFakeOrDemoMediaUrl(m.url));
     setCachedData('media', local);
     return local;
   },
@@ -1494,7 +1562,7 @@ export const supabaseStore = {
   async getHeroPhotos(): Promise<MediaItem[]> {
     const allMedia = await this.getMedia();
     const heroPhotos = allMedia
-      .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero)
+      .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero && m.url && !isFakeOrDemoMediaUrl(m.url))
       .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
 
     if (heroPhotos.length > 0) {

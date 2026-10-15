@@ -20,11 +20,9 @@ export interface OptimizedImageProps {
   onClick?: () => void;
 }
 
-const DEFAULT_FALLBACK =
-  'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=800&q=80';
-
 /**
  * OptimizedImage - Composant universel haute performance pour APS-BÉNIN
+ * Respecte scrupuleusement la charte institutionnelle : aucune image fictive ni Unsplash en fallback.
  */
 export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
@@ -38,7 +36,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
   aspectRatio = 'auto',
   objectFit = 'cover',
-  fallbackSrc = DEFAULT_FALLBACK,
+  fallbackSrc = '',
   onClick,
 }) => {
   const [useRawImg, setUseRawImg] = useState(false);
@@ -53,7 +51,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   }, [src]);
 
   const rawSrc = resolveMediaUrl(src);
-  const effectiveSrc = hasError || !rawSrc ? fallbackSrc : rawSrc;
+  const effectiveSrc = hasError || !rawSrc ? (fallbackSrc ? resolveMediaUrl(fallbackSrc) : '') : rawSrc;
 
   // Déterminer les classes de conteneur d'aspect ratio
   let ratioClass = '';
@@ -82,6 +80,44 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   // Si l'image est distante mais hors domaines configurés, on utilise unoptimized={true} pour éviter les blocages Next.js
   const shouldUnoptimize = !isSupabaseOrUnsplashOrPicsum && isRemote;
+
+  // Emplacement neutre, discret et institutionnel lorsqu'aucun média réel n'est renseigné
+  if (!effectiveSrc) {
+    if (fill) {
+      return (
+        <div
+          className={`relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-50/70 via-gray-50 to-orange-50/40 border border-purple-100/50 flex items-center justify-center ${ratioClass} ${containerClassName}`}
+          onClick={onClick}
+          role="img"
+          aria-label={alt || 'APS-BÉNIN'}
+        >
+          <div className="text-center p-4">
+            <div className="w-9 h-9 mx-auto mb-2 rounded-lg bg-[#92278F]/10 text-[#92278F] flex items-center justify-center border border-[#92278F]/20">
+              <span className="font-extrabold text-[11px] tracking-wider">APS</span>
+            </div>
+            <p className="text-[11px] font-medium text-gray-500 line-clamp-1">{alt || 'APS-BÉNIN'}</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={`relative inline-flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-50/70 via-gray-50 to-orange-50/40 border border-purple-100/50 ${ratioClass} ${containerClassName}`}
+        style={{ width: width ? `${width}px` : '100%', height: height ? `${height}px` : '180px' }}
+        onClick={onClick}
+        role="img"
+        aria-label={alt || 'APS-BÉNIN'}
+      >
+        <div className="text-center p-3">
+          <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-[#92278F]/10 text-[#92278F] flex items-center justify-center border border-[#92278F]/20">
+            <span className="font-extrabold text-[10px] tracking-wider">APS</span>
+          </div>
+          <p className="text-[10px] font-medium text-gray-500 line-clamp-1">{alt || 'APS-BÉNIN'}</p>
+        </div>
+      </div>
+    );
+  }
 
   // Fallback direct <img> natif si le proxy Next.js a rencontré un problème sur l'URL source réelle
   if (useRawImg && !hasError && rawSrc) {

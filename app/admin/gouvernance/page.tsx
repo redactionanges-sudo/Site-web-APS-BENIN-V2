@@ -100,7 +100,7 @@ export default function AdminGouvernancePage() {
     <AdminAuthGuard>
       <AdminHeader
         title="Gouvernance & Conseil d’Administration"
-        subtitle="Membres du Conseil d'Administration et du Comité de Surveillance statutaires"
+        subtitle="Membres du Conseil d'Administration et du Comité de Surveillance"
         actionButton={
           <button
             type="button"
@@ -194,7 +194,7 @@ export default function AdminGouvernancePage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Titre / Rôle statutaire *
+                      Titre / Rôle institutionnel *
                     </label>
                     <input
                       type="text"

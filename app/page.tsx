@@ -60,7 +60,7 @@ export default function HomePage() {
     presPage?.images?.[1]?.url ||
     presPage?.images?.[0]?.url ||
     presPage?.hero_image ||
-    'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=1000&q=80'
+    ''
   );
 
   const presAlt =
@@ -154,33 +154,60 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Visual column with authentic photography */}
+              {/* Visual column with authentic photography or sober institutional card */}
               <div className="lg:col-span-5">
-                <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-gray-200 h-[440px]">
-                  <OptimizedImage
-                    src={presImage}
-                    alt={presAlt}
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 42vw"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-6 z-10">
-                    <div className="text-white">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-orange-400">
-                        {language === 'en' ? 'Djacoṭé-Comè • Mono' : 'Djacoṭé-Comè • Mono'}
-                      </p>
-                      <h4 className="font-bold text-base mt-1 font-heading">
-                        {language === 'en'
-                          ? 'Empowering women artisans and grassroots leaders'
-                          : 'Autonomisation des femmes artisanes et leaders locales'}
-                      </h4>
-                      <p className="text-xs text-gray-300 mt-1">
-                        {language === 'en'
-                          ? '10+ years of active engagement on the ground in Benin.'
-                          : 'Plus de 10 ans d’engagement actif sur le terrain béninois.'}
-                      </p>
+                <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-gray-200 h-[440px] bg-gradient-to-br from-[#2f0d2e] via-[#1a081a] to-gray-950 flex flex-col justify-between p-8 text-white">
+                  {presImage ? (
+                    <>
+                      <OptimizedImage
+                        src={presImage}
+                        alt={presAlt}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 42vw"
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex items-end p-6 z-10">
+                        <div className="text-white">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-orange-400">
+                            Djacoṭé-Comè • Mono
+                          </p>
+                          <h4 className="font-bold text-base mt-1 font-heading">
+                            {language === 'en'
+                              ? 'Empowering women artisans and grassroots leaders'
+                              : 'Autonomisation des femmes artisanes et leaders locales'}
+                          </h4>
+                          <p className="text-xs text-gray-300 mt-1">
+                            {language === 'en'
+                              ? '10+ years of active engagement on the ground in Benin.'
+                              : 'Plus de 10 ans d’engagement actif sur le terrain béninois.'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="relative z-10 flex flex-col justify-between h-full">
+                      <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-orange-300 text-xs font-semibold">
+                          <span>Djacoṭé-Comè • Mono</span>
+                        </div>
+                        <h4 className="text-2xl font-extrabold font-heading text-white leading-snug">
+                          {language === 'en'
+                            ? 'Empowering women artisans and grassroots leaders'
+                            : 'Autonomisation des femmes artisanes et leaders locales'}
+                        </h4>
+                        <p className="text-sm text-purple-100/80 leading-relaxed font-sans">
+                          {language === 'en'
+                            ? 'Action at the root of social and gender inequalities, dedicated legal assistance, and socio-economic support across Benin.'
+                            : 'Agir à la racine des inégalités sociales et de genre, assistance juridique continue et appui socio-économique aux communautés.'}
+                        </p>
+                      </div>
+
+                      <div className="pt-6 border-t border-white/10 flex items-center justify-between text-xs text-gray-300 font-sans">
+                        <span className="font-medium">ONG AGISSONS POUR SAUVER</span>
+                        <span className="text-[#FF8C00] font-bold">Depuis 2014</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

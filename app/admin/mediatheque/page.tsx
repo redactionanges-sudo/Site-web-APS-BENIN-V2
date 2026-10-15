@@ -107,7 +107,7 @@ export default function AdminMediathequePage() {
     slug: '',
     description_fr: '',
     description_en: '',
-    cover_image: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=800&q=80',
+    cover_image: '',
     date: '',
     project_id: '',
   });
@@ -135,9 +135,7 @@ export default function AdminMediathequePage() {
       title_fr: '',
       title_en: '',
       type,
-      url: type === 'photo'
-        ? 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=800&q=80'
-        : '',
+      url: '',
       thumbnail_url: '',
       album_id: albums[0]?.id || '',
       project_id: projects[0]?.id || '',
@@ -253,7 +251,7 @@ export default function AdminMediathequePage() {
       slug: '',
       description_fr: '',
       description_en: '',
-      cover_image: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=800&q=80',
+      cover_image: '',
       date: new Date().toISOString().split('T')[0],
       project_id: '',
     });
@@ -399,7 +397,7 @@ export default function AdminMediathequePage() {
       title_en: albumForm.title_en || albumForm.title_fr,
       description_fr: albumForm.description_fr || '',
       description_en: albumForm.description_en || '',
-      cover_image: albumForm.cover_image || 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=800&q=80',
+      cover_image: albumForm.cover_image || '',
       date: albumForm.date || new Date().toISOString().split('T')[0],
       project_id: albumForm.project_id || undefined,
       photo_count: editingAlbum?.photo_count || 0,

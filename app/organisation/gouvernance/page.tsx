@@ -34,8 +34,8 @@ export default function GouvernancePage() {
             </h1>
             <p className="text-base sm:text-lg text-purple-100 max-w-2xl mt-3">
               {language === 'en'
-                ? 'Statutory oversight mechanisms guaranteeing transparent accountability and strategic alignment.'
-                : 'Les instances statutaires garantissant la conformité, la rigueur démocratique et la pérennité stratégique.'}
+                ? 'Oversight mechanisms guaranteeing transparent accountability and strategic alignment.'
+                : 'Les instances dirigeantes garantissant la transparence, la rigueur démocratique et la pérennité stratégique.'}
             </p>
           </div>
         </section>
@@ -43,7 +43,7 @@ export default function GouvernancePage() {
         {/* Governance Organs Presentation */}
         <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-16">
-            {/* 3 statutory organs */}
+            {/* 3 institutional organs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="p-6 rounded-xl bg-purple-50/50 border border-purple-100">
                 <span className="text-xs font-bold text-[#FF8C00] uppercase tracking-wider">
@@ -82,8 +82,8 @@ export default function GouvernancePage() {
                 </h3>
                 <p className="text-xs text-gray-600 leading-relaxed">
                   {language === 'en'
-                    ? 'Independent statutory body conducting periodic internal audits and safeguarding statutory and financial ethics.'
-                    : 'Organe autonome de contrôle interne et de vérification des comptes, garant de l’orthodoxie financière et des statuts.'}
+                    ? 'Independent body conducting periodic internal audits and safeguarding institutional and financial ethics.'
+                    : 'Organe autonome de contrôle interne et de vérification des comptes, garant de l’orthodoxie financière et de l’éthique de gestion.'}
                 </p>
               </div>
             </div>

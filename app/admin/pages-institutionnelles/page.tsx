@@ -79,9 +79,9 @@ const PAGE_TABS: TabDefinition[] = [
   {
     slug: 'mission-vision-valeurs',
     label: 'Vision, Mission, But, Objectifs & Valeurs',
-    badge: 'Socle Statutaire & Éthique',
+    badge: 'Identité Institutionnelle',
     publicUrl: '/organisation/mission-vision-valeurs',
-    description: 'Gestion indépendante et complète des cinq composantes institutionnelles officielles d’APS-BÉNIN.',
+    description: 'Gestion indépendante et complète des cinq composantes institutionnelles d’APS-BÉNIN.',
   },
 ];
 
@@ -330,11 +330,11 @@ export default function AdminInstitutionalPages() {
       } else if (rubrique === 'mission') {
         label = 'La Mission';
       } else if (rubrique === 'goal') {
-        label = 'Le But Statutaire (Art. 9)';
+        label = 'Le But';
       } else if (rubrique === 'objectives') {
-        label = 'Les Objectifs Statutaires (Art. 10)';
+        label = 'Les Objectifs';
       } else if (rubrique === 'values') {
-        label = 'Les Valeurs Fondamentales';
+        label = 'Les Valeurs';
       } else if (rubrique === 'header') {
         label = 'L’en-tête de la page';
       }
@@ -439,8 +439,8 @@ export default function AdminInstitutionalPages() {
     const newObj: InstitutionalPageBlock = {
       id: `obj-${Date.now()}`,
       type: 'objective',
-      title_fr: `Nouvel objectif statutaire #${existingObjs.length + 1}`,
-      title_en: `New statutory objective #${existingObjs.length + 1}`,
+      title_fr: `Nouvel objectif stratégique #${existingObjs.length + 1}`,
+      title_en: `New strategic objective #${existingObjs.length + 1}`,
       content_fr: '',
       content_en: '',
       icon_name: 'ShieldCheck',
@@ -518,7 +518,7 @@ export default function AdminInstitutionalPages() {
   };
 
   // -------------------------------------------------------------
-  // GESTION BLOCS (VALEURS / PRINCIPES DU SOCLE ÉTHIQUE)
+  // GESTION BLOCS (VALEURS & PRINCIPES FONDAMENTAUX)
   // -------------------------------------------------------------
   const handleAddBlock = (type: InstitutionalPageBlock['type']) => {
     if (!currentPage) return;
@@ -653,7 +653,7 @@ export default function AdminInstitutionalPages() {
     <AdminAuthGuard>
       <AdminHeader
         title="Pages Institutionnelles"
-        subtitle="Gérez l'identité officielle, la chronologie des jalons et le socle éthique de l'ONG APS-BÉNIN"
+        subtitle="Gérez l'identité officielle, la chronologie des jalons et les orientations stratégiques de l'ONG APS-BÉNIN"
         actionButton={
           <div className="flex items-center gap-2">
             <button
@@ -712,7 +712,7 @@ export default function AdminInstitutionalPages() {
           </div>
         )}
 
-        {/* 3 Onglets officiels : Présentation, Chronologie, Socle Éthique */}
+        {/* 3 Onglets officiels : Présentation, Chronologie, Mission & Valeurs */}
         <div className="bg-white rounded-2xl p-2 border border-gray-200 shadow-2xs flex flex-wrap gap-2">
           {PAGE_TABS.map((tab) => {
             const isSelected = activeSlug === tab.slug;
@@ -1690,7 +1690,7 @@ export default function AdminInstitutionalPages() {
                     </div>
                   </div>
 
-                  {/* 1. VISION PROSPECTIVE */}
+                  {/* 1. VISION */}
                   <div className="bg-white rounded-2xl p-6 sm:p-8 border border-orange-200 shadow-2xs space-y-5">
                     <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -1698,14 +1698,11 @@ export default function AdminInstitutionalPages() {
                           <Eye className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
-                            <span>1. Notre Vision</span>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
-                              Composante 1/5
-                            </span>
+                          <h3 className="text-base font-bold text-gray-900 font-heading">
+                            Notre Vision
                           </h3>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Vision sociétale pour le Bénin et l’Afrique, affichée dans la carte orange sur le site public.
+                            Vision sociétale pour le Bénin et l’Afrique, affichée sur le site public.
                           </p>
                         </div>
                       </div>
@@ -1737,7 +1734,7 @@ export default function AdminInstitutionalPages() {
 
                       <div className="md:col-span-12">
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                          Formulation officielle de la Vision ({editingLang.toUpperCase()})
+                          Formulation de la Vision ({editingLang.toUpperCase()})
                         </label>
                         <textarea
                           rows={4}
@@ -1746,14 +1743,11 @@ export default function AdminInstitutionalPages() {
                           placeholder="Un Bénin et une Afrique où chaque femme, chaque jeune fille et chaque citoyen vit à l’abri des violences..."
                           className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#FF8C00] focus:outline-hidden leading-relaxed"
                         />
-                        <p className="text-[11px] text-gray-400 mt-1">
-                          Formulation prospective officielle de la société équitable visée par APS-BÉNIN.
-                        </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* 2. MISSION STATUTAIRE */}
+                  {/* 2. MISSION */}
                   <div className="bg-white rounded-2xl p-6 sm:p-8 border border-purple-200 shadow-2xs space-y-5">
                     <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -1761,14 +1755,11 @@ export default function AdminInstitutionalPages() {
                           <Compass className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
-                            <span>2. Notre Mission</span>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                              Composante 2/5
-                            </span>
+                          <h3 className="text-base font-bold text-gray-900 font-heading">
+                            Notre Mission
                           </h3>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Mandat opérationnel fondamental, affiché dans la carte violette sur le site public.
+                            Mandat d&apos;action d&apos;APS-BÉNIN, affiché sur le site public.
                           </p>
                         </div>
                       </div>
@@ -1800,7 +1791,7 @@ export default function AdminInstitutionalPages() {
 
                       <div className="md:col-span-12">
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                          Formulation officielle de la Mission ({editingLang.toUpperCase()})
+                          Formulation de la Mission ({editingLang.toUpperCase()})
                         </label>
                         <textarea
                           rows={4}
@@ -1809,14 +1800,11 @@ export default function AdminInstitutionalPages() {
                           placeholder="Défendre les droits humains, promouvoir la justice et l’égalité de genre..."
                           className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#92278F] focus:outline-hidden leading-relaxed"
                         />
-                        <p className="text-[11px] text-gray-400 mt-1">
-                          Actions concrètes, assistance juridique, autonomisation et ancrage territorial au Bénin.
-                        </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* 3. BUT STATUTAIRE (ARTICLE 9) */}
+                  {/* 3. BUT */}
                   <div className="bg-white rounded-2xl p-6 sm:p-8 border border-amber-200 shadow-2xs space-y-5">
                     <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -1824,14 +1812,11 @@ export default function AdminInstitutionalPages() {
                           <Target className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
-                            <span>3. Notre But Statutaire (Article 9 des statuts)</span>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                              Composante 3/5
-                            </span>
+                          <h3 className="text-base font-bold text-gray-900 font-heading">
+                            Notre But
                           </h3>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Finalité légale et statutaire suprême de l’organisation selon l’Article 9 des statuts officiels.
+                            Finalité fondamentale de l’organisation APS-BÉNIN.
                           </p>
                         </div>
                       </div>
@@ -1856,14 +1841,14 @@ export default function AdminInstitutionalPages() {
                           type="text"
                           value={editingLang === 'fr' ? goalBlock.title_fr || defaultInstitutionalGoal.title_fr : goalBlock.title_en || defaultInstitutionalGoal.title_en}
                           onChange={(e) => updateGoalField(editingLang === 'fr' ? 'title_fr' : 'title_en', e.target.value)}
-                          placeholder="Notre But Statutaire (Article 9)"
+                          placeholder="Notre But"
                           className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 font-semibold focus:border-amber-500 focus:outline-hidden"
                         />
                       </div>
 
                       <div className="md:col-span-12">
                         <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                          Texte officiel du But Statutaire ({editingLang.toUpperCase()})
+                          Texte officiel du But ({editingLang.toUpperCase()})
                         </label>
                         <textarea
                           rows={4}
@@ -1872,14 +1857,11 @@ export default function AdminInstitutionalPages() {
                           placeholder="L'ONG AGISSONS POUR SAUVER (APS-BÉNIN) a pour but d'œuvrer à l'amélioration durable des conditions de vie..."
                           className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-amber-500 focus:outline-hidden leading-relaxed"
                         />
-                        <p className="text-[11px] text-gray-400 mt-1">
-                          Conforme à l’Article 9 des statuts d’APS-BÉNIN. Mis en valeur dans une section dédiée sur le site public.
-                        </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* 4. OBJECTIFS STATUTAIRES (ARTICLE 10) */}
+                  {/* 4. OBJECTIFS */}
                   <div className="bg-white rounded-2xl p-6 sm:p-8 border border-emerald-200 shadow-2xs space-y-6">
                     <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -1887,14 +1869,11 @@ export default function AdminInstitutionalPages() {
                           <ShieldCheck className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
-                            <span>4. Objectifs Statutaires (Article 10 des statuts)</span>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              Composante 4/5 ({objectiveBlocks.length} objectifs)
-                            </span>
+                          <h3 className="text-base font-bold text-gray-900 font-heading">
+                            Nos Objectifs ({objectiveBlocks.length})
                           </h3>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Les 4 objectifs statutaires sous forme de liste structurée et ordonnée.
+                            Les 4 objectifs prioritaires sous forme de liste structurée et ordonnée.
                           </p>
                         </div>
                       </div>
@@ -1923,7 +1902,7 @@ export default function AdminInstitutionalPages() {
 
                     {objectiveBlocks.length === 0 ? (
                       <div className="p-8 rounded-xl bg-gray-50 border border-gray-200 text-center text-xs text-gray-500 space-y-3">
-                        <p>Aucun objectif statutaire n&apos;est actuellement listé.</p>
+                        <p>Aucun objectif n&apos;est actuellement listé.</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -1943,7 +1922,7 @@ export default function AdminInstitutionalPages() {
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Restaurer les 4 objectifs statutaires officiels</span>
+                          <span>Restaurer les 4 objectifs officiels</span>
                         </button>
                       </div>
                     ) : (
@@ -1959,7 +1938,7 @@ export default function AdminInstitutionalPages() {
                                   {idx + 1}
                                 </span>
                                 <span className="text-xs font-bold text-gray-800">
-                                  Objectif Statutaire #{idx + 1}
+                                  Objectif #{idx + 1}
                                 </span>
                               </div>
 
@@ -2038,7 +2017,7 @@ export default function AdminInstitutionalPages() {
 
                               <div className="sm:col-span-12">
                                 <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
-                                  Description statutaire détaillée ({editingLang.toUpperCase()})
+                                  Description détaillée ({editingLang.toUpperCase()})
                                 </label>
                                 <textarea
                                   rows={2}
@@ -2062,7 +2041,7 @@ export default function AdminInstitutionalPages() {
                     )}
                   </div>
 
-                  {/* 5. VALEURS FONDAMENTALES (6 PILIERS ÉTHIQUES) */}
+                  {/* 5. VALEURS */}
                   <div className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-200 shadow-2xs space-y-6">
                     <div className="border-b border-gray-100 pb-4 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -2070,14 +2049,11 @@ export default function AdminInstitutionalPages() {
                           <Heart className="w-5 h-5 text-[#FF8C00]" />
                         </div>
                         <div>
-                          <h3 className="text-base font-bold text-gray-900 font-heading flex items-center gap-2">
-                            <span>5. Valeurs Fondamentales & Piliers Éthiques</span>
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                              Composante 5/5 ({valueBlocks.length} valeurs)
-                            </span>
+                          <h3 className="text-base font-bold text-gray-900 font-heading">
+                            Nos Valeurs ({valueBlocks.length})
                           </h3>
                           <p className="text-xs text-gray-500 mt-0.5">
-                            Les 6 piliers éthiques intangibles guidant l’attitude de chaque collaborateur et partenaire.
+                            Les repères guidant l’attitude et les interventions d’APS-BÉNIN.
                           </p>
                         </div>
                       </div>
@@ -2106,7 +2082,7 @@ export default function AdminInstitutionalPages() {
 
                     {valueBlocks.length === 0 ? (
                       <div className="p-8 rounded-xl bg-gray-50 border border-gray-200 text-center text-xs text-gray-500 space-y-3">
-                        <p>Aucune valeur éthique n&apos;est actuellement enregistrée.</p>
+                        <p>Aucune valeur n&apos;est actuellement enregistrée.</p>
                         <button
                           type="button"
                           onClick={() => {
@@ -2126,7 +2102,7 @@ export default function AdminInstitutionalPages() {
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#92278F] text-white text-xs font-bold hover:bg-[#741772]"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Restaurer les 6 valeurs institutionnelles officielles</span>
+                          <span>Restaurer les 6 valeurs officielles</span>
                         </button>
                       </div>
                     ) : (

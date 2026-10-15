@@ -15,8 +15,8 @@ export const defaultInstitutionalMission = {
 };
 
 export const defaultInstitutionalGoal = {
-  title_fr: 'Notre But Statutaire (Article 9)',
-  title_en: 'Our Statutory Purpose (Article 9)',
+  title_fr: 'Notre But',
+  title_en: 'Our Purpose',
   content_fr: "L'ONG AGISSONS POUR SAUVER (APS-BÉNIN) a pour but d'œuvrer à l'amélioration durable des conditions de vie des populations vulnérables, en particulier les femmes, les enfants et les jeunes filles, par la promotion des droits humains inaliénables, la justice sociale, l'égalité de genre, la santé reproductive et l'autonomisation socio-économique et communautaire.",
   content_en: "The NGO AGISSONS POUR SAUVER (APS-BENIN) aims to sustainably improve the living conditions of vulnerable populations, particularly women, children, and young girls, through the promotion of inalienable human rights, social justice, gender equality, reproductive health, and socio-economic and community empowerment.",
 };
@@ -83,8 +83,8 @@ export const defaultInstitutionalValues = [
     id: 'val-3',
     title_fr: 'Intégrité & Transparence',
     title_en: 'Integrity & Transparency',
-    desc_fr: 'Gestion rigoureuse, fidélité aux engagements statutaires, tolérance zéro contre la corruption et reddition scrupuleuse des comptes.',
-    desc_en: 'Rigorous management, loyalty to statutory commitments, zero tolerance for corruption, and thorough accountability.',
+    desc_fr: 'Gestion rigoureuse, fidélité à nos engagements, tolérance zéro contre la corruption et reddition scrupuleuse des comptes.',
+    desc_en: 'Rigorous management, loyalty to our commitments, zero tolerance for corruption, and thorough accountability.',
     icon_name: 'CheckCircle2',
     order_index: 3,
   },
@@ -138,7 +138,7 @@ APS-BÉNIN œuvre au quotidien pour éliminer toutes les formes de discriminatio
     body_html_en: `Officially registered in September 2017 with the Ministry of Interior and Public Security (Prefectural Order N°9/040PDM/SG/STCCD- and published in the Official Gazette of the Republic of Benin N°21 of November 1, 2017), the NGO has established a solid operational footprint in the Mono department.
 
 APS-BENIN works every day to eliminate all forms of discrimination against women and girls, fight gender-based violence, ensure comprehensive access to sexual and reproductive health information, and support socioeconomic independence through vocational training and solidarity cooperatives.`,
-    hero_image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=1600&q=80',
+    hero_image: '',
     hero_image_alt_fr: 'Engagement communautaire APS-BÉNIN à Comè',
     hero_image_alt_en: 'APS-BENIN community commitment in Comè',
     images: [
@@ -147,7 +147,7 @@ APS-BENIN works every day to eliminate all forms of discrimination against women
         slot_key: 'headquarters_photo',
         label_fr: 'Siège social de Comè',
         label_en: 'Comè Headquarters',
-        url: 'https://images.unsplash.com/photo-1542810634-71277d95dcbb?auto=format&fit=crop&w=800&q=80',
+        url: '',
         alt_fr: 'APS-BÉNIN Siège de Djacoṭé-Comè',
         alt_en: 'APS-BENIN Headquarters in Djacoṭé-Comè',
         caption_fr: 'Accueil du public et cellules d’écoute citoyennes à Djacoṭé-Comè.',
@@ -159,7 +159,7 @@ APS-BENIN works every day to eliminate all forms of discrimination against women
         slot_key: 'community_action',
         label_fr: 'Action communautaire de terrain',
         label_en: 'Grassroots Community Action',
-        url: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&w=1000&q=80',
+        url: '',
         alt_fr: 'Femmes artisanes et leaders locales accompagnées par APS-BÉNIN',
         alt_en: 'Women artisans and grassroots leaders supported by APS-BENIN',
         caption_fr: 'Autonomisation des femmes artisanes et leaders locales dans le Mono.',
@@ -228,7 +228,7 @@ APS-BENIN works every day to eliminate all forms of discrimination against women
     quote_en: 'Every step counts to sustainably transform lives.',
     intro_fr: "Fondée en septembre 2014 à Comè, APS-BÉNIN est née de la volonté d'un collectif d'acteurs de la société civile de répondre aux urgences sociales et de bâtir une gouvernance démocratique exemplaire.",
     intro_en: 'Founded in September 2014 in Comè, APS-BENIN emerged from the will of civil society activists to address social emergencies and build exemplary democratic governance.',
-    hero_image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=1600&q=80',
+    hero_image: '',
     hero_image_alt_fr: 'Histoire et parcours APS-BÉNIN',
     hero_image_alt_en: 'History and journey of APS-BENIN',
     images: [],
@@ -254,7 +254,7 @@ APS-BENIN works every day to eliminate all forms of discrimination against women
     intro_en: defaultInstitutionalMission.content_en,
     body_html_fr: defaultInstitutionalGoal.content_fr,
     body_html_en: defaultInstitutionalGoal.content_en,
-    hero_image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=1600&q=80',
+    hero_image: '',
     hero_image_alt_fr: 'Mission, Vision et Valeurs de APS-BÉNIN',
     hero_image_alt_en: 'Mission, Vision and Values of APS-BENIN',
     images: [],
@@ -329,7 +329,7 @@ APS-BENIN works every day to eliminate all forms of discrimination against women
     quote_en: 'Acting at the root of social and gender inequalities.',
     intro_fr: "APS-BÉNIN déploie des interventions ciblées structurées autour de quatre piliers majeurs pour répondre aux défis contemporains du développement humain.",
     intro_en: 'APS-BENIN deploys targeted interventions structured around four major pillars to address contemporary human development challenges.',
-    hero_image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=1600&q=80',
+    hero_image: '',
     hero_image_alt_fr: "Domaines d'intervention APS-BÉNIN",
     hero_image_alt_en: 'APS-BENIN areas of intervention',
     images: [],
