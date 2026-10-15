@@ -7,6 +7,7 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem, ProjectStatus } from '@/types';
 import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
   Search,
@@ -31,6 +32,7 @@ export default function AdminProjectsPage() {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<ProjectItem | null>(null);
+  const [editingLang, setEditingLang] = useState<'fr' | 'en'>('fr');
 
   // Form state
   const [form, setForm] = useState<Partial<ProjectItem>>({
@@ -526,83 +528,141 @@ export default function AdminProjectsPage() {
                   </div>
                 </div>
 
+                {/* Language Switcher for Editorial Sections */}
+                <div className="bg-purple-50/60 p-3 rounded-xl border border-purple-100 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Langue d&apos;édition du projet :
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingLang('fr')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        editingLang === 'fr'
+                          ? 'bg-[#92278F] text-white shadow-2xs'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      🇫🇷 Français (Principal)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingLang('en')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        editingLang === 'en'
+                          ? 'bg-[#92278F] text-white shadow-2xs'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      🇬🇧 English (International)
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    Mise en forme WYSIWYG indépendante pour chaque langue
+                  </span>
+                </div>
+
                 {/* Contexte & Problématique */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Contexte
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={form.context_fr}
-                      onChange={(e) => setForm({ ...form, context_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label={editingLang === 'fr' ? 'Contexte du projet' : 'Project Context'}
+                      langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
+                      value={editingLang === 'fr' ? form.context_fr || '' : form.context_en || ''}
+                      onChange={(html) =>
+                        setForm({
+                          ...form,
+                          [editingLang === 'fr' ? 'context_fr' : 'context_en']: html,
+                        })
+                      }
+                      placeholder="Contexte et justification de l'intervention..."
+                      minHeight="180px"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Problématique adressée
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={form.problem_fr}
-                      onChange={(e) => setForm({ ...form, problem_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label={editingLang === 'fr' ? 'Problématique adressée' : 'Problem Statement'}
+                      langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
+                      value={editingLang === 'fr' ? form.problem_fr || '' : form.problem_en || ''}
+                      onChange={(html) =>
+                        setForm({
+                          ...form,
+                          [editingLang === 'fr' ? 'problem_fr' : 'problem_en']: html,
+                        })
+                      }
+                      placeholder="Défi majeur et problématiques identifiées sur le terrain..."
+                      minHeight="180px"
                     />
                   </div>
                 </div>
 
                 {/* Objectifs & Activités */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Objectifs du projet
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={form.objectives_fr}
-                      onChange={(e) => setForm({ ...form, objectives_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label={editingLang === 'fr' ? 'Objectifs du projet' : 'Project Objectives'}
+                      langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
+                      value={editingLang === 'fr' ? form.objectives_fr || '' : form.objectives_en || ''}
+                      onChange={(html) =>
+                        setForm({
+                          ...form,
+                          [editingLang === 'fr' ? 'objectives_fr' : 'objectives_en']: html,
+                        })
+                      }
+                      placeholder="Objectifs généraux et spécifiques (listes à puces recommandées)..."
+                      minHeight="200px"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Activités déployées
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={form.activities_fr}
-                      onChange={(e) => setForm({ ...form, activities_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label={editingLang === 'fr' ? 'Activités déployées' : 'Implemented Activities'}
+                      langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
+                      value={editingLang === 'fr' ? form.activities_fr || '' : form.activities_en || ''}
+                      onChange={(html) =>
+                        setForm({
+                          ...form,
+                          [editingLang === 'fr' ? 'activities_fr' : 'activities_en']: html,
+                        })
+                      }
+                      placeholder="Activités concrètes et plan d'action déployé..."
+                      minHeight="200px"
                     />
                   </div>
                 </div>
 
                 {/* Résultats attendus & obtenus */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Résultats Attendus
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={form.expected_results_fr}
-                      onChange={(e) => setForm({ ...form, expected_results_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label={editingLang === 'fr' ? 'Résultats Attendus' : 'Expected Results'}
+                      langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
+                      value={editingLang === 'fr' ? form.expected_results_fr || '' : form.expected_results_en || ''}
+                      onChange={(html) =>
+                        setForm({
+                          ...form,
+                          [editingLang === 'fr' ? 'expected_results_fr' : 'expected_results_en']: html,
+                        })
+                      }
+                      placeholder="Impacts et résultats visés..."
+                      minHeight="180px"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Résultats Obtenus
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={form.achieved_results_fr}
-                      onChange={(e) => setForm({ ...form, achieved_results_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label={editingLang === 'fr' ? 'Résultats Obtenus' : 'Results Achieved'}
+                      langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
+                      value={editingLang === 'fr' ? form.achieved_results_fr || '' : form.achieved_results_en || ''}
+                      onChange={(html) =>
+                        setForm({
+                          ...form,
+                          [editingLang === 'fr' ? 'achieved_results_fr' : 'achieved_results_en']: html,
+                        })
+                      }
+                      placeholder="Réalisations concrètes et indicateurs vérifiés sur le terrain..."
+                      minHeight="180px"
                     />
                   </div>
                 </div>

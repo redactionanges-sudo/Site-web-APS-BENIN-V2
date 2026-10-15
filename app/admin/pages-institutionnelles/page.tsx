@@ -21,6 +21,7 @@ import {
   InstitutionalPageBlock,
   HistoryMilestone,
 } from '@/types';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   BookOpen,
   Save,
@@ -1043,29 +1044,25 @@ export default function AdminInstitutionalPages() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                        Texte détaillé des paragraphes ({editingLang.toUpperCase()})
-                      </label>
-                      <textarea
-                        rows={8}
+                      <RichTextEditor
+                        label={`Texte détaillé des paragraphes (${editingLang.toUpperCase()})`}
+                        langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
                         value={
                           editingLang === 'fr'
                             ? currentPage.body_html_fr || ''
                             : currentPage.body_html_en || ''
                         }
-                        onChange={(e) => {
+                        onChange={(html) => {
                           if (editingLang === 'fr') {
-                            setCurrentPage({ ...currentPage, body_html_fr: e.target.value });
+                            setCurrentPage({ ...currentPage, body_html_fr: html });
                           } else {
-                            setCurrentPage({ ...currentPage, body_html_en: e.target.value });
+                            setCurrentPage({ ...currentPage, body_html_en: html });
                           }
                         }}
-                        placeholder="Saisissez ici les paragraphes détaillés (séparés par un double saut de ligne)..."
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#92278F] focus:outline-hidden leading-relaxed font-sans"
+                        placeholder="Rédigez ici les paragraphes de présentation institutionnelle avec mise en forme..."
+                        minHeight="280px"
+                        helpText="Éditeur WYSIWYG complet : titres, paragraphes, citations, listes, liens et styles institutionnels."
                       />
-                      <p className="text-[11px] text-gray-400 mt-1">
-                        Chaque paragraphe séparé par une ligne vide est formaté proprement sur le site public.
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -1604,24 +1601,23 @@ export default function AdminInstitutionalPages() {
                           </div>
 
                           <div className="md:col-span-12">
-                            <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                              Description du jalon ({editingLang.toUpperCase()})
-                            </label>
-                            <textarea
-                              rows={2}
+                            <RichTextEditor
+                              label={`Description du jalon (${editingLang.toUpperCase()})`}
+                              langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
                               value={
                                 editingLang === 'fr'
                                   ? milestone.description_fr || ''
                                   : milestone.description_en || ''
                               }
-                              onChange={(e) =>
+                              onChange={(html) =>
                                 handleUpdateMilestone(
                                   milestone.id,
                                   editingLang === 'fr' ? 'description_fr' : 'description_en',
-                                  e.target.value
+                                  html
                                 )
                               }
-                              className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 leading-relaxed"
+                              placeholder="Détail des actions menées ou de la portée juridique..."
+                              minHeight="140px"
                             />
                           </div>
                         </div>
@@ -1733,15 +1729,13 @@ export default function AdminInstitutionalPages() {
                       </div>
 
                       <div className="md:col-span-12">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                          Formulation de la Vision ({editingLang.toUpperCase()})
-                        </label>
-                        <textarea
-                          rows={4}
+                        <RichTextEditor
+                          label={`Formulation de la Vision (${editingLang.toUpperCase()})`}
+                          langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
                           value={editingLang === 'fr' ? visionBlock.content_fr || '' : visionBlock.content_en || ''}
-                          onChange={(e) => updateVisionField(editingLang === 'fr' ? 'content_fr' : 'content_en', e.target.value)}
+                          onChange={(html) => updateVisionField(editingLang === 'fr' ? 'content_fr' : 'content_en', html)}
                           placeholder="Un Bénin et une Afrique où chaque femme, chaque jeune fille et chaque citoyen vit à l’abri des violences..."
-                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#FF8C00] focus:outline-hidden leading-relaxed"
+                          minHeight="160px"
                         />
                       </div>
                     </div>
@@ -1790,15 +1784,13 @@ export default function AdminInstitutionalPages() {
                       </div>
 
                       <div className="md:col-span-12">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                          Formulation de la Mission ({editingLang.toUpperCase()})
-                        </label>
-                        <textarea
-                          rows={4}
+                        <RichTextEditor
+                          label={`Formulation de la Mission (${editingLang.toUpperCase()})`}
+                          langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
                           value={editingLang === 'fr' ? missionBlock.content_fr || '' : missionBlock.content_en || ''}
-                          onChange={(e) => updateMissionField(editingLang === 'fr' ? 'content_fr' : 'content_en', e.target.value)}
+                          onChange={(html) => updateMissionField(editingLang === 'fr' ? 'content_fr' : 'content_en', html)}
                           placeholder="Défendre les droits humains, promouvoir la justice et l’égalité de genre..."
-                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-[#92278F] focus:outline-hidden leading-relaxed"
+                          minHeight="160px"
                         />
                       </div>
                     </div>
@@ -1847,15 +1839,13 @@ export default function AdminInstitutionalPages() {
                       </div>
 
                       <div className="md:col-span-12">
-                        <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                          Texte officiel du But ({editingLang.toUpperCase()})
-                        </label>
-                        <textarea
-                          rows={4}
+                        <RichTextEditor
+                          label={`Texte officiel du But (${editingLang.toUpperCase()})`}
+                          langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
                           value={editingLang === 'fr' ? goalBlock.content_fr || '' : goalBlock.content_en || ''}
-                          onChange={(e) => updateGoalField(editingLang === 'fr' ? 'content_fr' : 'content_en', e.target.value)}
+                          onChange={(html) => updateGoalField(editingLang === 'fr' ? 'content_fr' : 'content_en', html)}
                           placeholder="L'ONG AGISSONS POUR SAUVER (APS-BÉNIN) a pour but d'œuvrer à l'amélioration durable des conditions de vie..."
-                          className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:border-amber-500 focus:outline-hidden leading-relaxed"
+                          minHeight="160px"
                         />
                       </div>
                     </div>

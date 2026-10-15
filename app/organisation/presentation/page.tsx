@@ -11,6 +11,7 @@ import { supabaseStore, resolveMediaUrl, unpackInstitutionalPage } from '@/lib/s
 import { initialInstitutionalPages } from '@/lib/initial-pages';
 
 import { InstitutionalPage, InstitutionalPageImage, InstitutionalPageBlock } from '@/types';
+import { RichTextContent } from '@/components/RichTextContent';
 import {
   ShieldCheck,
   FileCheck2,
@@ -358,11 +359,15 @@ export default function PresentationPage() {
                       </p>
                     )}
 
-                    {paragraphs.map((p, i) => (
-                      <p key={i} className="text-gray-700 leading-relaxed text-base">
-                        {p}
-                      </p>
-                    ))}
+                    {bodyContent ? (
+                      <RichTextContent content={bodyContent} className="text-base text-gray-700 space-y-4" />
+                    ) : (
+                      paragraphs.map((p, i) => (
+                        <p key={i} className="text-gray-700 leading-relaxed text-base">
+                          {p}
+                        </p>
+                      ))
+                    )}
                   </div>
                 </div>
 

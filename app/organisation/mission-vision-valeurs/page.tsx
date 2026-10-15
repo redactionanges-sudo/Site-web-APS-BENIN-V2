@@ -8,6 +8,7 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { InstitutionalPage } from '@/types';
+import { RichTextContent } from '@/components/RichTextContent';
 import {
   defaultInstitutionalVision,
   defaultInstitutionalMission,
@@ -301,9 +302,9 @@ export default function MissionVisionValeursPage() {
                   <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
                     {visionTitle}
                   </h2>
-                  <p className="text-base text-gray-700 leading-relaxed font-sans">
-                    {visionText}
-                  </p>
+                  <div className="text-base text-gray-700 leading-relaxed font-sans">
+                    <RichTextContent content={visionText} />
+                  </div>
                 </div>
               </div>
 
@@ -319,9 +320,9 @@ export default function MissionVisionValeursPage() {
                   <h2 className="text-2xl font-extrabold text-gray-900 font-heading mb-4">
                     {missionTitle}
                   </h2>
-                  <p className="text-base text-gray-700 leading-relaxed font-sans">
-                    {missionText}
-                  </p>
+                  <div className="text-base text-gray-700 leading-relaxed font-sans">
+                    <RichTextContent content={missionText} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -347,9 +348,9 @@ export default function MissionVisionValeursPage() {
 
                 {/* Typography: Open Sans (font-sans) as required by APS-BÉNIN corporate identity */}
                 <div className="p-6 sm:p-8 rounded-2xl bg-amber-50/60 border border-amber-200/70">
-                  <p className="text-gray-800 leading-relaxed text-base sm:text-lg font-sans">
-                    {goalText}
-                  </p>
+                  <div className="text-gray-800 leading-relaxed text-base sm:text-lg font-sans">
+                    <RichTextContent content={goalText} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -391,9 +392,9 @@ export default function MissionVisionValeursPage() {
                     <h3 className="text-lg font-bold text-gray-900 font-heading mb-3 leading-snug">
                       {obj.title}
                     </h3>
-                    <p className="text-sm text-gray-600 leading-relaxed font-sans">
-                      {obj.description}
-                    </p>
+                    <div className="text-sm text-gray-600 leading-relaxed font-sans">
+                      <RichTextContent content={obj.description} />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -431,9 +432,9 @@ export default function MissionVisionValeursPage() {
                     <h3 className="text-lg font-bold text-gray-900 font-heading mb-2">
                       {v.title}
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-sans">
-                      {v.description}
-                    </p>
+                    <div className="text-xs sm:text-sm text-gray-600 leading-relaxed font-sans">
+                      <RichTextContent content={v.description} />
+                    </div>
                   </div>
                 </div>
               ))}

@@ -10,6 +10,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
+import { RichTextContent } from '@/components/RichTextContent';
 import {
   ArrowLeft,
   Calendar,
@@ -187,14 +188,14 @@ export default function ProjectDetailPage({ params }: PageProps) {
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-heading">
                     {language === 'en' ? 'Context & Problem Statement' : 'Contexte & Problématique'}
                   </h2>
-                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                    {language === 'en' ? project.context_en : project.context_fr}
-                  </p>
-                  <div className="p-4 rounded-xl bg-orange-50/70 border border-orange-100 text-xs sm:text-sm text-gray-800">
-                    <strong className="text-[#d97500] block mb-1">
+                  <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
+                    <RichTextContent content={language === 'en' ? project.context_en : project.context_fr} />
+                  </div>
+                  <div className="p-5 rounded-xl bg-orange-50/70 border border-orange-100 text-xs sm:text-sm text-gray-800">
+                    <strong className="text-[#d97500] block mb-1 font-bold">
                       {language === 'en' ? 'Core Challenge Addressed:' : 'Défi Majeur Adressé :'}
                     </strong>
-                    {language === 'en' ? project.problem_en : project.problem_fr}
+                    <RichTextContent content={language === 'en' ? project.problem_en : project.problem_fr} />
                   </div>
                 </div>
 
@@ -204,9 +205,9 @@ export default function ProjectDetailPage({ params }: PageProps) {
                     <Target className="w-5 h-5 text-[#92278F]" />
                     <span>{language === 'en' ? 'Project Objectives' : 'Objectifs du Projet'}</span>
                   </h2>
-                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                    {language === 'en' ? project.objectives_en : project.objectives_fr}
-                  </p>
+                  <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
+                    <RichTextContent content={language === 'en' ? project.objectives_en : project.objectives_fr} />
+                  </div>
                 </div>
 
                 {/* Activités */}
@@ -214,31 +215,31 @@ export default function ProjectDetailPage({ params }: PageProps) {
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-heading">
                     {language === 'en' ? 'Activities Implemented' : 'Activités & Actions Déployées'}
                   </h2>
-                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                    {language === 'en' ? project.activities_en : project.activities_fr}
-                  </p>
+                  <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
+                    <RichTextContent content={language === 'en' ? project.activities_en : project.activities_fr} />
+                  </div>
                 </div>
 
                 {/* Résultats attendus & obtenus */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-6 rounded-xl bg-gray-50 border border-gray-200">
-                    <h3 className="font-bold text-base text-gray-900 mb-2 flex items-center gap-2">
+                    <h3 className="font-bold text-base text-gray-900 mb-2 flex items-center gap-2 font-heading">
                       <CheckCircle className="w-4 h-4 text-[#92278F]" />
                       <span>{language === 'en' ? 'Expected Results' : 'Résultats Attendus'}</span>
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                      {language === 'en' ? project.expected_results_en : project.expected_results_fr}
-                    </p>
+                    <div className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      <RichTextContent content={language === 'en' ? project.expected_results_en : project.expected_results_fr} />
+                    </div>
                   </div>
 
                   <div className="p-6 rounded-xl bg-purple-50/60 border border-purple-100">
-                    <h3 className="font-bold text-base text-[#92278F] mb-2 flex items-center gap-2">
+                    <h3 className="font-bold text-base text-[#92278F] mb-2 flex items-center gap-2 font-heading">
                       <CheckCircle className="w-4 h-4 text-[#FF8C00]" />
                       <span>{language === 'en' ? 'Results Achieved' : 'Résultats Obtenus'}</span>
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                      {language === 'en' ? project.achieved_results_en : project.achieved_results_fr}
-                    </p>
+                    <div className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                      <RichTextContent content={language === 'en' ? project.achieved_results_en : project.achieved_results_fr} />
+                    </div>
                   </div>
                 </div>
 

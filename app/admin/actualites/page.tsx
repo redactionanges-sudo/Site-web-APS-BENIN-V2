@@ -7,6 +7,7 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem, NewsStatus } from '@/types';
 import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
   Search,
@@ -494,29 +495,29 @@ export default function AdminNewsPage() {
                   </div>
                 </div>
 
-                {/* Content FR & EN */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Content FR & EN with WYSIWYG Rich Text Editor */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Contenu complet (Français)
-                    </label>
-                    <textarea
-                      rows={8}
-                      value={form.content_fr}
-                      onChange={(e) => setForm({ ...form, content_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label="Contenu complet de l’article"
+                      langTag="FR"
+                      value={form.content_fr || ''}
+                      onChange={(html) => setForm({ ...form, content_fr: html })}
+                      placeholder="Rédigez le contenu complet en français avec mise en forme..."
+                      minHeight="280px"
+                      helpText="Titres H2-H4, gras, listes, liens, citations, police Open Sans/Montserrat."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Full Content (English)
-                    </label>
-                    <textarea
-                      rows={8}
-                      value={form.content_en}
-                      onChange={(e) => setForm({ ...form, content_en: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label="Full Article Content"
+                      langTag="EN"
+                      value={form.content_en || ''}
+                      onChange={(html) => setForm({ ...form, content_en: html })}
+                      placeholder="Write the full English content with rich formatting..."
+                      minHeight="280px"
+                      helpText="Headings, bold, lists, hyperlinks, blockquotes, Open Sans/Montserrat."
                     />
                   </div>
                 </div>

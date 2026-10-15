@@ -11,6 +11,7 @@ import { supabaseStore } from '@/lib/supabase';
 import { NewsItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { getVideoEmbedUrl, parseVideoUrl } from '@/lib/video-utils';
+import { RichTextContent } from '@/components/RichTextContent';
 import {
   ArrowLeft,
   Calendar,
@@ -152,8 +153,11 @@ export default function NewsDetailPage({ params }: PageProps) {
             </div>
 
             {/* Rich content */}
-            <div className="prose prose-purple max-w-none text-gray-700 leading-relaxed text-base whitespace-pre-line">
-              {language === 'en' ? article.content_en : article.content_fr}
+            <div className="text-gray-700 leading-relaxed text-base">
+              <RichTextContent
+                content={language === 'en' ? article.content_en : article.content_fr}
+                className="prose-purple max-w-none"
+              />
             </div>
 
             {/* Video embed only if a valid, supported video URL is provided */}
