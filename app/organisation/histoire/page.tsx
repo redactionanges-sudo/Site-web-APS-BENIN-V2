@@ -7,6 +7,7 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { HistoryMilestone, InstitutionalPage } from '@/types';
+import { RichTextContent } from '@/components/RichTextContent';
 import { Calendar, CheckCircle2, Award, Clock, EyeOff } from 'lucide-react';
 
 export default function HistoirePage() {
@@ -127,9 +128,11 @@ export default function HistoirePage() {
                         {language === 'en' ? m.title_en || m.title_fr : m.title_fr}
                       </h3>
 
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {language === 'en' ? m.description_en || m.description_fr : m.description_fr}
-                      </p>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        <RichTextContent
+                          content={language === 'en' ? m.description_en || m.description_fr : m.description_fr}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

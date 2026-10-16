@@ -10,6 +10,7 @@ import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { RichTextContent } from '@/components/RichTextContent';
 import {
   ArrowLeft,
   Calendar,
@@ -179,9 +180,9 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-heading">
                     {language === 'en' ? 'Position / Mission Overview' : 'Description du Poste & Contexte'}
                   </h2>
-                  <p className="text-sm sm:text-base text-gray-700 leading-relaxed whitespace-pre-line">
-                    {language === 'en' ? opp.description_en : opp.description_fr}
-                  </p>
+                  <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
+                    <RichTextContent content={language === 'en' ? opp.description_en : opp.description_fr} />
+                  </div>
                 </div>
 
                 {/* Conditions / Profil recherché */}
@@ -189,8 +190,8 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-heading">
                     {language === 'en' ? 'Eligibility & Qualifications' : 'Conditions de Candidature & Profil'}
                   </h2>
-                  <div className="p-6 rounded-xl bg-purple-50/50 border border-purple-100 text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-                    {language === 'en' ? opp.conditions_en : opp.conditions_fr}
+                  <div className="p-6 rounded-xl bg-purple-50/50 border border-purple-100 text-sm text-gray-800 leading-relaxed">
+                    <RichTextContent content={language === 'en' ? opp.conditions_en : opp.conditions_fr} />
                   </div>
                 </div>
 
@@ -199,8 +200,8 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900 font-heading">
                     {language === 'en' ? 'Required Application Documents' : 'Dossier de Candidature / Pièces à Fournir'}
                   </h2>
-                  <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-                    {language === 'en' ? opp.documents_required_en : opp.documents_required_fr}
+                  <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 leading-relaxed">
+                    <RichTextContent content={language === 'en' ? opp.documents_required_en : opp.documents_required_fr} />
                   </div>
                 </div>
 

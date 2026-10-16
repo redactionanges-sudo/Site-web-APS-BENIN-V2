@@ -7,6 +7,7 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem, OpportunityStatus, OpportunityType } from '@/types';
 import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
   Search,
@@ -495,55 +496,51 @@ export default function AdminOpportunitiesPage() {
                 </div>
 
                 {/* Description FR & EN */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Description de la mission (Français)
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={form.description_fr}
-                      onChange={(e) => setForm({ ...form, description_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label="Description de la mission (Français)"
+                      langTag="FR"
+                      value={form.description_fr || ''}
+                      onChange={(html) => setForm({ ...form, description_fr: html })}
+                      placeholder="Détail de la mission, responsabilités, contexte..."
+                      minHeight="180px"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Description (English)
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={form.description_en}
-                      onChange={(e) => setForm({ ...form, description_en: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label="Description (English)"
+                      langTag="EN"
+                      value={form.description_en || ''}
+                      onChange={(html) => setForm({ ...form, description_en: html })}
+                      placeholder="Mission overview, responsibilities, context..."
+                      minHeight="180px"
                     />
                   </div>
                 </div>
 
                 {/* Conditions & Pièces à fournir */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Profil recherché & Conditions
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={form.conditions_fr}
-                      onChange={(e) => setForm({ ...form, conditions_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label="Profil recherché & Conditions"
+                      langTag="FR"
+                      value={form.conditions_fr || ''}
+                      onChange={(html) => setForm({ ...form, conditions_fr: html })}
+                      placeholder="Critères d'éligibilité, compétences requises, lieu..."
+                      minHeight="160px"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                      Dossier / Pièces à fournir
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={form.documents_required_fr}
-                      onChange={(e) => setForm({ ...form, documents_required_fr: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <RichTextEditor
+                      label="Dossier / Pièces à fournir"
+                      langTag="FR"
+                      value={form.documents_required_fr || ''}
+                      onChange={(html) => setForm({ ...form, documents_required_fr: html })}
+                      placeholder="Liste des documents : CV, lettre de motivation, attestations..."
+                      minHeight="160px"
                     />
                   </div>
                 </div>

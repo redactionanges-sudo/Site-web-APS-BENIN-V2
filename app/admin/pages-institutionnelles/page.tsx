@@ -1471,27 +1471,23 @@ export default function AdminInstitutionalPages() {
                         />
                       </div>
                       <div className="sm:col-span-12">
-                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                          Description détaillée (FR)
-                        </label>
-                        <textarea
-                          rows={2}
+                        <RichTextEditor
+                          label="Description détaillée (FR)"
+                          langTag="FR"
                           value={newMilestone.description_fr || ''}
-                          onChange={(e) => setNewMilestone({ ...newMilestone, description_fr: e.target.value })}
+                          onChange={(html) => setNewMilestone({ ...newMilestone, description_fr: html })}
                           placeholder="Détail des actions menées ou de la portée juridique..."
-                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 bg-white"
+                          minHeight="140px"
                         />
                       </div>
                       <div className="sm:col-span-12">
-                        <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                          Description en Anglais (EN)
-                        </label>
-                        <textarea
-                          rows={2}
+                        <RichTextEditor
+                          label="Description en Anglais (EN)"
+                          langTag="EN"
                           value={newMilestone.description_en || ''}
-                          onChange={(e) => setNewMilestone({ ...newMilestone, description_en: e.target.value })}
+                          onChange={(html) => setNewMilestone({ ...newMilestone, description_en: html })}
                           placeholder="English description..."
-                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-300 bg-white"
+                          minHeight="140px"
                         />
                       </div>
                     </div>
@@ -2006,22 +2002,20 @@ export default function AdminInstitutionalPages() {
                               </div>
 
                               <div className="sm:col-span-12">
-                                <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
-                                  Description détaillée ({editingLang.toUpperCase()})
-                                </label>
-                                <textarea
-                                  rows={2}
+                                <RichTextEditor
+                                  label={`Description détaillée (${editingLang.toUpperCase()})`}
+                                  langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
                                   value={editingLang === 'fr' ? obj.content_fr || '' : obj.content_en || ''}
-                                  onChange={(e) => {
+                                  onChange={(html) => {
                                     const updated = (currentPage.blocks || []).map((b) =>
                                       b.id === obj.id
-                                        ? { ...b, [editingLang === 'fr' ? 'content_fr' : 'content_en']: e.target.value }
+                                        ? { ...b, [editingLang === 'fr' ? 'content_fr' : 'content_en']: html }
                                         : b
                                     );
                                     setCurrentPage({ ...currentPage, blocks: updated });
                                   }}
                                   placeholder="Défendre et promouvoir les droits inaliénables..."
-                                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 leading-relaxed focus:border-emerald-500 focus:outline-hidden"
+                                  minHeight="140px"
                                 />
                               </div>
                             </div>
@@ -2187,25 +2181,23 @@ export default function AdminInstitutionalPages() {
                                 </div>
 
                                 <div>
-                                  <label className="block text-[11px] font-bold text-gray-600 mb-0.5">
-                                    Description / Sens éthique ({editingLang.toUpperCase()})
-                                  </label>
-                                  <textarea
-                                    rows={2}
+                                  <RichTextEditor
+                                    label={`Description / Sens éthique (${editingLang.toUpperCase()})`}
+                                    langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
                                     value={editingLang === 'fr' ? block.content_fr || '' : block.content_en || ''}
-                                    onChange={(e) => {
+                                    onChange={(html) => {
                                       const updated = (currentPage.blocks || []).map((b) =>
                                         b.id === block.id
                                           ? {
                                               ...b,
-                                              [editingLang === 'fr' ? 'content_fr' : 'content_en']: e.target.value,
+                                              [editingLang === 'fr' ? 'content_fr' : 'content_en']: html,
                                             }
                                           : b
                                       );
                                       setCurrentPage({ ...currentPage, blocks: updated });
                                     }}
                                     placeholder="Défense inconditionnelle de l’accès équitable aux droits fondamentaux..."
-                                    className="w-full px-2.5 py-1.5 text-xs rounded-md border border-gray-300 leading-relaxed focus:border-[#92278F] focus:outline-hidden"
+                                    minHeight="140px"
                                   />
                                 </div>
                               </div>
