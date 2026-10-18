@@ -15,13 +15,19 @@ export function AfricanPatternCanvas() {
       className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none"
       aria-hidden="true"
     >
-      {/* MOTIF AFRICAIN GÉOMÉTRIQUE VECTORIEL APS-BÉNIN (#92278F) */}
+      {/* COUCHE 1 : Fond de base institutionnel blanc cassé officiel APS-BÉNIN (#FAF8FB) */}
+      <div className="absolute inset-0 bg-[#FAF8FB]" />
+
+      {/* COUCHE 2 : Motif africain géométrique vectoriel APS-BÉNIN (#92278F) */}
       <div
-        className="absolute inset-0 bg-repeat bg-[length:140px_140px] sm:bg-[length:160px_160px] opacity-[0.22] sm:opacity-[0.25]"
+        className="absolute inset-0 bg-repeat bg-[length:140px_140px] sm:bg-[length:160px_160px] opacity-[0.14] sm:opacity-[0.16]"
         style={{
           backgroundImage: "url('/patterns/african-motif.svg')",
         }}
       />
+
+      {/* COUCHE 3 : Voile blanc semi-transparent d'atténuation & protection du contraste des textes */}
+      <div className="absolute inset-0 bg-white/80 sm:bg-white/82 backdrop-blur-[0.5px]" />
     </div>
   );
 }
