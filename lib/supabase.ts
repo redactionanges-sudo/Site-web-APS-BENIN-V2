@@ -316,15 +316,24 @@ export function isValidOfficialLogoUrl(url?: string | null): boolean {
   const lower = trimmed.toLowerCase();
   if (isFakeOrDemoMediaUrl(lower)) return false;
 
+  // Rejeter formellement tout logo ou fichier d'une organisation tierce ou erronée (ex: ADISS-ONG)
+  if (lower.includes('adiss')) return false;
+
+  // 1. Ressource officielle institutionnelle APS-BÉNIN du projet (source prioritaire et de vérité)
+  if (lower === '/logo-aps-benin.png' || lower.endsWith('/logo-aps-benin.png')) return true;
+
+  // 2. Média explicitement stocké dans les répertoires officiels APS-BÉNIN
+  if (
+    (lower.includes('/logos/') || lower.includes('/branding/')) &&
+    (lower.includes('aps') || lower.includes('benin'))
+  ) {
+    return true;
+  }
+
+  // 3. Fichier portant expressément la marque APS ou BÉNIN
   return (
-    lower === '/logo-aps-benin.png' ||
-    lower.endsWith('/logo-aps-benin.png') ||
-    lower.includes('/logos/') ||
-    lower.includes('logo') ||
-    lower.includes('emblem') ||
-    lower.includes('sigle') ||
-    lower.includes('brand') ||
-    lower.endsWith('.svg')
+    (lower.includes('logo') || lower.includes('emblem') || lower.includes('sigle')) &&
+    (lower.includes('aps') || lower.includes('benin'))
   );
 }
 
@@ -1580,6 +1589,15 @@ export const supabaseStore = {
       } catch {}
     }
     return [];
+  },
+
+  getCachedHeroPhotos(): MediaItem[] {
+    // Toujours retourner de façon strictement déterministe les médias initiaux prédéfinis (avec ART5181 en première position)
+    // garantit zéro hydration mismatch entre le rendu SSR et le premier rendu React client.
+    // Les photos les plus récentes sont ensuite chargées de façon asynchrone dans le useEffect du client.
+    return initialMedia
+      .filter((m) => m.type === 'photo' && m.is_active !== false && m.show_in_hero && m.url && !isFakeOrDemoMediaUrl(m.url))
+      .sort((a, b) => (Number(a.hero_order) || 99) - (Number(b.hero_order) || 99));
   },
 
   async getPublishedVideos(): Promise<MediaItem[]> {

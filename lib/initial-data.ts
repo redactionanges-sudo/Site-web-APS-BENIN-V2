@@ -935,7 +935,62 @@ export const initialAlbums: PhotoAlbum[] = [
   }
 ];
 
-export const initialMedia: MediaItem[] = [];
+export const initialMedia: MediaItem[] = [
+  {
+    id: 'med-1791401315811',
+    title_fr: 'ART5181',
+    title_en: 'ART5181',
+    type: 'photo',
+    url: 'https://ezbpbjtddeytbyedfioo.supabase.co/storage/v1/object/public/images/uploads/1791401316936__art5181.jpg',
+    thumbnail_url: 'https://ezbpbjtddeytbyedfioo.supabase.co/storage/v1/object/public/images/uploads/1791401316936__art5181.jpg',
+    category: 'Projets & Réalisations',
+    date: '2026-10-07',
+    location: 'APS-BÉNIN',
+    alt_fr: 'Mobilisation communautaire et actions de terrain APS-BÉNIN',
+    alt_en: 'Community mobilization and field actions APS-BENIN',
+    description_fr: '',
+    description_en: '{"desc_en":"","show_in_hero":true,"hero_order":1,"is_active":true,"show_in_public_gallery":false,"target_module":"projets","updated_at":"2026-10-12T11:32:03.920Z"}',
+    show_in_hero: true,
+    hero_order: 1,
+    is_active: true,
+  },
+  {
+    id: 'med-1791401365591',
+    title_fr: 'ART5521',
+    title_en: 'ART5521',
+    type: 'photo',
+    url: 'https://ezbpbjtddeytbyedfioo.supabase.co/storage/v1/object/public/images/uploads/1791401366781__art5521.jpg',
+    thumbnail_url: 'https://ezbpbjtddeytbyedfioo.supabase.co/storage/v1/object/public/images/uploads/1791401366781__art5521.jpg',
+    category: 'Projets & Réalisations',
+    date: '2026-10-07',
+    location: 'APS-BÉNIN',
+    alt_fr: 'Activités éducatives et d’autonomisation - APS-BÉNIN',
+    alt_en: 'Educational and empowerment activities - APS-BENIN',
+    description_fr: '',
+    description_en: '{"desc_en":"","show_in_hero":true,"hero_order":1,"is_active":true,"show_in_public_gallery":false,"target_module":"projets","updated_at":"2026-10-12T11:32:03.920Z"}',
+    show_in_hero: true,
+    hero_order: 1,
+    is_active: true,
+  },
+  {
+    id: 'med-1791401446600',
+    title_fr: 'ART5875',
+    title_en: 'ART5875',
+    type: 'photo',
+    url: 'https://ezbpbjtddeytbyedfioo.supabase.co/storage/v1/object/public/images/uploads/1791401447811__art5875.jpg',
+    thumbnail_url: 'https://ezbpbjtddeytbyedfioo.supabase.co/storage/v1/object/public/images/uploads/1791401447811__art5875.jpg',
+    category: 'Projets & Réalisations',
+    date: '2026-10-07',
+    location: 'APS-BÉNIN',
+    alt_fr: 'Sensibilisation et droits humains - APS-BÉNIN',
+    alt_en: 'Human rights and awareness sessions - APS-BENIN',
+    description_fr: '',
+    description_en: '{"desc_en":"","show_in_hero":true,"hero_order":2,"is_active":true,"show_in_public_gallery":false,"target_module":"projets","updated_at":"2026-10-12T11:32:03.920Z"}',
+    show_in_hero: true,
+    hero_order: 2,
+    is_active: true,
+  }
+];
 
 export const initialAdminUsers: UserProfile[] = [
   {

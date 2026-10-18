@@ -168,8 +168,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           fill
           priority={priority}
           sizes={sizes}
-          className={`transition-opacity duration-300 ${
-            isLoaded ? 'opacity-100' : 'opacity-0'
+          className={`${priority ? '' : 'transition-opacity duration-300'} ${
+            priority || isLoaded ? 'opacity-100' : 'opacity-0'
           } ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
           referrerPolicy="no-referrer"
           unoptimized={shouldUnoptimize}
@@ -182,7 +182,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
             }
           }}
         />
-        {!isLoaded && (
+        {!isLoaded && !priority && (
           <div className="absolute inset-0 bg-gray-100 animate-pulse" aria-hidden="true" />
         )}
       </div>
@@ -201,8 +201,8 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         height={height || 400}
         priority={priority}
         sizes={sizes}
-        className={`transition-opacity duration-300 ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
+        className={`${priority ? '' : 'transition-opacity duration-300'} ${
+          priority || isLoaded ? 'opacity-100' : 'opacity-0'
         } ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
         referrerPolicy="no-referrer"
         unoptimized={shouldUnoptimize}
@@ -215,7 +215,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           }
         }}
       />
-      {!isLoaded && (
+      {!isLoaded && !priority && (
         <div
           className="absolute inset-0 bg-gray-100 animate-pulse"
           style={{ width: width ? `${width}px` : '100%', height: height ? `${height}px` : '100%' }}

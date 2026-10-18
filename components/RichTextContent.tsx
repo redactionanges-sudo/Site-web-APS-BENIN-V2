@@ -33,6 +33,7 @@ export const RichTextContent: React.FC<RichTextContentProps> = ({
 
   return (
     <Component
+      suppressHydrationWarning
       className={`aps-rich-content font-sans text-gray-700 leading-relaxed ${className}`}
       dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />

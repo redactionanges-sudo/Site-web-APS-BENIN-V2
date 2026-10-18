@@ -43,16 +43,11 @@ export interface UseSiteLogoResult {
 export function useSiteLogo(overrideUrl?: string | null): UseSiteLogoResult {
   const [logoUrl, setLogoUrl] = useState<string>(() => {
     if (overrideUrl) return sanitizeOfficialLogo(overrideUrl);
-    const cached = supabaseStore.getCachedSettings();
-    if (cached?.logo_url && isValidOfficialLogoUrl(cached.logo_url)) {
-      return cached.logo_url;
-    }
     return OFFICIAL_APS_LOGO;
   });
 
   const [orgName, setOrgName] = useState<string>(() => {
-    const cached = supabaseStore.getCachedSettings();
-    return cached?.org_name_short || initialSiteSettings.org_name_short || 'APS-BÉNIN';
+    return initialSiteSettings.org_name_short || 'APS-BÉNIN';
   });
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -84,7 +79,18 @@ export function useSiteLogo(overrideUrl?: string | null): UseSiteLogoResult {
 
     let isMounted = true;
 
-    // 1. Initial retrieval from store / Supabase
+    // 1. Synchronisation immédiate après hydratation depuis le cache
+    const cached = supabaseStore.getCachedSettings();
+    if (cached) {
+      if (cached.logo_url && isValidOfficialLogoUrl(cached.logo_url)) {
+        setLogoUrl(sanitizeOfficialLogo(cached.logo_url));
+      }
+      if (cached.org_name_short) {
+        setOrgName(cached.org_name_short);
+      }
+    }
+
+    // 2. Récupération asynchrone complète depuis Supabase
     supabaseStore.getSettings().then((s) => {
       if (!isMounted) return;
       if (s) {

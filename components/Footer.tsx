@@ -283,7 +283,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <p>
+          <p suppressHydrationWarning>
             © {currentYear} {orgName || 'AGISSONS POUR SAUVER (APS-BÉNIN)'}. {t('footer.rights')}
           </p>
 

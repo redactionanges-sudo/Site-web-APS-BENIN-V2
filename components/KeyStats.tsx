@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialStatistics } from '@/lib/initial-data';
 import { KeyStatistic } from '@/types';
 import { Calendar, CheckCircle2, Users, MapPin, Handshake } from 'lucide-react';
 
@@ -12,7 +13,7 @@ interface CounterProps {
 }
 
 const AnimatedNumber: React.FC<CounterProps> = ({ valueString, duration = 1800 }) => {
-  const [displayValue, setDisplayValue] = useState('0');
+  const [displayValue, setDisplayValue] = useState(valueString);
   const [hasAnimated, setHasAnimated] = useState(false);
   const elementRef = useRef<HTMLSpanElement>(null);
 
@@ -80,8 +81,12 @@ const AnimatedNumber: React.FC<CounterProps> = ({ valueString, duration = 1800 }
 
 export const KeyStats: React.FC = () => {
   const { language, t } = useLanguage();
-  const [stats, setStats] = useState<KeyStatistic[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<KeyStatistic[]>(() =>
+    initialStatistics
+      .filter((s) => s.is_published !== false)
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+  );
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;

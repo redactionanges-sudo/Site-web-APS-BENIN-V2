@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useSiteLogo } from '@/hooks/useSiteLogo';
 
 export type SiteLogoVariant =
@@ -168,17 +169,16 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               suppressHydrationWarning
               className="flex items-center justify-center p-0.5 rounded-lg max-h-11 sm:max-h-12 max-w-[160px] sm:max-w-[200px]"
             >
-              <img
+              <Image
                 src={activeSrc}
                 alt={effectiveAlt}
                 width={160}
                 height={44}
-                loading={priority ? 'eager' : 'lazy'}
-                fetchPriority={priority ? 'high' : 'auto'}
-                decoding="async"
+                priority={priority}
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
-                suppressHydrationWarning
+                unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
+                style={{ width: 'auto', height: 'auto' }}
                 className={`max-h-10 sm:max-h-11 max-w-[150px] sm:max-w-[190px] w-auto h-auto object-contain select-none transition-all ${imgClassName}`}
               />
             </div>
@@ -202,17 +202,16 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               suppressHydrationWarning
               className="bg-white p-2 rounded-xl shadow-md border-2 border-[#FF8C00]/80 inline-flex items-center justify-center max-w-[220px] max-h-16 sm:max-h-20 min-w-[56px] min-h-[56px]"
             >
-              <img
+              <Image
                 src={activeSrc}
                 alt={effectiveAlt}
                 width={180}
                 height={56}
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
+                priority={true}
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
-                suppressHydrationWarning
+                unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
+                style={{ width: 'auto', height: 'auto' }}
                 className={`max-h-12 sm:max-h-14 max-w-[180px] sm:max-w-[200px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
             </div>
@@ -238,16 +237,15 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               suppressHydrationWarning
               className="bg-white p-1 rounded-lg border border-purple-300/40 shadow-xs inline-flex items-center justify-center max-w-[160px] max-h-11 min-w-[42px] min-h-[42px]"
             >
-              <img
+              <Image
                 src={activeSrc}
                 alt={effectiveAlt}
                 width={140}
                 height={40}
-                loading="lazy"
-                decoding="async"
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
-                suppressHydrationWarning
+                unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
+                style={{ width: 'auto', height: 'auto' }}
                 className={`max-h-9 sm:max-h-10 max-w-[140px] sm:max-w-[150px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
             </div>
@@ -272,17 +270,16 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               suppressHydrationWarning
               className="bg-white p-1 rounded-lg border border-[#FF8C00]/60 inline-flex items-center justify-center max-w-[100px] max-h-10 min-w-[36px] min-h-[36px] shadow-2xs"
             >
-              <img
+              <Image
                 src={activeSrc}
                 alt={effectiveAlt}
                 width={88}
                 height={32}
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
+                priority={true}
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
-                suppressHydrationWarning
+                unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
+                style={{ width: 'auto', height: 'auto' }}
                 className={`max-h-8 max-w-[88px] w-auto h-auto object-contain select-none ${imgClassName}`}
               />
             </div>
@@ -304,17 +301,16 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
           className={`relative inline-flex items-center justify-center rounded-2xl border-2 border-dashed border-[#92278F]/30 bg-white p-2 sm:p-3 shadow-xs min-w-[80px] min-h-[80px] max-w-[260px] max-h-28 overflow-hidden ${className}`}
         >
           {hasValidLogo ? (
-            <img
+            <Image
               src={activeSrc}
               alt={effectiveAlt}
               width={220}
               height={88}
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
+              priority={true}
               referrerPolicy="no-referrer"
               onError={handleImageError}
-              suppressHydrationWarning
+              unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
+              style={{ width: 'auto', height: 'auto' }}
               className={`max-h-20 sm:max-h-24 max-w-[220px] sm:max-w-[240px] w-auto h-auto object-contain select-none transition-all ${imgClassName}`}
             />
           ) : (
@@ -332,16 +328,15 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
           className={`inline-flex items-center justify-center shrink-0 ${className}`}
         >
           {hasValidLogo ? (
-            <img
+            <Image
               src={activeSrc}
               alt={effectiveAlt}
               width={100}
               height={32}
-              loading="lazy"
-              decoding="async"
               referrerPolicy="no-referrer"
               onError={handleImageError}
-              suppressHydrationWarning
+              unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
+              style={{ width: 'auto', height: 'auto' }}
               className={`max-h-8 max-w-[120px] w-auto h-auto object-contain select-none ${imgClassName}`}
             />
           ) : (
