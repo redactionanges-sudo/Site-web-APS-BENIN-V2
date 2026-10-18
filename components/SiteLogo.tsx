@@ -172,8 +172,8 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               <Image
                 src={activeSrc}
                 alt={effectiveAlt}
-                width={160}
-                height={44}
+                width={120}
+                height={120}
                 priority={priority}
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
@@ -205,8 +205,8 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               <Image
                 src={activeSrc}
                 alt={effectiveAlt}
-                width={180}
-                height={56}
+                width={160}
+                height={160}
                 priority={true}
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
@@ -240,8 +240,8 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               <Image
                 src={activeSrc}
                 alt={effectiveAlt}
-                width={140}
-                height={40}
+                width={120}
+                height={120}
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
                 unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
@@ -273,8 +273,8 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
               <Image
                 src={activeSrc}
                 alt={effectiveAlt}
-                width={88}
-                height={32}
+                width={80}
+                height={80}
                 priority={true}
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
@@ -304,8 +304,8 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
             <Image
               src={activeSrc}
               alt={effectiveAlt}
-              width={220}
-              height={88}
+              width={200}
+              height={200}
               priority={true}
               referrerPolicy="no-referrer"
               onError={handleImageError}
@@ -331,8 +331,8 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
             <Image
               src={activeSrc}
               alt={effectiveAlt}
-              width={100}
-              height={32}
+              width={80}
+              height={80}
               referrerPolicy="no-referrer"
               onError={handleImageError}
               unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}

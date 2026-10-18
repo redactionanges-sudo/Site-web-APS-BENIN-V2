@@ -8,21 +8,6 @@ import React, { useEffect, useState } from 'react';
  * client-only storage caches, or dynamic animation styles.
  */
 export function ClientHydrationGuard({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div
-        className="relative z-10 flex flex-col min-h-screen bg-[#FAF8FB]"
-        suppressHydrationWarning
-      />
-    );
-  }
-
   return (
     <div className="relative z-10 flex flex-col min-h-screen" suppressHydrationWarning>
       {children}

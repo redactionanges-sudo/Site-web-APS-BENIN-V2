@@ -14,15 +14,22 @@ export async function POST(req: NextRequest) {
     let body: any;
     const contentType = req.headers.get('content-type') || '';
 
-    if (contentType.includes('application/json')) {
-      body = await req.json();
-    } else {
-      const text = await req.text();
-      body = JSON.parse(text);
+    try {
+      if (contentType.includes('application/json')) {
+        body = await req.json();
+      } else {
+        const text = await req.text();
+        if (!text || !text.trim()) {
+          return NextResponse.json({ error: 'Payload vide' }, { status: 400 });
+        }
+        body = JSON.parse(text);
+      }
+    } catch {
+      return NextResponse.json({ error: 'Format JSON invalide' }, { status: 400 });
     }
 
-    if (!body || !body.event_type || !body.path) {
-      return NextResponse.json({ error: 'Payload invalide' }, { status: 400 });
+    if (!body || typeof body !== 'object' || !body.event_type || !body.path) {
+      return NextResponse.json({ error: 'Payload invalide : event_type et path requis' }, { status: 400 });
     }
 
     // Préparation de l'événement sécurisé
