@@ -50,37 +50,44 @@
    ========================================================================== */
 
 /* 
-  Architecture de couches :
-  1. Motif africain vectoriel (#92278F)
-  2. Voile blanc semi-opaque
-  3. Contenu et respiration dans les marges / entre-sections
-  4. Cartes, formulaires et blocs de lecture 100% opaques (protection de contraste)
+  Architecture de couches globale APS-BÉNIN :
+  1. Couche 1 : Fond clair blanc cassé institutionnel (#FAF8FB sur le site public, #F9FAFB sur l'administration)
+  2. Couche 2 : Motif africain géométrique vectoriel (#92278F) en filigrane discret (actif uniquement sur le site public)
+  3. Couche 3 : Voile blanc semi-opaque protecteur d'atténuation
+  4. Couche 4 : Contenu, textes, titres et composants d'interface
+  5. Couche 5 : Cartes, formulaires, tableaux et blocs de lecture 100% opaques (#ffffff)
 */
 
-.min-h-screen.bg-white,
-div.min-h-screen.bg-white,
-main {
-  background-color: transparent !important;
+/* Isolation complète du back-office administratif (aucun motif, fond clair solide) */
+.admin-portal,
+[data-admin-portal] {
+  background-color: #f9fafb !important;
+  isolation: isolate;
+}
+
+/* Transparence contrôlée uniquement pour le conteneur principal du site public */
+div:not([data-admin-portal]) > main {
+  background-color: transparent;
 }
 
 /* 
   Sections publiques claires :
-  Translucides (72% - 76%) avec léger voile institutionnel
-  qui laisse clairement transparaître le motif géométrique africain sous le blanc.
+  Voile institutionnel protecteur (92% - 95%) assurant un confort de lecture
+  maximal tout en conservant une respiration élégante avec le filigrane d'arrière-plan.
 */
 section.bg-white {
-  background-color: rgba(255, 255, 255, 0.88) !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
 }
 
 section.bg-gray-50 {
-  background-color: rgba(250, 247, 252, 0.85) !important;
+  background-color: rgba(250, 247, 252, 0.92) !important;
 }
 
 /* 
   Zones de protection et de lisibilité prioritaire :
-  Les cartes d'articles, projets, formulaires, tables et encadrés
+  Les cartes d'articles, projets, formulaires, tables, modales et encadrés
   conservent un blanc 100% opaque (#ffffff) avec bordures nettes
-  pour garantir un confort de lecture et un contraste WCAG AA parfait.
+  pour garantir un confort de lecture et un contraste WCAG AAA parfait.
 */
 .bg-white.rounded-2xl,
 .bg-white.rounded-xl,
@@ -93,6 +100,7 @@ article.bg-white,
 article.rounded-xl,
 article.rounded-2xl,
 form.bg-white,
+table.bg-white,
 .card-opaque {
   background-color: #ffffff !important;
 }

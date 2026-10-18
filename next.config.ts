@@ -2,7 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  deploymentId: 'aps-v2',
+  deploymentId: 'aps-v3',
   experimental: {
     allowedDevOrigins: [
       'ais-dev-dys3rykeb4s6fg2ilxv6ze-393559623661.europe-west2.run.app',
@@ -69,7 +69,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'no-store, must-revalidate',
           },
         ],
       },

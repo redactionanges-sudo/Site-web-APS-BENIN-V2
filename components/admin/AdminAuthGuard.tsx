@@ -113,11 +113,14 @@ export const AdminAuthGuard: React.FC<AdminAuthGuardProps> = ({
     return <>{children}</>;
   }
 
-  // Structure maîtresse persistante avec Sidebar unique
+  // Structure maîtresse persistante avec Sidebar unique et fond opaque dédié
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div
+      className="min-h-screen flex bg-gray-50 text-gray-900 relative z-20 isolate admin-portal"
+      data-admin-portal="true"
+    >
       <AdminSidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-gray-50">
         <AdminLayoutProvider>
           {children}
         </AdminLayoutProvider>
