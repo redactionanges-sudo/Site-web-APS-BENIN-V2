@@ -2,7 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  deploymentId: 'aps-v3',
+  deploymentId: 'aps-v4',
   experimental: {
     allowedDevOrigins: [
       'ais-dev-dys3rykeb4s6fg2ilxv6ze-393559623661.europe-west2.run.app',

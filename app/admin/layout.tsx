@@ -11,11 +11,23 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
 
-  // Pour les pages d'authentification publique, ne pas monter le guard ni la sidebar
+  // Pour les pages d'authentification publique (/admin/login, etc.), fond opaque sombre dédié
   const publicAuthRoutes = ['/admin/login', '/admin/forgot-password', '/admin/reset-password'];
   if (publicAuthRoutes.includes(pathname)) {
-    return <>{children}</>;
+    return (
+      <div className="relative z-30 min-h-screen bg-gray-950 isolate">
+        {children}
+      </div>
+    );
   }
 
-  return <AdminAuthGuard>{children}</AdminAuthGuard>;
+  // Pour le back-office administratif, fond opaque clair dédié #F9FAFB (z-30 isolate)
+  return (
+    <div
+      className="relative z-30 min-h-screen bg-gray-50 text-gray-900 isolate admin-portal"
+      data-admin-portal="true"
+    >
+      <AdminAuthGuard>{children}</AdminAuthGuard>
+    </div>
+  );
 }

@@ -35,14 +35,14 @@ export function AfricanPatternCanvas() {
 
       {/* COUCHE 2 : Motif africain géométrique vectoriel APS-BÉNIN (#92278F) en filigrane ultra-discret */}
       <div
-        className="absolute inset-0 bg-repeat bg-[length:140px_140px] sm:bg-[length:160px_160px] opacity-[0.045] sm:opacity-[0.05]"
+        className="absolute inset-0 bg-repeat bg-[length:140px_140px] sm:bg-[length:160px_160px] opacity-[0.035] sm:opacity-[0.04]"
         style={{
-          backgroundImage: "url('/patterns/african-motif.svg?v=3')",
+          backgroundImage: "url('/patterns/african-motif.svg?v=4')",
         }}
       />
 
-      {/* COUCHE 3 : Voile blanc semi-transparent d'atténuation & protection du contraste des textes */}
-      <div className="absolute inset-0 bg-white/60 backdrop-blur-[0.5px]" />
+      {/* COUCHE 3 : Voile blanc semi-transparent d'atténuation & protection absolue du contraste des textes */}
+      <div className="absolute inset-0 bg-white/70 sm:bg-white/75" />
     </div>
   );
 }
