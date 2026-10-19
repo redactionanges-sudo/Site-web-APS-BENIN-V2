@@ -328,7 +328,7 @@ export default function PresentationPage() {
         {/* ============================================================== */}
         {/* MAIN EDITORIAL CONTENT                                        */}
         {/* ============================================================== */}
-        <section className="py-16 sm:py-20 bg-white/80 backdrop-blur-xs">
+        <section className="py-16 sm:py-20 bg-white border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
               {/* Left/Main Column */}

@@ -109,7 +109,7 @@ export default function DomainesPage() {
         </section>
 
         {/* Domains List */}
-        <section className="py-20 bg-purple-50/20 backdrop-blur-xs">
+        <section className="py-20 bg-white border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-12">
             {domains.length === 0 ? (
               <div className="text-center py-12 text-sm text-gray-500 bg-white rounded-2xl border border-gray-200 p-8">

@@ -98,7 +98,7 @@ export default function HistoirePage() {
         </section>
 
         {/* Timeline */}
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-white border-b border-gray-100">
           <div className="max-w-5xl mx-auto px-4 sm:px-8">
             {milestones.length === 0 ? (
               <div className="text-center py-12 text-sm text-gray-500 bg-white rounded-2xl border border-gray-200 p-8">
