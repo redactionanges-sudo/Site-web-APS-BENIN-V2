@@ -3,14 +3,12 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   deploymentId: 'aps-v4',
-  experimental: {
-    allowedDevOrigins: [
-      'ais-dev-dys3rykeb4s6fg2ilxv6ze-393559623661.europe-west2.run.app',
-      'ais-pre-dys3rykeb4s6fg2ilxv6ze-393559623661.europe-west2.run.app',
-      'localhost:3000',
-      '127.0.0.1:3000',
-    ],
-  },
+  allowedDevOrigins: [
+    'ais-dev-dys3rykeb4s6fg2ilxv6ze-393559623661.europe-west2.run.app',
+    'ais-pre-dys3rykeb4s6fg2ilxv6ze-393559623661.europe-west2.run.app',
+    'localhost:3000',
+    '127.0.0.1:3000',
+  ],
   eslint: {
     ignoreDuringBuilds: true,
   },
