@@ -8,6 +8,7 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialProjects } from '@/lib/initial-data';
 import { ProjectItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { RichTextContent } from '@/components/RichTextContent';
@@ -33,21 +34,35 @@ interface PageProps {
 export default function ProjectDetailPage({ params }: PageProps) {
   const { slug } = use(params);
   const { language, t } = useLanguage();
-  const [project, setProject] = useState<ProjectItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const fallback = initialProjects.find((p) => p.slug === slug) || null;
+  const [project, setProject] = useState<ProjectItem | null>(() => fallback);
+  const [loading, setLoading] = useState(() => !fallback);
 
   useEffect(() => {
-    supabaseStore.getProjectBySlug(slug).then((res) => {
-      setProject(res);
-      setLoading(false);
-      if (res) {
-        trackEvent('view_project', {
-          target_id: res.id,
-          target_title: res.title_fr,
-          path: `/projets/${slug}`,
-        });
-      }
-    });
+    let isMounted = true;
+
+    supabaseStore.getProjectBySlug(slug)
+      .then((res) => {
+        if (isMounted) {
+          if (res) {
+            setProject(res);
+            trackEvent('view_project', {
+              target_id: res.id,
+              target_title: res.title_fr,
+              path: `/projets/${slug}`,
+            });
+          }
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement projet Supabase :', err);
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
 
   if (loading) {

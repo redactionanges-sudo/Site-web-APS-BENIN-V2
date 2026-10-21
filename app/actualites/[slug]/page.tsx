@@ -8,6 +8,7 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialNews } from '@/lib/initial-data';
 import { NewsItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { getVideoEmbedUrl, parseVideoUrl } from '@/lib/video-utils';
@@ -30,21 +31,35 @@ interface PageProps {
 export default function NewsDetailPage({ params }: PageProps) {
   const { slug } = use(params);
   const { language, t } = useLanguage();
-  const [article, setArticle] = useState<NewsItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const fallback = initialNews.find((n) => n.slug === slug) || null;
+  const [article, setArticle] = useState<NewsItem | null>(() => fallback);
+  const [loading, setLoading] = useState(() => !fallback);
 
   useEffect(() => {
-    supabaseStore.getNewsBySlug(slug).then((res) => {
-      setArticle(res);
-      setLoading(false);
-      if (res) {
-        trackEvent('view_news', {
-          target_id: res.id,
-          target_title: res.title_fr,
-          path: `/actualites/${slug}`,
-        });
-      }
-    });
+    let isMounted = true;
+
+    supabaseStore.getNewsBySlug(slug)
+      .then((res) => {
+        if (isMounted) {
+          if (res) {
+            setArticle(res);
+            trackEvent('view_news', {
+              target_id: res.id,
+              target_title: res.title_fr,
+              path: `/actualites/${slug}`,
+            });
+          }
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement actualité Supabase :', err);
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
 
   if (loading) {

@@ -4,19 +4,50 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialOpportunities } from '@/lib/initial-data';
 import { OpportunityItem } from '@/types';
 import { ArrowRight, Clock, MapPin, Briefcase } from 'lucide-react';
 
 export const OpenOpportunities: React.FC = () => {
   const { language, t } = useLanguage();
-  const [opportunities, setOpportunities] = useState<OpportunityItem[]>([]);
+  const [opportunities, setOpportunities] = useState<OpportunityItem[]>(() => {
+    const open = initialOpportunities.filter((o) => o.status === 'open').slice(0, 3);
+    return open.length > 0 ? open : initialOpportunities.slice(0, 3);
+  });
 
   useEffect(() => {
-    supabaseStore.getOpportunities().then((items) => {
-      // Prioritize open opportunities
-      const open = items.filter((o) => o.status === 'open').slice(0, 3);
-      setOpportunities(open.length > 0 ? open : items.slice(0, 3));
-    });
+    let isMounted = true;
+
+    supabaseStore.getOpportunities()
+      .then((items) => {
+        if (isMounted && Array.isArray(items) && items.length > 0) {
+          const open = items.filter((o) => o.status === 'open').slice(0, 3);
+          setOpportunities(open.length > 0 ? open : items.slice(0, 3));
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement opportunités d’accueil Supabase :', err);
+      });
+
+    const handleSync = () => {
+      supabaseStore.getOpportunities()
+        .then((items) => {
+          if (isMounted && Array.isArray(items) && items.length > 0) {
+            const open = items.filter((o) => o.status === 'open').slice(0, 3);
+            setOpportunities(open.length > 0 ? open : items.slice(0, 3));
+          }
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('aps_opportunities_changed', handleSync);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('aps_opportunities_changed', handleSync);
+    };
   }, []);
 
   const getTypeLabel = (type: OpportunityItem['type']) => {

@@ -6,28 +6,76 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialHistory } from '@/lib/initial-data';
+import { initialInstitutionalPages } from '@/lib/initial-pages';
 import { HistoryMilestone, InstitutionalPage } from '@/types';
 import { RichTextContent } from '@/components/RichTextContent';
 import { Calendar, CheckCircle2, Award, Clock, EyeOff } from 'lucide-react';
 
 export default function HistoirePage() {
   const { language } = useLanguage();
-  const [milestones, setMilestones] = useState<HistoryMilestone[]>([]);
-  const [pageData, setPageData] = useState<InstitutionalPage | null>(null);
+  const fallbackPage = initialInstitutionalPages.find((p) => p.slug === 'histoire') || null;
+  const [milestones, setMilestones] = useState<HistoryMilestone[]>(() => initialHistory);
+  const [pageData, setPageData] = useState<InstitutionalPage | null>(() => fallbackPage);
 
   useEffect(() => {
-    supabaseStore.getHistory().then(setMilestones);
-    supabaseStore.getInstitutionalPageBySlug('histoire').then(setPageData);
+    let isMounted = true;
+
+    supabaseStore.getHistory()
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          setMilestones(res);
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement histoire Supabase, maintien des données initiales :', err);
+      });
+
+    supabaseStore.getInstitutionalPageBySlug('histoire')
+      .then((data) => {
+        if (isMounted && data) {
+          setPageData(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement page histoire Supabase :', err);
+      });
 
     const handlePageChanged = (e: any) => {
-      if (e?.detail?.slug === 'histoire') {
+      if (e?.detail?.slug === 'histoire' && isMounted) {
         setPageData(e.detail);
       }
     };
+
+    const handleStorage = (e: StorageEvent) => {
+      if ((e.key === 'aps_benin_institutional_pages' || e.key === 'aps_page_last_updated') && isMounted) {
+        supabaseStore.getInstitutionalPageBySlug('histoire')
+          .then((d) => {
+            if (d && isMounted) setPageData(d);
+          })
+          .catch(() => {});
+      }
+    };
+
+    const handleMilestonesChanged = () => {
+      supabaseStore.getHistory()
+        .then((res) => {
+          if (isMounted && Array.isArray(res) && res.length > 0) {
+            setMilestones(res);
+          }
+        })
+        .catch(() => {});
+    };
+
     window.addEventListener('aps_page_changed', handlePageChanged);
+    window.addEventListener('aps_history_changed', handleMilestonesChanged);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('aps_page_changed', handlePageChanged);
+      window.removeEventListener('aps_history_changed', handleMilestonesChanged);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 

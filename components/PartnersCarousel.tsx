@@ -4,17 +4,47 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialPartners } from '@/lib/initial-data';
 import { PartnerItem } from '@/types';
 import { ArrowRight, ExternalLink, Building2 } from 'lucide-react';
 
 export const PartnersCarousel: React.FC = () => {
   const { language, t } = useLanguage();
-  const [partners, setPartners] = useState<PartnerItem[]>([]);
+  const [partners, setPartners] = useState<PartnerItem[]>(() => {
+    return initialPartners.filter((p) => p.is_active);
+  });
 
   useEffect(() => {
-    supabaseStore.getPartners().then((list) => {
-      setPartners(list.filter((p) => p.is_active));
-    });
+    let isMounted = true;
+
+    supabaseStore.getPartners()
+      .then((list) => {
+        if (isMounted && Array.isArray(list) && list.length > 0) {
+          setPartners(list.filter((p) => p.is_active));
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement carrousel partenaires Supabase :', err);
+      });
+
+    const handleSync = () => {
+      supabaseStore.getPartners()
+        .then((list) => {
+          if (isMounted && Array.isArray(list) && list.length > 0) {
+            setPartners(list.filter((p) => p.is_active));
+          }
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('aps_partners_changed', handleSync);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('aps_partners_changed', handleSync);
+    };
   }, []);
 
   const getCategoryLabel = (category: PartnerItem['category']) => {

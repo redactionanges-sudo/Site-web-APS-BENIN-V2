@@ -6,18 +6,48 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialPartners } from '@/lib/initial-data';
 import { PartnerItem } from '@/types';
 import { ExternalLink, Handshake, ShieldCheck, Building2 } from 'lucide-react';
 
 export default function PartenairesPage() {
   const { language, t } = useLanguage();
-  const [partners, setPartners] = useState<PartnerItem[]>([]);
+  const [partners, setPartners] = useState<PartnerItem[]>(() =>
+    initialPartners.filter((p) => p.is_active)
+  );
   const [selectedCat, setSelectedCat] = useState('all');
 
   useEffect(() => {
-    supabaseStore.getPartners().then((res) => {
-      setPartners(res.filter((p) => p.is_active));
-    });
+    let isMounted = true;
+
+    supabaseStore.getPartners()
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          setPartners(res.filter((p) => p.is_active));
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement partenaires Supabase, maintien des données initiales :', err);
+      });
+
+    const handleSync = () => {
+      supabaseStore.getPartners()
+        .then((res) => {
+          if (isMounted && Array.isArray(res) && res.length > 0) {
+            setPartners(res.filter((p) => p.is_active));
+          }
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('aps_partners_changed', handleSync);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('aps_partners_changed', handleSync);
+    };
   }, []);
 
   const filtered = selectedCat === 'all'

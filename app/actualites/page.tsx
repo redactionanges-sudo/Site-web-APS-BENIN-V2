@@ -7,20 +7,50 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialNews } from '@/lib/initial-data';
 import { NewsItem } from '@/types';
 import { Search, Calendar, User, ArrowRight, Tag } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function ActualitesPage() {
   const { language, t } = useLanguage();
-  const [news, setNews] = useState<NewsItem[]>([]);
+  const [news, setNews] = useState<NewsItem[]>(() =>
+    initialNews.filter((n) => n.status === 'published')
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
-    supabaseStore.getNews().then((items) => {
-      setNews(items.filter((n) => n.status === 'published'));
-    });
+    let isMounted = true;
+
+    supabaseStore.getNews()
+      .then((items) => {
+        if (isMounted && Array.isArray(items) && items.length > 0) {
+          setNews(items.filter((n) => n.status === 'published'));
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement actualités Supabase, maintien des données initiales :', err);
+      });
+
+    const handleSync = () => {
+      supabaseStore.getNews()
+        .then((items) => {
+          if (isMounted && Array.isArray(items) && items.length > 0) {
+            setNews(items.filter((n) => n.status === 'published'));
+          }
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('aps_news_changed', handleSync);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('aps_news_changed', handleSync);
+    };
   }, []);
 
   const categories = Array.from(

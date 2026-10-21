@@ -5,19 +5,51 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialProjects } from '@/lib/initial-data';
 import { ProjectItem } from '@/types';
 import { ArrowRight, MapPin, Calendar } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export const FeaturedProjects: React.FC = () => {
   const { language, t } = useLanguage();
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [projects, setProjects] = useState<ProjectItem[]>(() => {
+    const featured = initialProjects.filter((p) => p.is_featured);
+    return featured.length > 0 ? featured.slice(0, 3) : initialProjects.slice(0, 3);
+  });
 
   useEffect(() => {
-    supabaseStore.getProjects().then((items) => {
-      const featured = items.filter((p) => p.is_featured);
-      setProjects(featured.length > 0 ? featured.slice(0, 3) : items.slice(0, 3));
-    });
+    let isMounted = true;
+
+    supabaseStore.getProjects()
+      .then((items) => {
+        if (isMounted && Array.isArray(items) && items.length > 0) {
+          const featured = items.filter((p) => p.is_featured);
+          setProjects(featured.length > 0 ? featured.slice(0, 3) : items.slice(0, 3));
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement projets mis en avant Supabase :', err);
+      });
+
+    const handleSync = () => {
+      supabaseStore.getProjects()
+        .then((items) => {
+          if (isMounted && Array.isArray(items) && items.length > 0) {
+            const featured = items.filter((p) => p.is_featured);
+            setProjects(featured.length > 0 ? featured.slice(0, 3) : items.slice(0, 3));
+          }
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('aps_projects_changed', handleSync);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('aps_projects_changed', handleSync);
+    };
   }, []);
 
   const getStatusBadge = (status: ProjectItem['status']) => {

@@ -7,6 +7,8 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialDomains } from '@/lib/initial-data';
+import { initialInstitutionalPages } from '@/lib/initial-pages';
 import { DomainOfIntervention, InstitutionalPage } from '@/types';
 import {
   ShieldCheck,
@@ -32,24 +34,70 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export default function DomainesPage() {
   const { language } = useLanguage();
-  const [domains, setDomains] = useState<DomainOfIntervention[]>([]);
-  const [pageData, setPageData] = useState<InstitutionalPage | null>(null);
+  const fallbackPage = initialInstitutionalPages.find((p) => p.slug === 'domaines') || null;
+  const [domains, setDomains] = useState<DomainOfIntervention[]>(() =>
+    initialDomains.filter((d) => d.is_active)
+  );
+  const [pageData, setPageData] = useState<InstitutionalPage | null>(() => fallbackPage);
 
   useEffect(() => {
-    supabaseStore.getDomains().then((res) => {
-      setDomains(res.filter((d) => d.is_active));
-    });
-    supabaseStore.getInstitutionalPageBySlug('domaines').then(setPageData);
+    let isMounted = true;
+
+    supabaseStore.getDomains()
+      .then((res) => {
+        if (isMounted && Array.isArray(res) && res.length > 0) {
+          setDomains(res.filter((d) => d.is_active));
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement domaines Supabase, maintien des données initiales :', err);
+      });
+
+    supabaseStore.getInstitutionalPageBySlug('domaines')
+      .then((data) => {
+        if (isMounted && data) {
+          setPageData(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement page domaines Supabase :', err);
+      });
 
     const handlePageChanged = (e: any) => {
-      if (e?.detail?.slug === 'domaines') {
+      if (e?.detail?.slug === 'domaines' && isMounted) {
         setPageData(e.detail);
       }
     };
+
+    const handleStorage = (e: StorageEvent) => {
+      if ((e.key === 'aps_benin_institutional_pages' || e.key === 'aps_page_last_updated') && isMounted) {
+        supabaseStore.getInstitutionalPageBySlug('domaines')
+          .then((d) => {
+            if (d && isMounted) setPageData(d);
+          })
+          .catch(() => {});
+      }
+    };
+
+    const handleDomainsChanged = () => {
+      supabaseStore.getDomains()
+        .then((res) => {
+          if (isMounted && Array.isArray(res) && res.length > 0) {
+            setDomains(res.filter((d) => d.is_active));
+          }
+        })
+        .catch(() => {});
+    };
+
     window.addEventListener('aps_page_changed', handlePageChanged);
+    window.addEventListener('aps_domains_changed', handleDomainsChanged);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('aps_page_changed', handlePageChanged);
+      window.removeEventListener('aps_domains_changed', handleDomainsChanged);
+      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 

@@ -7,33 +7,43 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialAlbums, initialMedia } from '@/lib/initial-data';
 import { PhotoAlbum, MediaItem } from '@/types';
 import { Image as ImageIcon, Calendar, MapPin, X, ZoomIn, Folder } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function PhotosMediathequePage() {
   const { language, t } = useLanguage();
-  const [albums, setAlbums] = useState<PhotoAlbum[]>([]);
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [albums, setAlbums] = useState<PhotoAlbum[]>(() => initialAlbums);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>(() =>
+    initialMedia.filter((m) => m.type === 'photo')
+  );
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('all');
   const [activePhoto, setActivePhoto] = useState<MediaItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
     Promise.all([
       supabaseStore.getAlbums(),
       supabaseStore.getPublicGalleryPhotos(),
     ])
       .then(([albumList, publicPhotos]) => {
-        setAlbums(albumList);
-        setMediaItems(publicPhotos);
+        if (isMounted) {
+          if (Array.isArray(albumList) && albumList.length > 0) setAlbums(albumList);
+          if (Array.isArray(publicPhotos) && publicPhotos.length > 0) setMediaItems(publicPhotos);
+        }
       })
       .catch((err) => {
-        console.error('Erreur chargement médiathèque publique:', err);
+        console.warn('Erreur chargement médiathèque publique:', err);
       })
       .finally(() => {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Filter albums that actually contain public photos

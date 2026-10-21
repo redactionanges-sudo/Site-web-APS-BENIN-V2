@@ -7,6 +7,7 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
+import { initialOpportunities } from '@/lib/initial-data';
 import { OpportunityItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -32,21 +33,35 @@ export default function OpportunityDetailPage({ params }: PageProps) {
   const { slug } = use(params);
   const { language, t } = useLanguage();
   const { orgNameShort, addressLocation } = useSiteSettings();
-  const [opp, setOpp] = useState<OpportunityItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const fallback = initialOpportunities.find((o) => o.slug === slug) || null;
+  const [opp, setOpp] = useState<OpportunityItem | null>(() => fallback);
+  const [loading, setLoading] = useState(() => !fallback);
 
   useEffect(() => {
-    supabaseStore.getOpportunityBySlug(slug).then((res) => {
-      setOpp(res);
-      setLoading(false);
-      if (res) {
-        trackEvent('view_opportunity', {
-          target_id: res.id,
-          target_title: res.title_fr,
-          path: `/opportunites/${slug}`,
-        });
-      }
-    });
+    let isMounted = true;
+
+    supabaseStore.getOpportunityBySlug(slug)
+      .then((res) => {
+        if (isMounted) {
+          if (res) {
+            setOpp(res);
+            trackEvent('view_opportunity', {
+              target_id: res.id,
+              target_title: res.title_fr,
+              path: `/opportunites/${slug}`,
+            });
+          }
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Erreur chargement opportunité Supabase :', err);
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [slug]);
 
   if (loading) {
