@@ -20,10 +20,12 @@ import {
   Mail,
   FileText,
   Download,
-  CheckCircle,
   AlertCircle,
   Send,
+  Play,
+  Film,
 } from 'lucide-react';
+import { parseVideoUrl, getVideoEmbedUrl } from '@/lib/video-utils';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -248,6 +250,39 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                       <Download className="w-4 h-4" />
                       <span>{language === 'en' ? 'Download PDF' : 'Télécharger le PDF'}</span>
                     </a>
+                  </div>
+                )}
+
+                {/* Video presentation if present */}
+                {opp.video_url && parseVideoUrl(opp.video_url).platform !== 'unknown' && (
+                  <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
+                    <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2 font-heading">
+                      <Film className="w-4 h-4 text-[#92278F]" />
+                      <span>{language === 'en' ? 'Associated Presentation Video' : 'Vidéo de Présentation'}</span>
+                    </h3>
+                    <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-xs">
+                      {(() => {
+                        const info = parseVideoUrl(opp.video_url);
+                        if (info.platform === 'storage' || info.platform === 'direct') {
+                          return (
+                            <video
+                              src={info.embedUrl || opp.video_url}
+                              controls
+                              className="w-full h-full object-contain"
+                            />
+                          );
+                        }
+                        return (
+                          <iframe
+                            src={getVideoEmbedUrl(opp.video_url)!}
+                            title={`${opp.title_fr} - Vidéo`}
+                            className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        );
+                      })()}
+                    </div>
                   </div>
                 )}
 

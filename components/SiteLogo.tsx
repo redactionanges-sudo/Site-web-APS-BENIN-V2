@@ -143,14 +143,19 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
   }, [logoUrl]);
 
   const handleImageError = () => {
-    if (!triedLocalFallback && logoUrl !== '/logo-aps-benin.png') {
+    if (!triedLocalFallback) {
       setTriedLocalFallback(true);
     } else {
       setLoadError(true);
     }
   };
 
-  const activeSrc = (!loadError && triedLocalFallback) ? '/logo-aps-benin.png' : logoUrl;
+  let activeSrc = logoUrl;
+  if (!loadError && triedLocalFallback) {
+    activeSrc = '/logo-aps-benin.png';
+  } else if (!loadError && (logoUrl === '/logo-aps-benin.png' || !logoUrl)) {
+    activeSrc = '/logo-aps-benin.webp';
+  }
   const effectiveAlt = alt || `${orgName || 'APS-BÉNIN'} Logo Officiel`;
   const hasValidLogo = Boolean(activeSrc && !loadError);
 
@@ -175,6 +180,9 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
                 width={120}
                 height={120}
                 priority={priority}
+                loading={priority ? undefined : 'lazy'}
+                fetchPriority={priority ? 'high' : 'auto'}
+                sizes="(max-width: 640px) 150px, 190px"
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
                 unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
@@ -208,6 +216,7 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
                 width={160}
                 height={160}
                 priority={true}
+                sizes="(max-width: 640px) 180px, 200px"
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
                 unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}
@@ -242,6 +251,8 @@ export const SiteLogo: React.FC<SiteLogoProps> = ({
                 alt={effectiveAlt}
                 width={120}
                 height={120}
+                loading="lazy"
+                sizes="(max-width: 640px) 140px, 150px"
                 referrerPolicy="no-referrer"
                 onError={handleImageError}
                 unoptimized={activeSrc.startsWith('data:') || activeSrc.startsWith('blob:')}

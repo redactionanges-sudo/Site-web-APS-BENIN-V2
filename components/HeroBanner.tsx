@@ -122,13 +122,15 @@ export const HeroBanner: React.FC = () => {
   const nextIndex = slides.length > 0 ? (currentIndex + 1) % slides.length : 0;
   const nextSlideData = slides.length > 1 ? slides[nextIndex] : null;
 
-  // Preload next slide in browser background safely without nested link tags
+  // Preload next slide in browser background safely once initial paint & LCP are settled
   useEffect(() => {
-    if (typeof window !== 'undefined' && nextSlideData?.url) {
+    if (typeof window === 'undefined' || !nextSlideData?.url || slides.length <= 1) return;
+    const timer = setTimeout(() => {
       const img = new window.Image();
       img.src = nextSlideData.url;
-    }
-  }, [nextSlideData?.url]);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [nextSlideData?.url, slides.length]);
 
   // Filter active announcements deterministically
   const activeAnnouncements = useMemo(() => {
@@ -160,7 +162,9 @@ export const HeroBanner: React.FC = () => {
               }
               fill
               priority={currentIndex === 0}
-              sizes="100vw"
+              loading={currentIndex === 0 ? undefined : 'lazy'}
+              fetchPriority={currentIndex === 0 ? 'high' : 'auto'}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1920px"
               className="object-cover object-center filter brightness-[0.92] contrast-[1.03]"
               referrerPolicy="no-referrer"
               unoptimized={Boolean(currentSlide.url.startsWith('data:'))}

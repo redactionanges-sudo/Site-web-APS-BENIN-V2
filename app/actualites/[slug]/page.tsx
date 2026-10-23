@@ -23,6 +23,7 @@ import {
   FileText,
   Download,
 } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -153,11 +154,14 @@ export default function NewsDetailPage({ params }: PageProps) {
           <div className="max-w-4xl mx-auto px-4 sm:px-8 space-y-8">
             {/* Featured Image - Only rendered if an authentic image is published */}
             {article.main_image && (
-              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm max-h-[460px] bg-gray-100">
-                <img
+              <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm h-64 sm:h-96 md:h-[460px] w-full bg-gray-100">
+                <OptimizedImage
                   src={article.main_image}
-                  alt={article.title_fr}
-                  className="w-full h-full object-cover"
+                  alt={language === 'en' ? article.title_en : article.title_fr}
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 896px"
+                  className="object-cover"
                 />
               </div>
             )}

@@ -217,6 +217,8 @@ export interface OpportunityItem {
   status: OpportunityStatus;
   main_image?: string;
   gallery?: string[];
+  video_url?: string;
+  videos?: string[];
   created_at?: string;
 }
 
@@ -330,6 +332,7 @@ export interface MediaItem {
   title_en: string;
   type: 'photo' | 'video';
   url: string;
+  original_url?: string;
   thumbnail_url?: string;
   album_id?: string;
   project_id?: string;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -9,7 +10,7 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { initialAlbums, initialMedia } from '@/lib/initial-data';
 import { PhotoAlbum, MediaItem } from '@/types';
-import { Image as ImageIcon, Calendar, MapPin, X, ZoomIn, Folder } from 'lucide-react';
+import { Image as ImageIcon, Calendar, MapPin, X, ZoomIn, Folder, Camera, Film, Search } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function PhotosMediathequePage() {
@@ -19,6 +20,9 @@ export default function PhotosMediathequePage() {
     initialMedia.filter((m) => m.type === 'photo')
   );
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [displayLimit, setDisplayLimit] = useState<number>(12);
   const [activePhoto, setActivePhoto] = useState<MediaItem | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -51,10 +55,28 @@ export default function PhotosMediathequePage() {
     mediaItems.some((m) => m.album_id === alb.id)
   );
 
-  const filteredPhotos =
-    selectedAlbumId === 'all'
-      ? mediaItems
-      : mediaItems.filter((m) => m.album_id === selectedAlbumId);
+  const availableCategories = React.useMemo(() => {
+    return Array.from(new Set(mediaItems.map((m) => m.category).filter(Boolean)));
+  }, [mediaItems]);
+
+  const filteredPhotos = React.useMemo(() => {
+    return mediaItems.filter((item) => {
+      const matchesAlbum = selectedAlbumId === 'all' || item.album_id === selectedAlbumId;
+      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+      const q = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        (item.title_fr && item.title_fr.toLowerCase().includes(q)) ||
+        (item.title_en && item.title_en.toLowerCase().includes(q)) ||
+        (item.category && item.category.toLowerCase().includes(q)) ||
+        (item.location && item.location.toLowerCase().includes(q)) ||
+        (item.description_fr && item.description_fr.toLowerCase().includes(q));
+
+      return matchesAlbum && matchesCategory && matchesSearch;
+    });
+  }, [mediaItems, selectedAlbumId, selectedCategory, searchQuery]);
+
+  const visiblePhotos = filteredPhotos.slice(0, displayLimit);
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -65,9 +87,24 @@ export default function PhotosMediathequePage() {
         <section className="bg-gray-900 text-white py-16 sm:py-20 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-[#92278F]/50 to-black/90" />
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8">
-            <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3 py-1 rounded bg-white/10 border border-white/20 mb-3">
-              {language === 'en' ? 'Visual Archive' : 'Médiathèque Institutionnelle'}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3 py-1 rounded bg-white/10 border border-white/20">
+                {language === 'en' ? 'Visual Archive' : 'Médiathèque Institutionnelle'}
+              </span>
+              <div className="flex items-center gap-1 bg-white/10 p-0.5 rounded-lg border border-white/10 text-xs">
+                <span className="px-3 py-1 rounded-md bg-[#92278F] text-white font-bold flex items-center gap-1.5 shadow-xs">
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>{language === 'en' ? 'Photos' : 'Photos'}</span>
+                </span>
+                <Link
+                  href="/mediatheque/videos"
+                  className="px-3 py-1 rounded-md text-gray-300 hover:text-white font-medium flex items-center gap-1.5 transition-colors"
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  <span>{language === 'en' ? 'Videos' : 'Vidéos'}</span>
+                </Link>
+              </div>
+            </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading">
               {language === 'en' ? 'Photo Albums & Galleries' : 'Albums & Galeries Photos'}
             </h1>
@@ -79,10 +116,44 @@ export default function PhotosMediathequePage() {
           </div>
         </section>
 
-        {/* Albums Filter Bar */}
+        {/* Filter and Search Bar */}
         <section className="py-6 bg-gray-50 border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Search input */}
+              <div className="relative flex-1 min-w-[240px] max-w-md">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={language === 'en' ? 'Search photos by title, place, category...' : 'Rechercher une photo, un lieu, une activité...'}
+                  className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#92278F] bg-white text-gray-800"
+                />
+              </div>
+
+              {/* Category filter */}
+              {availableCategories.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-500">Catégorie :</span>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl border border-gray-300 text-xs bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#92278F]"
+                  >
+                    <option value="all">Toutes les catégories</option>
+                    {availableCategories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Albums Filter Bar */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-200/70">
               <span className="text-xs font-bold text-gray-500 mr-2 flex items-center gap-1.5">
                 <Folder className="w-3.5 h-3.5" />
                 Albums :
@@ -160,70 +231,87 @@ export default function PhotosMediathequePage() {
                 )}
               </div>
             ) : (
-              <motion.div
-                layout
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {filteredPhotos.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.35, ease: 'easeOut' }}
-                    whileHover="hover"
-                    onClick={() => setActivePhoto(item)}
-                    className="group relative rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-xl transition-shadow duration-300"
-                  >
-                    <div className="h-64 w-full overflow-hidden relative">
-                      <OptimizedImage
-                        src={item.thumbnail_url || item.url}
-                        alt={item.alt_fr || item.title_fr}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    </div>
-
+              <>
+                <motion.div
+                  layout
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                >
+                  {visiblePhotos.map((item) => (
                     <motion.div
-                      variants={{
-                        hover: { opacity: 1, y: 0 },
-                      }}
-                      initial={{ opacity: 0, y: 10 }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
-                      className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-5 text-white"
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.35, ease: 'easeOut' }}
+                      whileHover="hover"
+                      onClick={() => setActivePhoto(item)}
+                      className="group relative rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-xl transition-shadow duration-300"
                     >
-                      <div className="flex items-center justify-between text-xs text-orange-300 mb-1">
-                        <span className="font-semibold">{item.category}</span>
-                        <motion.div
-                          variants={{
-                            hover: { scale: 1.15, rotate: 5 },
-                          }}
-                          transition={{ duration: 0.2 }}
-                          className="p-1.5 rounded-full bg-white/20 backdrop-blur-xs text-white"
-                        >
-                          <ZoomIn className="w-3.5 h-3.5" />
-                        </motion.div>
+                      <div className="h-64 w-full overflow-hidden relative">
+                        <OptimizedImage
+                          src={item.thumbnail_url || item.url}
+                          alt={item.alt_fr || item.title_fr}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
                       </div>
-                      <h3 className="font-bold text-base text-white line-clamp-2 font-heading leading-tight mb-2">
-                        {language === 'en' ? item.title_en : item.title_fr}
-                      </h3>
-                      <div className="flex items-center gap-4 text-[11px] text-gray-300 font-mono">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-[#FF8C00]" />
-                          {item.date}
-                        </span>
-                        {item.location && (
-                          <span className="flex items-center gap-1 truncate">
-                            <MapPin className="w-3 h-3 text-[#FF8C00]" />
-                            {item.location}
+
+                      <motion.div
+                        variants={{
+                          hover: { opacity: 1, y: 0 },
+                        }}
+                        initial={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.3, ease: 'easeOut' }}
+                        className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-5 text-white"
+                      >
+                        <div className="flex items-center justify-between text-xs text-orange-300 mb-1">
+                          <span className="font-semibold">{item.category}</span>
+                          <motion.div
+                            variants={{
+                              hover: { scale: 1.15, rotate: 5 },
+                            }}
+                            transition={{ duration: 0.2 }}
+                            className="p-1.5 rounded-full bg-white/20 backdrop-blur-xs text-white"
+                          >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </motion.div>
+                        </div>
+                        <h3 className="font-bold text-base text-white line-clamp-2 font-heading leading-tight mb-2">
+                          {language === 'en' ? item.title_en : item.title_fr}
+                        </h3>
+                        <div className="flex items-center gap-4 text-[11px] text-gray-300 font-mono">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-[#FF8C00]" />
+                            {item.date}
                           </span>
-                        )}
-                      </div>
+                          {item.location && (
+                            <span className="flex items-center gap-1 truncate">
+                              <MapPin className="w-3 h-3 text-[#FF8C00]" />
+                              {item.location}
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
                     </motion.div>
-                  </motion.div>
-                ))}
-              </motion.div>
+                  ))}
+                </motion.div>
+
+                {visiblePhotos.length < filteredPhotos.length && (
+                  <div className="text-center pt-10">
+                    <button
+                      type="button"
+                      onClick={() => setDisplayLimit((prev) => prev + 12)}
+                      className="px-6 py-3 rounded-xl bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-all shadow-md hover:shadow-lg cursor-pointer"
+                    >
+                      {language === 'en'
+                        ? `Load more photos (${filteredPhotos.length - visiblePhotos.length} remaining)`
+                        : `Afficher plus de photos (${filteredPhotos.length - visiblePhotos.length} restantes)`}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>

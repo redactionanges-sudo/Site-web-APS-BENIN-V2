@@ -25,7 +25,10 @@ import {
   CheckCircle,
   AlertCircle,
   Play,
+  Film,
 } from 'lucide-react';
+import { parseVideoUrl, getVideoEmbedUrl } from '@/lib/video-utils';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -105,10 +108,18 @@ export default function ProjectDetailPage({ params }: PageProps) {
       <main className="flex-1">
         {/* Header Banner */}
         <section className="bg-gray-900 text-white py-14 sm:py-20 relative overflow-hidden">
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center opacity-30"
-            style={{ backgroundImage: `url('${project.main_image}')` }}
-          />
+          {project.main_image ? (
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-30">
+              <OptimizedImage
+                src={project.main_image}
+                alt={language === 'en' ? project.title_en : project.title_fr}
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-center"
+              />
+            </div>
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-[#92278F]/60 to-black/90" />
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8">
@@ -294,6 +305,50 @@ export default function ProjectDetailPage({ params }: PageProps) {
                           />
                         </motion.div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Video Reports if any */}
+                {project.videos && project.videos.length > 0 && (
+                  <div className="space-y-4 pt-6 border-t border-gray-100">
+                    <h3 className="text-xl font-bold text-gray-900 font-heading flex items-center gap-2">
+                      <Film className="w-5 h-5 text-[#92278F]" />
+                      <span>{language === 'en' ? 'Project Videos & Reports' : 'Vidéos & Reportages de Terrain'}</span>
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6">
+                      {project.videos.map((vidUrl, idx) => {
+                        const parsed = parseVideoUrl(vidUrl);
+                        const embed = getVideoEmbedUrl(vidUrl);
+                        return (
+                          <div
+                            key={idx}
+                            className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 p-4 space-y-3 shadow-xs"
+                          >
+                            <div className="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-inner">
+                              {parsed.platform === 'storage' || parsed.platform === 'direct' ? (
+                                <video
+                                  src={parsed.embedUrl || vidUrl}
+                                  controls
+                                  className="w-full h-full object-contain"
+                                />
+                              ) : embed ? (
+                                <iframe
+                                  src={embed}
+                                  title={`${project.title_fr} - Vidéo ${idx + 1}`}
+                                  className="w-full h-full border-0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                                  Format vidéo non supporté
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

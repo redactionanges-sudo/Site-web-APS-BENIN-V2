@@ -221,7 +221,7 @@ export function getDefaultCategoryForModule(module?: string): {
       return {
         category: 'Médiathèque publique',
         targetModule: 'mediatheque',
-        showInPublicGallery: false, // Prudent : exclu par défaut sauf choix explicite
+        showInPublicGallery: true,
       };
   }
 }
@@ -230,13 +230,10 @@ export function getDefaultCategoryForModule(module?: string): {
  * Détermine si un média est strictement autorisé à être affiché dans la médiathèque publique.
  */
 export function isMediaAllowedInPublicGallery(item: MediaItem): boolean {
-  // 1. Doit être actif (pas un brouillon, inactif ou supprimé)
+  // 1. Doit être actif (pas un brouillon, inactif ou masqué par l'administrateur)
   if (item.is_active === false) return false;
 
-  // 2. Doit être EXPLICITEMENT autorisé pour la médiathèque publique
-  if (item.show_in_public_gallery !== true) return false;
-
-  // 3. Garde-fou strict : exclure absolument les portraits d'équipe et logos partenaires
+  // 2. Garde-fou strict : exclure absolument les portraits d'équipe, logos partenaires et identité interne
   const target = item.target_module;
   if (target === 'equipe' || target === 'partenaires' || target === 'institutionnel') {
     return false;
@@ -254,5 +251,12 @@ export function isMediaAllowedInPublicGallery(item: MediaItem): boolean {
     return false;
   }
 
+  // 3. Si un média a été explicitement masqué de la galerie publique (show_in_public_gallery === false)
+  // pour un module spécifique, on le respecte
+  if (item.show_in_public_gallery === false && target && target !== 'mediatheque') {
+    return false;
+  }
+
+  // Tout média actif (photo ou vidéo) rattaché à la médiathèque, aux albums ou aux activités de terrain est visible
   return true;
 }

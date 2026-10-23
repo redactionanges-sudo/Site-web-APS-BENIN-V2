@@ -5,21 +5,30 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
-import { supabaseStore } from '@/lib/supabase';
+import { supabaseStore, resolveMediaUrl } from '@/lib/supabase';
 import { initialHistory } from '@/lib/initial-data';
 import { initialInstitutionalPages } from '@/lib/initial-pages';
 import { HistoryMilestone, InstitutionalPage } from '@/types';
 import { RichTextContent } from '@/components/RichTextContent';
 import { Calendar, CheckCircle2, Award, Clock, EyeOff } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function HistoirePage() {
   const { language } = useLanguage();
   const fallbackPage = initialInstitutionalPages.find((p) => p.slug === 'histoire') || null;
   const [milestones, setMilestones] = useState<HistoryMilestone[]>(() => initialHistory);
   const [pageData, setPageData] = useState<InstitutionalPage | null>(() => fallbackPage);
+  const [presentationHero, setPresentationHero] = useState<string>('');
 
   useEffect(() => {
     let isMounted = true;
+
+    // Load presentation page hero as ambiance fallback if histoire has none configured
+    supabaseStore.getInstitutionalPageBySlug('presentation').then((p) => {
+      if (isMounted && p?.hero_image) {
+        setPresentationHero(p.hero_image);
+      }
+    }).catch(() => {});
 
     supabaseStore.getHistory()
       .then((res) => {
@@ -103,7 +112,7 @@ export default function HistoirePage() {
     ? 'From grassroots citizen mobilization in 2014 to a recognized institution for human rights and equality in Benin.'
     : "D'une mobilisation citoyenne spontanée en 2014 à une institution reconnue pour les droits humains et l'égalité au Bénin.";
 
-  const heroImage = pageData?.hero_image;
+  const heroImage = resolveMediaUrl(pageData?.hero_image || presentationHero);
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -121,25 +130,32 @@ export default function HistoirePage() {
       )}
 
       <main className="flex-1">
-        {/* Header */}
-        <section className="bg-gray-900 text-white py-16 sm:py-20 relative overflow-hidden">
+        {/* Header / Hero */}
+        <section className="bg-gray-950 text-white py-16 sm:py-24 relative overflow-hidden">
           {heroImage && (
-            <div
-              className="absolute inset-0 z-0 bg-cover bg-center opacity-25"
-              style={{
-                backgroundImage: `url('${heroImage}')`,
-              }}
-            />
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+              <OptimizedImage
+                src={heroImage}
+                alt={title}
+                fill
+                priority
+                className="object-cover opacity-50 transform scale-102 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-950/90 via-[#92278F]/40 to-gray-950/85" />
+            </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-[#92278F]/50 to-black/90" />
+          {!heroImage && (
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-[#92278F]/40 to-gray-950" />
+          )}
+
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8">
-            <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3 py-1 rounded bg-white/10 border border-white/20 mb-3">
+            <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-xs mb-3">
               {badge}
             </span>
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading">
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading leading-tight">
               {title}
             </h1>
-            <p className="text-base sm:text-lg text-purple-100 max-w-2xl mt-3 leading-relaxed">
+            <p className="text-base sm:text-lg text-purple-100 max-w-2xl mt-3 leading-relaxed font-sans">
               {subtitle}
             </p>
           </div>

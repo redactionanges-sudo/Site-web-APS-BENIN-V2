@@ -158,6 +158,8 @@ export default function PartenairesPage() {
                           <img
                             src={item.logo}
                             alt={`Logo ${item.name}`}
+                            width={64}
+                            height={48}
                             className="max-w-full max-h-full object-contain"
                             loading="lazy"
                           />

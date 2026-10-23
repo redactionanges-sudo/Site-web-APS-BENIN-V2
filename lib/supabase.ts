@@ -214,13 +214,36 @@ export function unpackMedia(row: any): MediaItem {
   }
   if (row.target_module) target_module = row.target_module;
 
+  const rawUrl = row.url || '';
+  const rawThumb = row.thumbnail_url || '';
+  let finalUrl = rawUrl;
+  let finalThumb = rawThumb || rawUrl;
+  const original_url = row.original_url || rawUrl;
+
+  // Local high-performance WebP variants mapping for official hero photos
+  if (rawUrl.includes('1791401316936__art5181') || rawUrl.includes('art5181-1920')) {
+    finalUrl = '/images/hero/art5181-1920.webp';
+    finalThumb = '/images/hero/art5181-thumb.webp';
+  } else if (rawUrl.includes('1791401366781__art5521') || rawUrl.includes('art5521-1920')) {
+    finalUrl = '/images/hero/art5521-1920.webp';
+    finalThumb = '/images/hero/art5521-thumb.webp';
+  } else if (rawUrl.includes('1791401447811__art5875') || rawUrl.includes('art5875-1920')) {
+    finalUrl = '/images/hero/art5875-1920.webp';
+    finalThumb = '/images/hero/art5875-thumb.webp';
+  } else if (rawUrl.includes('/storage/v1/object/public/')) {
+    if (!finalThumb || finalThumb === rawUrl) {
+      finalThumb = getOptimizedSupabaseUrl(rawUrl, { width: 400, quality: 78, format: 'webp' });
+    }
+  }
+
   return {
     id: row.id,
     title_fr: row.title_fr || '',
     title_en: row.title_en || row.title_fr || '',
     type: row.type || 'photo',
-    url: row.url || '',
-    thumbnail_url: row.thumbnail_url || row.url || '',
+    url: finalUrl,
+    original_url,
+    thumbnail_url: finalThumb,
     album_id: row.album_id || undefined,
     project_id: row.project_id || undefined,
     category: row.category || 'Médiathèque publique',
@@ -337,7 +360,32 @@ export function isValidOfficialLogoUrl(url?: string | null): boolean {
   );
 }
 
-export function resolveMediaUrl(urlOrPath?: string | null): string {
+/**
+ * Transforms a Supabase Storage object URL into a Supabase render image CDN URL with WebP compression and dimension resizing.
+ */
+export function getOptimizedSupabaseUrl(
+  url?: string | null,
+  options?: { width?: number; quality?: number; format?: 'webp' | 'origin' }
+): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed.includes('/storage/v1/object/public/')) return trimmed;
+
+  const width = options?.width || 1200;
+  const quality = options?.quality || 80;
+  const format = options?.format || 'webp';
+
+  const [baseUrl] = trimmed.split('?');
+  return (
+    baseUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/') +
+    `?width=${width}&quality=${quality}&format=${format}`
+  );
+}
+
+export function resolveMediaUrl(
+  urlOrPath?: string | null,
+  options?: { width?: number; quality?: number; format?: 'webp' | 'origin'; profile?: 'hero' | 'thumbnail' | 'medium' }
+): string {
   if (!urlOrPath || typeof urlOrPath !== 'string') return '';
   const trimmed = urlOrPath.trim();
   if (!trimmed) return '';
@@ -347,8 +395,40 @@ export function resolveMediaUrl(urlOrPath?: string | null): string {
     return '';
   }
 
+  // Local WebP mappings for hero photos to ensure ultra-fast 0ms local response
+  if (trimmed.includes('1791401316936__art5181') || trimmed.includes('art5181')) {
+    if (options?.profile === 'thumbnail' || (options?.width && options.width <= 400)) {
+      return '/images/hero/art5181-thumb.webp';
+    }
+    if (options?.width && options.width <= 828) {
+      return '/images/hero/art5181-828.webp';
+    }
+    return '/images/hero/art5181-1920.webp';
+  }
+  if (trimmed.includes('1791401366781__art5521') || trimmed.includes('art5521')) {
+    if (options?.profile === 'thumbnail' || (options?.width && options.width <= 400)) {
+      return '/images/hero/art5521-thumb.webp';
+    }
+    if (options?.width && options.width <= 828) {
+      return '/images/hero/art5521-828.webp';
+    }
+    return '/images/hero/art5521-1920.webp';
+  }
+  if (trimmed.includes('1791401447811__art5875') || trimmed.includes('art5875')) {
+    if (options?.profile === 'thumbnail' || (options?.width && options.width <= 400)) {
+      return '/images/hero/art5875-thumb.webp';
+    }
+    if (options?.width && options.width <= 828) {
+      return '/images/hero/art5875-828.webp';
+    }
+    return '/images/hero/art5875-1920.webp';
+  }
+
   // Already a full URL or data URI
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    if (options && trimmed.includes('/storage/v1/object/public/')) {
+      return getOptimizedSupabaseUrl(trimmed, options);
+    }
     return trimmed;
   }
 
@@ -1241,6 +1321,8 @@ export const supabaseStore = {
           const res = (data as any[]).map(item => {
             let main_image = item.main_image || '';
             let gallery: string[] = Array.isArray(item.gallery) ? item.gallery : [];
+            let video_url = item.video_url || '';
+            let videos: string[] = Array.isArray(item.videos) ? item.videos : [];
             let external_link = item.external_link;
 
             // Extract visual metadata stored in database
@@ -1252,6 +1334,12 @@ export const supabaseStore = {
                 }
                 if ((!gallery || gallery.length === 0) && Array.isArray(parsed.gallery)) {
                   gallery = parsed.gallery;
+                }
+                if (!video_url && parsed.video_url) {
+                  video_url = parsed.video_url;
+                }
+                if ((!videos || videos.length === 0) && Array.isArray(parsed.videos)) {
+                  videos = parsed.videos;
                 }
                 external_link = parsed.url;
               } catch {}
@@ -1265,11 +1353,19 @@ export const supabaseStore = {
             if ((!gallery || gallery.length === 0) && local?.gallery && local.gallery.length > 0) {
               gallery = local.gallery;
             }
+            if (!video_url && local?.video_url) {
+              video_url = local.video_url;
+            }
+            if ((!videos || videos.length === 0) && local?.videos && local.videos.length > 0) {
+              videos = local.videos;
+            }
 
             return {
               ...item,
               main_image,
               gallery,
+              video_url,
+              videos,
               external_link,
             } as OpportunityItem;
           });
@@ -1293,18 +1389,23 @@ export const supabaseStore = {
   },
 
   async saveOpportunity(opp: OpportunityItem): Promise<OpportunityItem[]> {
-    // 1. Pack visual metadata into external_link so it persists in Supabase table
+    // 1. Pack visual and video metadata into external_link so it persists cleanly in Supabase table
     const main_image = opp.main_image || '';
     const gallery = Array.isArray(opp.gallery) ? opp.gallery : [];
+    const video_url = opp.video_url || '';
+    const videos = Array.isArray(opp.videos) ? opp.videos : [];
     const existingUrl = opp.external_link && !opp.external_link.startsWith('{') ? opp.external_link : undefined;
 
+    const hasMedia = main_image || gallery.length > 0 || video_url || videos.length > 0;
     const packedOpp = {
       ...opp,
-      external_link: (main_image || gallery.length > 0)
+      external_link: hasMedia
         ? JSON.stringify({
             url: existingUrl,
             main_image,
             gallery,
+            video_url,
+            videos,
           })
         : existingUrl || null,
     };

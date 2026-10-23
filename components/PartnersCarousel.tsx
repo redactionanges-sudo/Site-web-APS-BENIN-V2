@@ -88,6 +88,8 @@ export const PartnersCarousel: React.FC = () => {
                   <img
                     src={partner.logo}
                     alt={partner.name}
+                    width={120}
+                    height={48}
                     className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105 duration-200"
                     loading="lazy"
                   />

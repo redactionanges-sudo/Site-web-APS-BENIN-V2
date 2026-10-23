@@ -23,11 +23,13 @@ import {
   Sparkles,
   Video,
 } from 'lucide-react';
+import { OptimizedImage } from '@/components/OptimizedImage';
+import { initialMedia } from '@/lib/initial-data';
 
 export const HomeMediathequeSection: React.FC = () => {
   const { language, t } = useLanguage();
-  const [mediaList, setMediaList] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [mediaList, setMediaList] = useState<MediaItem[]>(() => initialMedia);
+  const [loading, setLoading] = useState(false);
   const [playingVideo, setPlayingVideo] = useState<MediaItem | null>(null);
 
   const loadMedia = () => {
@@ -128,19 +130,18 @@ export const HomeMediathequeSection: React.FC = () => {
               href="/mediatheque/photos"
               className="group relative rounded-2xl overflow-hidden bg-gray-800 h-64 border border-gray-700/80 block"
             >
-              <motion.img
-                src={featuredPhotos[0].url}
+              <OptimizedImage
+                src={featuredPhotos[0].thumbnail_url || featuredPhotos[0].url}
                 alt={
                   language === 'en'
                     ? featuredPhotos[0].alt_en || featuredPhotos[0].title_en
                     : featuredPhotos[0].alt_fr || featuredPhotos[0].title_fr
                 }
-                className="w-full h-full object-cover"
-                whileHover={{ scale: 1.08 }}
-                transition={{ duration: 0.45, ease: 'easeOut' }}
-                loading="lazy"
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-end p-5">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-end p-5 z-10 pointer-events-none">
                 {featuredPhotos[0].category && (
                   <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-1">
                     {featuredPhotos[0].category}
@@ -170,19 +171,18 @@ export const HomeMediathequeSection: React.FC = () => {
               href="/mediatheque/photos"
               className="group relative rounded-2xl overflow-hidden bg-gray-800 h-64 border border-gray-700/80 block"
             >
-              <motion.img
-                src={featuredPhotos[1].url}
+              <OptimizedImage
+                src={featuredPhotos[1].thumbnail_url || featuredPhotos[1].url}
                 alt={
                   language === 'en'
                     ? featuredPhotos[1].alt_en || featuredPhotos[1].title_en
                     : featuredPhotos[1].alt_fr || featuredPhotos[1].title_fr
                 }
-                className="w-full h-full object-cover"
-                whileHover={{ scale: 1.08 }}
-                transition={{ duration: 0.45, ease: 'easeOut' }}
-                loading="lazy"
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-end p-5">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex flex-col justify-end p-5 z-10 pointer-events-none">
                 {featuredPhotos[1].category && (
                   <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-1">
                     {featuredPhotos[1].category}
@@ -220,17 +220,16 @@ export const HomeMediathequeSection: React.FC = () => {
               return (
                 <div className="group relative rounded-2xl overflow-hidden bg-gray-800 h-64 border border-gray-700/80 flex flex-col justify-between">
                   {videoThumb ? (
-                    <motion.img
+                    <OptimizedImage
                       src={videoThumb}
                       alt={
                         language === 'en'
                           ? featuredVideo.alt_en || featuredVideo.title_en
                           : featuredVideo.alt_fr || featuredVideo.title_fr
                       }
-                      className="absolute inset-0 w-full h-full object-cover"
-                      whileHover={{ scale: 1.06 }}
-                      transition={{ duration: 0.45, ease: 'easeOut' }}
-                      loading="lazy"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover group-hover:scale-106 transition-transform duration-500 ease-out"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-[#370e36] to-gray-950" />

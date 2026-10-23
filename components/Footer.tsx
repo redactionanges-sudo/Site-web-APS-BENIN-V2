@@ -155,7 +155,12 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/mediatheque/photos" className="hover:text-[#FF8C00] transition-colors">
-                  {t('nav.mediatheque')}
+                  {t('nav.mediatheque')} (Photos)
+                </Link>
+              </li>
+              <li>
+                <Link href="/mediatheque/videos" className="hover:text-[#FF8C00] transition-colors">
+                  {language === 'en' ? 'Videos & Reports' : 'Vidéos & Reportages'}
                 </Link>
               </li>
               <li>

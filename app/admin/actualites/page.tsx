@@ -7,6 +7,7 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem, NewsStatus } from '@/types';
 import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
+import { VideoPickerField } from '@/components/admin/VideoPickerField';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
@@ -443,15 +444,12 @@ export default function AdminNewsPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">
-                       Lien Vidéo YouTube (optionnel)
-                    </label>
-                    <input
-                      type="text"
-                      value={form.video_url}
-                      onChange={(e) => setForm({ ...form, video_url: e.target.value })}
-                      placeholder="https://www.youtube.com/watch?v=..."
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+                    <VideoPickerField
+                      label="Vidéo associée (optionnel)"
+                      value={form.video_url || ''}
+                      onChange={(url) => setForm({ ...form, video_url: url })}
+                      placeholder="Lien YouTube, Vimeo ou choisir dans la médiathèque"
+                      helpText="Vidéo intégrée et lisible directement dans le corps de l'article."
                     />
                   </div>
                 </div>

@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
   // Allow access to remote image placeholder.
   images: {
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 2592000, // 30 jours
+    minimumCacheTTL: 86400, // 24h (permet de renouveler les images modifiées dans Supabase Storage)
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 160, 256, 384],
     remotePatterns: [
@@ -54,11 +54,20 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: '/logo-aps-benin.png',
+        source: '/logo-aps-benin.:ext(png|webp)',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
           },
         ],
       },
@@ -81,17 +90,25 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: '/_next/image',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+      {
         source: '/_next/image/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=2592000, stale-while-revalidate=86400',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
           },
         ],
       },
     ];
   },
-  output: 'standalone',
   transpilePackages: ['motion'],
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.

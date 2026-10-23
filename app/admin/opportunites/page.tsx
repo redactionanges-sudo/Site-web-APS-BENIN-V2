@@ -7,6 +7,7 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem, OpportunityStatus, OpportunityType } from '@/types';
 import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
+import { VideoPickerField } from '@/components/admin/VideoPickerField';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
@@ -53,6 +54,7 @@ export default function AdminOpportunitiesPage() {
     status: 'open',
     main_image: '',
     gallery: [],
+    video_url: '',
   });
 
   const loadOpportunities = async () => {
@@ -87,6 +89,7 @@ export default function AdminOpportunitiesPage() {
       status: 'open',
       main_image: '',
       gallery: [],
+      video_url: '',
     });
     setModalOpen(true);
   };
@@ -99,6 +102,7 @@ export default function AdminOpportunitiesPage() {
       deadline: item.deadline.split('T')[0],
       main_image: item.main_image || '',
       gallery: item.gallery || [],
+      video_url: item.video_url || '',
     });
     setModalOpen(true);
   };
@@ -147,6 +151,7 @@ export default function AdminOpportunitiesPage() {
       status: form.status as OpportunityStatus || 'open',
       main_image: form.main_image || '',
       gallery: form.gallery || [],
+      video_url: form.video_url || '',
     };
 
     try {
@@ -492,6 +497,14 @@ export default function AdminOpportunitiesPage() {
                     onChange={(gallery) => setForm({ ...form, gallery })}
                     onSetMainImage={(url) => setForm({ ...form, main_image: url })}
                     mainImageUrl={form.main_image}
+                  />
+
+                  <VideoPickerField
+                    label="Vidéo de présentation (optionnel)"
+                    value={form.video_url || ''}
+                    onChange={(url) => setForm({ ...form, video_url: url })}
+                    placeholder="Lien YouTube, Vimeo ou choisir dans la médiathèque"
+                    helpText="Vidéo de présentation du poste, de l'appel d'offres ou témoignage d'un membre de l'équipe."
                   />
                 </div>
 
