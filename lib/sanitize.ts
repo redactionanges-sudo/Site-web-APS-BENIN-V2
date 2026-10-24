@@ -77,7 +77,7 @@ export function plainTextToHtml(text?: string | null): string {
   if (paragraphs.length === 0) return '';
 
   return paragraphs
-    .map((p) => `<p>${p.replace(/\r?\n/g, '<br>')}</p>`)
+    .map((p) => `<p>${p.replace(/\r?\n/g, '<br />')}</p>`)
     .join('');
 }
 

@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialOpportunities } from '@/lib/initial-data';
 import { OpportunityItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -20,12 +20,13 @@ import {
   Mail,
   FileText,
   Download,
+  CheckCircle,
   AlertCircle,
   Send,
   Play,
   Film,
 } from 'lucide-react';
-import { parseVideoUrl, getVideoEmbedUrl } from '@/lib/video-utils';
+import { VideoPlayer } from '@/components/VideoPlayer';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -35,35 +36,21 @@ export default function OpportunityDetailPage({ params }: PageProps) {
   const { slug } = use(params);
   const { language, t } = useLanguage();
   const { orgNameShort, addressLocation } = useSiteSettings();
-  const fallback = initialOpportunities.find((o) => o.slug === slug) || null;
-  const [opp, setOpp] = useState<OpportunityItem | null>(() => fallback);
-  const [loading, setLoading] = useState(() => !fallback);
+  const [opp, setOpp] = useState<OpportunityItem | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getOpportunityBySlug(slug)
-      .then((res) => {
-        if (isMounted) {
-          if (res) {
-            setOpp(res);
-            trackEvent('view_opportunity', {
-              target_id: res.id,
-              target_title: res.title_fr,
-              path: `/opportunites/${slug}`,
-            });
-          }
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement opportunité Supabase :', err);
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    supabaseStore.getOpportunityBySlug(slug).then((res) => {
+      setOpp(res);
+      setLoading(false);
+      if (res) {
+        trackEvent('view_opportunity', {
+          target_id: res.id,
+          target_title: res.title_fr,
+          path: `/opportunites/${slug}`,
+        });
+      }
+    });
   }, [slug]);
 
   if (loading) {
@@ -121,10 +108,14 @@ export default function OpportunityDetailPage({ params }: PageProps) {
         <section className="bg-gray-900 text-white py-14 sm:py-20 relative overflow-hidden">
           {opp.main_image ? (
             <div className="absolute inset-0">
-              <img
+              <Image
                 src={opp.main_image}
                 alt=""
-                className="w-full h-full object-cover opacity-25"
+                fill
+                priority={true}
+                sizes="100vw"
+                className="object-cover opacity-25"
+                referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-gray-950/95 via-[#92278F]/80 to-gray-950/95" />
             </div>
@@ -253,39 +244,6 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {/* Video presentation if present */}
-                {opp.video_url && parseVideoUrl(opp.video_url).platform !== 'unknown' && (
-                  <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
-                    <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2 font-heading">
-                      <Film className="w-4 h-4 text-[#92278F]" />
-                      <span>{language === 'en' ? 'Associated Presentation Video' : 'Vidéo de Présentation'}</span>
-                    </h3>
-                    <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-xs">
-                      {(() => {
-                        const info = parseVideoUrl(opp.video_url);
-                        if (info.platform === 'storage' || info.platform === 'direct') {
-                          return (
-                            <video
-                              src={info.embedUrl || opp.video_url}
-                              controls
-                              className="w-full h-full object-contain"
-                            />
-                          );
-                        }
-                        return (
-                          <iframe
-                            src={getVideoEmbedUrl(opp.video_url)!}
-                            title={`${opp.title_fr} - Vidéo`}
-                            className="w-full h-full border-0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
-
                 {/* Gallery of Images if present */}
                 {opp.gallery && opp.gallery.length > 0 && (
                   <div className="space-y-4 pt-6 border-t border-gray-100">
@@ -306,6 +264,23 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                           />
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Video if present */}
+                {opp.video_url && opp.video_url.trim() !== '' && (
+                  <div className="space-y-4 pt-6 border-t border-gray-100">
+                    <h3 className="text-xl font-bold text-gray-900 font-heading flex items-center gap-2">
+                      <Film className="w-5 h-5 text-[#FF8C00]" />
+                      <span>{language === 'en' ? 'Presentation Video' : 'Vidéo de Présentation'}</span>
+                    </h3>
+                    <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                      <VideoPlayer
+                        url={opp.video_url}
+                        title={language === 'en' ? `${opp.title_en || opp.title_fr} - Video` : `${opp.title_fr} - Vidéo`}
+                        poster={opp.main_image}
+                      />
                     </div>
                   </div>
                 )}

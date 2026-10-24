@@ -6,22 +6,19 @@ import { AuthProvider } from '@/lib/auth';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { AfricanPatternCanvas } from '@/components/AfricanPatternCanvas';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
-import { ClientHydrationGuard } from '@/components/ClientHydrationGuard';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
-  weight: ['600', '700', '800'],
+  weight: ['500', '600', '700', '800'],
   variable: '--font-montserrat',
   display: 'swap',
-  preload: true,
 });
 
 const openSans = Open_Sans({
   subsets: ['latin'],
-  weight: ['400', '600', '700'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-opensans',
   display: 'swap',
-  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -48,14 +45,14 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${montserrat.variable} ${openSans.variable}`} suppressHydrationWarning>
       <body className="min-h-screen bg-[#FAF8FB] text-gray-900 font-sans antialiased selection:bg-[#92278F] selection:text-white relative" suppressHydrationWarning>
+        <AfricanPatternCanvas />
+        <AnalyticsTracker />
         <AuthProvider>
           <LanguageProvider>
-            <ClientHydrationGuard>
-              <AfricanPatternCanvas />
-              <AnalyticsTracker />
+            <div className="relative z-10 flex flex-col min-h-screen">
               {children}
               <ScrollToTop />
-            </ClientHydrationGuard>
+            </div>
           </LanguageProvider>
         </AuthProvider>
       </body>

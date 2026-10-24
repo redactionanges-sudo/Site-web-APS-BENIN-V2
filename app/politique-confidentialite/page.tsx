@@ -26,7 +26,7 @@ export default function PolitiqueConfidentialitePage() {
             <span>Retour à l'accueil</span>
           </Link>
 
-          <div className="bg-white rounded-3xl p-6 sm:p-12 border border-gray-200/80 shadow-xs space-y-6">
+          <div className="space-y-6">
             <h1 className="text-3xl font-extrabold text-gray-900 font-heading">
               Politique de Confidentialité & Protection des Données
             </h1>

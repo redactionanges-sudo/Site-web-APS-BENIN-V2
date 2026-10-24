@@ -6,8 +6,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem, NewsStatus } from '@/types';
-import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
-import { VideoPickerField } from '@/components/admin/VideoPickerField';
+import { ImagePickerField, MultiImageGalleryField, VideoPickerField } from '@/components/admin/MediaSelectorModal';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
@@ -443,13 +442,12 @@ export default function AdminNewsPage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <VideoPickerField
-                      label="Vidéo associée (optionnel)"
+                      label="Vidéo associée à l'actualité"
                       value={form.video_url || ''}
                       onChange={(url) => setForm({ ...form, video_url: url })}
-                      placeholder="Lien YouTube, Vimeo ou choisir dans la médiathèque"
-                      helpText="Vidéo intégrée et lisible directement dans le corps de l'article."
+                      helpText="Prend en charge YouTube, Vimeo ou les fichiers vidéo téléversés dans la Médiathèque Supabase."
                     />
                   </div>
                 </div>

@@ -8,7 +8,7 @@ import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { supabaseStore, resolveMediaUrl, unpackInstitutionalPage } from '@/lib/supabase';
-import { initialInstitutionalPages } from '@/lib/initial-pages';
+import { initialInstitutionalPages, DEFAULT_INSTITUTIONAL_HERO_IMAGE } from '@/lib/initial-pages';
 
 import { InstitutionalPage, InstitutionalPageImage, InstitutionalPageBlock } from '@/types';
 import { RichTextContent } from '@/components/RichTextContent';
@@ -151,7 +151,7 @@ export default function PresentationPage() {
       ];
 
   // Hero image
-  const heroImage = resolveMediaUrl(pageData?.hero_image);
+  const heroImage = resolveMediaUrl(pageData?.hero_image) || DEFAULT_INSTITUTIONAL_HERO_IMAGE;
   const heroAlt = language === 'en'
     ? pageData?.hero_image_alt_en || pageData?.hero_image_alt_fr || title
     : pageData?.hero_image_alt_fr || pageData?.hero_image_alt_en || title;
@@ -328,7 +328,7 @@ export default function PresentationPage() {
         {/* ============================================================== */}
         {/* MAIN EDITORIAL CONTENT                                        */}
         {/* ============================================================== */}
-        <section className="py-16 sm:py-20 bg-white border-b border-gray-100">
+        <section className="py-16 sm:py-20 bg-white/80 backdrop-blur-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
               {/* Left/Main Column */}
@@ -383,6 +383,7 @@ export default function PresentationPage() {
                         src={finalFieldImage.url}
                         alt={language === 'en' ? finalFieldImage.alt_en || finalFieldImage.alt_fr : finalFieldImage.alt_fr || 'Action de terrain APS-BÉNIN'}
                         fill
+                        priority
                         sizes="(max-width: 1024px) 100vw, 66vw"
                         className="object-cover group-hover:scale-102 transition-transform duration-500"
                       />

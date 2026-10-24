@@ -230,12 +230,12 @@ export function getDefaultCategoryForModule(module?: string): {
  * Détermine si un média est strictement autorisé à être affiché dans la médiathèque publique.
  */
 export function isMediaAllowedInPublicGallery(item: MediaItem): boolean {
-  // 1. Doit être actif (pas un brouillon, inactif ou masqué par l'administrateur)
+  // 1. Doit être actif (pas un brouillon, inactif ou supprimé)
   if (item.is_active === false) return false;
 
-  // 2. Garde-fou strict : exclure absolument les portraits d'équipe, logos partenaires et identité interne
+  // 2. Garde-fou strict : exclure absolument les portraits d'équipe, logos partenaires et documents administratifs
   const target = item.target_module;
-  if (target === 'equipe' || target === 'partenaires' || target === 'institutionnel') {
+  if (target === 'equipe' || target === 'partenaires' || target === 'institutionnel' || target === 'documents') {
     return false;
   }
 
@@ -246,17 +246,55 @@ export function isMediaAllowedInPublicGallery(item: MediaItem): boolean {
     catLower.includes('partenaire') ||
     catLower === 'logo' ||
     catLower.includes('identité') ||
-    catLower.includes('identite')
+    catLower.includes('identite') ||
+    catLower.includes('document')
   ) {
     return false;
   }
 
-  // 3. Si un média a été explicitement masqué de la galerie publique (show_in_public_gallery === false)
-  // pour un module spécifique, on le respecte
-  if (item.show_in_public_gallery === false && target && target !== 'mediatheque') {
+  // 3. Si l'administrateur a explicitement désactivé l'affichage public
+  if (item.show_in_public_gallery === false) {
     return false;
   }
 
-  // Tout média actif (photo ou vidéo) rattaché à la médiathèque, aux albums ou aux activités de terrain est visible
-  return true;
+  // 4. Si explicitement autorisé
+  if (item.show_in_public_gallery === true) {
+    return true;
+  }
+
+  // 5. Médias associés à un album ou au hero : autorisés
+  if (item.album_id || item.show_in_hero) {
+    return true;
+  }
+
+  // 6. Catégories publiques légitimes
+  const publicCategories = [
+    'médiathèque publique',
+    'mediatheque publique',
+    'activités de terrain',
+    'activites de terrain',
+    'sensibilisation',
+    'célébrations & événements',
+    'celebrations & evenements',
+    'témoignages & reportages',
+    'temoignages & reportages',
+    'projets & réalisations',
+    'projets & realisations',
+    'autre',
+    'galerie',
+    'photos',
+    'vidéos',
+    'videos',
+  ];
+
+  if (!item.category || publicCategories.some((pc) => catLower.includes(pc))) {
+    return true;
+  }
+
+  // Pour le module 'mediatheque' par défaut
+  if (target === 'mediatheque' || !target) {
+    return true;
+  }
+
+  return false;
 }

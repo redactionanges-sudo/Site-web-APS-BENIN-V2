@@ -4,48 +4,18 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialNews } from '@/lib/initial-data';
 import { NewsItem } from '@/types';
 import { ArrowRight, Calendar, User } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export const LatestNews: React.FC = () => {
   const { language, t } = useLanguage();
-  const [news, setNews] = useState<NewsItem[]>(() => {
-    return initialNews.filter((n) => n.status === 'published').slice(0, 3);
-  });
+  const [news, setNews] = useState<NewsItem[]>([]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getNews()
-      .then((items) => {
-        if (isMounted && Array.isArray(items) && items.length > 0) {
-          setNews(items.filter((n) => n.status === 'published').slice(0, 3));
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement dernières actualités Supabase :', err);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getNews()
-        .then((items) => {
-          if (isMounted && Array.isArray(items) && items.length > 0) {
-            setNews(items.filter((n) => n.status === 'published').slice(0, 3));
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_news_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_news_changed', handleSync);
-    };
+    supabaseStore.getNews().then((items) => {
+      setNews(items.filter((n) => n.status === 'published').slice(0, 3));
+    });
   }, []);
 
   const formatDate = (isoString: string) => {

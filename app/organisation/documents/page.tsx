@@ -6,7 +6,6 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialDocuments } from '@/lib/initial-data';
 import { InstitutionalDoc } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import {
@@ -28,10 +27,8 @@ import {
 
 export default function DocumentsPage() {
   const { language, t } = useLanguage();
-  const [docs, setDocs] = useState<InstitutionalDoc[]>(() =>
-    initialDocuments.filter((d) => d.is_public)
-  );
-  const [loading, setLoading] = useState(false);
+  const [docs, setDocs] = useState<InstitutionalDoc[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,38 +36,10 @@ export default function DocumentsPage() {
   const [selectedYear, setSelectedYear] = useState<string>('all');
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getDocuments()
-      .then((items) => {
-        if (isMounted && Array.isArray(items) && items.length > 0) {
-          setDocs(items.filter((d) => d.is_public));
-        }
-        if (isMounted) setLoading(false);
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement documents Supabase, maintien des données initiales :', err);
-        if (isMounted) setLoading(false);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getDocuments()
-        .then((items) => {
-          if (isMounted && Array.isArray(items) && items.length > 0) {
-            setDocs(items.filter((d) => d.is_public));
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_documents_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_documents_changed', handleSync);
-    };
+    supabaseStore.getDocuments().then((items) => {
+      setDocs(items.filter((d) => d.is_public));
+      setLoading(false);
+    });
   }, []);
 
   // Strict filter: Only documents with explicit is_public === true are visible to the public

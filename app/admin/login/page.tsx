@@ -56,7 +56,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col justify-center items-center p-4 selection:bg-[#92278F] selection:text-white relative z-20 isolate">
+    <div className="min-h-screen bg-gray-950 flex flex-col justify-center items-center p-4 selection:bg-[#92278F] selection:text-white">
       {/* Background glow */}
       <div className="absolute top-1/4 -left-20 w-96 h-96 rounded-full bg-[#92278F]/20 blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-20 w-96 h-96 rounded-full bg-[#FF8C00]/15 blur-3xl pointer-events-none" />

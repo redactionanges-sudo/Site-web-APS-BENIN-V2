@@ -14,7 +14,11 @@ import {
   Loader2,
   Sparkles,
   ExternalLink,
+  Play,
+  Film,
+  Trash2,
 } from 'lucide-react';
+import { VideoPlayer } from '@/components/VideoPlayer';
 import { getDefaultCategoryForModule } from '@/lib/media-categories';
 import { MediaTargetModule } from '@/types';
 
@@ -411,9 +415,18 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
 
+                        {/* Video Play badge */}
+                        {item.type === 'video' && (
+                          <div className="absolute inset-0 bg-black/35 flex items-center justify-center pointer-events-none">
+                            <div className="w-9 h-9 rounded-full bg-[#92278F] text-white flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-[#FF8C00] transition-all">
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            </div>
+                          </div>
+                        )}
+
                         {/* Selected badge */}
                         {isSelected && (
-                          <div className="absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-full bg-[#92278F] text-white flex items-center justify-center shadow-md text-[11px] font-bold">
+                          <div className="absolute top-2 right-2 min-w-6 h-6 px-1.5 rounded-full bg-[#92278F] text-white flex items-center justify-center shadow-md text-[11px] font-bold z-10">
                             {multiple ? (
                               <span>#{itemOrder + 1}</span>
                             ) : (
@@ -679,6 +692,234 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
   );
 };
 
+export interface VideoPickerFieldProps {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  required?: boolean;
+  helpText?: string;
+  placeholder?: string;
+  targetModule?: MediaTargetModule;
+}
+
+export const VideoPickerField: React.FC<VideoPickerFieldProps> = ({
+  label,
+  value,
+  onChange,
+  required = false,
+  helpText = 'Saisissez une URL YouTube, Vimeo ou téléversement MP4 Supabase, ou sélectionnez depuis la Médiathèque.',
+  placeholder = 'https://www.youtube.com/watch?v=... ou lien vidéo direct MP4',
+  targetModule,
+}) => {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-bold text-gray-700 flex items-center gap-1.5">
+          <Film className="w-3.5 h-3.5 text-[#FF8C00]" />
+          <span>{label} {required && <span className="text-red-500">*</span>}</span>
+        </label>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-[11px] text-gray-400 hover:text-red-600 transition-colors"
+          >
+            Retirer la vidéo
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required={required}
+          className="flex-1 px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
+        />
+
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="px-3 py-2 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#FF8C00] hover:text-[#e07b00] text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors"
+        >
+          <Film className="w-3.5 h-3.5" />
+          <span>Médiathèque</span>
+        </button>
+      </div>
+
+      {helpText && <p className="text-[11px] text-gray-500">{helpText}</p>}
+
+      {/* Live Video Player Preview */}
+      {value && value.trim() !== '' && (
+        <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-gray-700">
+            <span className="flex items-center gap-1.5">
+              <Play className="w-3.5 h-3.5 text-[#92278F]" />
+              <span>Aperçu de la vidéo intégrée</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPreview(!showPreview)}
+              className="text-[11px] text-[#92278F] hover:underline"
+            >
+              {showPreview ? 'Masquer' : 'Afficher'}
+            </button>
+          </div>
+          {showPreview && (
+            <div className="max-w-md">
+              <VideoPlayer url={value} title="Aperçu vidéo" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal */}
+      <MediaSelectorModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Sélectionner une vidéo dans la Médiathèque"
+        currentUrl={value}
+        allowedTypes={['video']}
+        targetModule={targetModule}
+        onSelect={(media) => {
+          onChange(media.url);
+        }}
+      />
+    </div>
+  );
+};
+
+export interface MultiVideoListFieldProps {
+  label: string;
+  description?: string;
+  videos: string[];
+  onChange: (videos: string[]) => void;
+  targetModule?: MediaTargetModule;
+}
+
+export const MultiVideoListField: React.FC<MultiVideoListFieldProps> = ({
+  label,
+  description,
+  videos,
+  onChange,
+  targetModule,
+}) => {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newVideoUrl, setNewVideoUrl] = useState('');
+
+  const handleAddUrl = () => {
+    const trimmed = newVideoUrl.trim();
+    if (!trimmed) return;
+    if (!videos.includes(trimmed)) {
+      onChange([...videos, trimmed]);
+    }
+    setNewVideoUrl('');
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(videos.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="space-y-3 p-4 bg-gray-50/80 rounded-2xl border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="block text-xs font-bold text-gray-900 flex items-center gap-1.5">
+            <Film className="w-3.5 h-3.5 text-[#FF8C00]" />
+            <span>{label}</span>
+          </label>
+          {description && <p className="text-[11px] text-gray-500 mt-0.5">{description}</p>}
+        </div>
+        <span className="text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-100 px-2 py-0.5 rounded-full">
+          {videos.length} {videos.length > 1 ? 'vidéos' : 'vidéo'}
+        </span>
+      </div>
+
+      {/* Input to add URL + Mediatheque button */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={newVideoUrl}
+          onChange={(e) => setNewVideoUrl(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=... ou MP4"
+          className="flex-1 px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none bg-white"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAddUrl();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleAddUrl}
+          disabled={!newVideoUrl.trim()}
+          className="px-3 py-2 rounded-lg bg-gray-900 hover:bg-black text-white text-xs font-bold transition-colors disabled:opacity-40 shrink-0"
+        >
+          Ajouter URL
+        </button>
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          className="px-3 py-2 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#FF8C00] text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors"
+        >
+          <Film className="w-3.5 h-3.5" />
+          <span>Médiathèque</span>
+        </button>
+      </div>
+
+      {/* List of associated videos */}
+      {videos.length > 0 && (
+        <div className="space-y-3 pt-2">
+          {videos.map((vUrl, idx) => (
+            <div key={idx} className="p-3 bg-white rounded-xl border border-gray-200 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-gray-800 flex items-center gap-1.5 truncate max-w-[80%]">
+                  <Film className="w-3.5 h-3.5 text-[#92278F] shrink-0" />
+                  <span className="truncate">{vUrl}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemove(idx)}
+                  className="text-red-500 hover:text-red-700 p-1 text-xs font-bold"
+                  title="Retirer cette vidéo"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="max-w-sm">
+                <VideoPlayer url={vUrl} title={`Vidéo ${idx + 1}`} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Selector modal for multiple videos */}
+      <MediaSelectorModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Sélectionner des vidéos depuis la Médiathèque"
+        allowedTypes={['video']}
+        multiple
+        targetModule={targetModule}
+        initialSelectedUrls={videos}
+        onSelectMultiple={(items) => {
+          const newUrls = items.map((i) => i.url);
+          const merged = Array.from(new Set([...videos, ...newUrls]));
+          onChange(merged);
+        }}
+      />
+    </div>
+  );
+};
+
 export { MultiImageGalleryField } from './MultiImageGalleryField';
 export type { MultiImageGalleryFieldProps } from './MultiImageGalleryField';
+
 

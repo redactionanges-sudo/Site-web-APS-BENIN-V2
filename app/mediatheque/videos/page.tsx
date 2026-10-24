@@ -7,7 +7,6 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialMedia, initialAlbums, initialProjects } from '@/lib/initial-data';
 import { MediaItem, PhotoAlbum, ProjectItem } from '@/types';
 import {
   parseVideoUrl,
@@ -35,12 +34,10 @@ import { isMediaAllowedInPublicGallery } from '@/lib/media-categories';
 
 export default function VideosMediathequePage() {
   const { language, t } = useLanguage();
-  const [videos, setVideos] = useState<MediaItem[]>(() =>
-    initialMedia.filter((m) => m.type === 'video')
-  );
-  const [albums, setAlbums] = useState<PhotoAlbum[]>(() => initialAlbums);
-  const [projects, setProjects] = useState<ProjectItem[]>(() => initialProjects);
-  const [loading, setLoading] = useState(false);
+  const [videos, setVideos] = useState<MediaItem[]>([]);
+  const [albums, setAlbums] = useState<PhotoAlbum[]>([]);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Selected video for modal playback (on-demand loading)
   const [playingVideo, setPlayingVideo] = useState<MediaItem | null>(null);
@@ -51,28 +48,16 @@ export default function VideosMediathequePage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   useEffect(() => {
-    let isMounted = true;
     Promise.all([
       supabaseStore.getPublicGalleryVideos(),
       supabaseStore.getAlbums(),
       supabaseStore.getProjects(),
-    ])
-      .then(([vidItems, albumItems, projectItems]) => {
-        if (isMounted) {
-          if (Array.isArray(vidItems) && vidItems.length > 0) setVideos(vidItems);
-          if (Array.isArray(albumItems) && albumItems.length > 0) setAlbums(albumItems);
-          if (Array.isArray(projectItems) && projectItems.length > 0) setProjects(projectItems);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement vidéos Supabase :', err);
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    ]).then(([vidItems, albumItems, projectItems]) => {
+      setVideos(vidItems);
+      setAlbums(albumItems);
+      setProjects(projectItems);
+      setLoading(false);
+    });
   }, []);
 
   // Filtered video list

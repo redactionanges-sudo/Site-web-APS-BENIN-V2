@@ -6,8 +6,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem, OpportunityStatus, OpportunityType } from '@/types';
-import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
-import { VideoPickerField } from '@/components/admin/VideoPickerField';
+import { ImagePickerField, MultiImageGalleryField, VideoPickerField } from '@/components/admin/MediaSelectorModal';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
@@ -500,11 +499,11 @@ export default function AdminOpportunitiesPage() {
                   />
 
                   <VideoPickerField
-                    label="Vidéo de présentation (optionnel)"
+                    label="Vidéo de présentation de l’opportunité (optionnel)"
                     value={form.video_url || ''}
                     onChange={(url) => setForm({ ...form, video_url: url })}
-                    placeholder="Lien YouTube, Vimeo ou choisir dans la médiathèque"
-                    helpText="Vidéo de présentation du poste, de l'appel d'offres ou témoignage d'un membre de l'équipe."
+                    helpText="Associez une vidéo descriptive (YouTube, Vimeo, ou téléversée dans la médiathèque) pour cette opportunité."
+                    targetModule="opportunites"
                   />
                 </div>
 

@@ -65,34 +65,6 @@ export function getAuthRedirectUrl(path: string = '/admin/reset-password'): stri
 
 const AUTH_STORAGE_KEY = 'aps_admin_session';
 
-function safeGetSession(): UserProfile | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function safeSetSession(profile: UserProfile): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(profile));
-  } catch {
-    // ignore
-  }
-}
-
-function safeRemoveSession(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  } catch {
-    // ignore
-  }
-}
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,14 +138,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 await supabase.auth.signOut();
                 if (mounted) {
                   setUser(null);
-                  safeRemoveSession();
+                  localStorage.removeItem(AUTH_STORAGE_KEY);
                   setLoading(false);
                 }
                 return;
               }
               if (mounted) {
                 setUser(profile);
-                safeSetSession(profile);
+                localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(profile));
                 setLoading(false);
                 return;
               }
@@ -182,9 +154,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // Check local cache if offline or unauthenticated
-        const savedSession = safeGetSession();
-        if (savedSession && mounted) {
-          setUser(savedSession);
+        const savedSession = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (savedSession) {
+          try {
+            const parsed = JSON.parse(savedSession);
+            if (mounted) setUser(parsed);
+          } catch {}
         }
       } catch (err) {
         console.error('Error restoring session:', err);
@@ -206,16 +181,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (profile.is_active === false) {
               await client.auth.signOut();
               setUser(null);
-              safeRemoveSession();
+              localStorage.removeItem(AUTH_STORAGE_KEY);
               return;
             }
             setUser(profile);
-            safeSetSession(profile);
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(profile));
           }
         } else if (event === 'SIGNED_OUT') {
           if (mounted) {
             setUser(null);
-            safeRemoveSession();
+            localStorage.removeItem(AUTH_STORAGE_KEY);
           }
         }
       });
@@ -317,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(activeProfile);
-      safeSetSession(activeProfile);
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(activeProfile));
 
       // Asynchronous non-blocking audit logging
       import('./audit')
@@ -375,7 +350,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setUser(null);
-    safeRemoveSession();
+    localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
   const resetPassword = async (email: string) => {

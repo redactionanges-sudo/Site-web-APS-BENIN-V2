@@ -10,16 +10,11 @@ export function ScrollToTop() {
 
   // 1. Remise en haut de page instantanée lors d'un changement d'URL / route
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: 'auto',
-      });
-    } catch {
-      window.scrollTo(0, 0);
-    }
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant',
+    });
   }, [pathname]);
 
   // 2. Détection du défilement pour le bouton flottant de retour en haut
@@ -37,16 +32,11 @@ export function ScrollToTop() {
   }, []);
 
   const scrollToTop = () => {
-    if (typeof window === 'undefined') return;
-    try {
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: 'smooth',
-      });
-    } catch {
-      window.scrollTo(0, 0);
-    }
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'smooth',
+    });
   };
 
   return (

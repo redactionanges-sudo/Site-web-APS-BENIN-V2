@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabaseStore, isValidOfficialLogoUrl } from '@/lib/supabase';
+import { supabaseStore } from '@/lib/supabase';
 import { SiteSettings, SocialLinksConfig } from '@/types';
 import { initialSiteSettings } from '@/lib/initial-data';
 import { getActiveSocialPlatforms, ResolvedPlatformState } from '@/lib/social';
@@ -158,7 +158,7 @@ export function useSiteSettings(): UseSiteSettingsResult {
     addressLocality: typeof settings.address_locality === 'string' ? settings.address_locality : '',
     postalBox: typeof settings.postal_box === 'string' ? settings.postal_box : '',
     email: typeof settings.email === 'string' ? settings.email : '',
-    logoUrl: settings.logo_url && isValidOfficialLogoUrl(settings.logo_url)
+    logoUrl: settings.logo_url && !settings.logo_url.includes('images.unsplash.com') && !settings.logo_url.includes('picsum.photos')
       ? settings.logo_url
       : '/logo-aps-benin.png',
 

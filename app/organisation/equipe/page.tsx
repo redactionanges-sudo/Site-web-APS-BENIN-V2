@@ -6,46 +6,18 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialTeam } from '@/lib/initial-data';
 import { TeamMember } from '@/types';
 import { UserCheck, Award, User } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function EquipePage() {
   const { language } = useLanguage();
-  const [team, setTeam] = useState<TeamMember[]>(() => initialTeam.filter((m) => m.is_active));
+  const [team, setTeam] = useState<TeamMember[]>([]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getTeam()
-      .then((res) => {
-        if (isMounted && Array.isArray(res) && res.length > 0) {
-          setTeam(res.filter((m) => m.is_active));
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement équipe Supabase, maintien des données initiales :', err);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getTeam()
-        .then((res) => {
-          if (isMounted && Array.isArray(res) && res.length > 0) {
-            setTeam(res.filter((m) => m.is_active));
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_team_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_team_changed', handleSync);
-    };
+    supabaseStore.getTeam().then((res) => {
+      setTeam(res.filter((m) => m.is_active));
+    });
   }, []);
 
   return (
@@ -72,16 +44,10 @@ export default function EquipePage() {
         </section>
 
         {/* Team Grid */}
-        <section className="py-20 bg-white border-b border-gray-100">
+        <section className="py-20 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            {team.length === 0 ? (
-              <div className="text-center py-12 text-sm text-gray-500 bg-white rounded-2xl border border-gray-200 p-8 max-w-xl mx-auto">
-                <UserCheck className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p>Aucun membre d&apos;équipe n&apos;est enregistré pour le moment.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {team.map((member) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {team.map((member) => (
                 <div
                   key={member.id}
                   className="bg-white rounded-2xl overflow-hidden border border-gray-200/90 hover:border-[#92278F] transition-all hover:shadow-lg flex flex-col group"
@@ -92,7 +58,7 @@ export default function EquipePage() {
                         src={member.photo}
                         alt={member.name}
                         fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                         className="object-top group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
@@ -131,8 +97,7 @@ export default function EquipePage() {
                   </div>
                 </div>
               ))}
-              </div>
-            )}
+            </div>
           </div>
         </section>
 

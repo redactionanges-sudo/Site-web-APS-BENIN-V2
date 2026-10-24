@@ -7,48 +7,18 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialProjects } from '@/lib/initial-data';
 import { ProjectItem } from '@/types';
 import { Search, MapPin, Calendar, ArrowRight, Filter } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function ProjetsPage() {
   const { language, t } = useLanguage();
-  const [projects, setProjects] = useState<ProjectItem[]>(() => initialProjects);
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getProjects()
-      .then((res) => {
-        if (isMounted && Array.isArray(res) && res.length > 0) {
-          setProjects(res);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement projets Supabase, maintien des données initiales :', err);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getProjects()
-        .then((res) => {
-          if (isMounted && Array.isArray(res) && res.length > 0) {
-            setProjects(res);
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_projects_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_projects_changed', handleSync);
-    };
+    supabaseStore.getProjects().then(setProjects);
   }, []);
 
   const filteredProjects = projects.filter((p) => {

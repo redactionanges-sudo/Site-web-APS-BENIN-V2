@@ -6,8 +6,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem, ProjectStatus } from '@/types';
-import { ImagePickerField, MultiImageGalleryField } from '@/components/admin/MediaSelectorModal';
-import { MultiVideoPickerField } from '@/components/admin/VideoPickerField';
+import { ImagePickerField, MultiImageGalleryField, MultiVideoListField } from '@/components/admin/MediaSelectorModal';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
   Plus,
@@ -501,11 +500,12 @@ export default function AdminProjectsPage() {
                     mainImageUrl={form.main_image}
                   />
 
-                  <MultiVideoPickerField
-                    label="Vidéos et reportages du projet"
-                    description="Ajoutez des reportages vidéo (YouTube, Vimeo, ou vidéos de la Médiathèque) illustrant les actions de terrain de ce projet."
+                  <MultiVideoListField
+                    label="Vidéos et reportages associés au projet"
+                    description="Associez une ou plusieurs vidéos (YouTube, Vimeo, ou téléversées dans la Médiathèque Supabase) pour documenter ce projet."
                     videos={form.videos || []}
                     onChange={(videos) => setForm({ ...form, videos })}
+                    targetModule="projets"
                   />
                 </div>
 

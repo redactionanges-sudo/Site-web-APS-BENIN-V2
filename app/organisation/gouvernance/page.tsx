@@ -6,45 +6,15 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialGovernance } from '@/lib/initial-data';
 import { GovernanceMember } from '@/types';
 import { ShieldCheck, CheckCircle2, Users } from 'lucide-react';
 
 export default function GouvernancePage() {
   const { language } = useLanguage();
-  const [governance, setGovernance] = useState<GovernanceMember[]>(() => initialGovernance);
+  const [governance, setGovernance] = useState<GovernanceMember[]>([]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getGovernance()
-      .then((res) => {
-        if (isMounted && Array.isArray(res) && res.length > 0) {
-          setGovernance(res);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement gouvernance Supabase, maintien des données initiales :', err);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getGovernance()
-        .then((res) => {
-          if (isMounted && Array.isArray(res) && res.length > 0) {
-            setGovernance(res);
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_governance_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_governance_changed', handleSync);
-    };
+    supabaseStore.getGovernance().then(setGovernance);
   }, []);
 
   return (

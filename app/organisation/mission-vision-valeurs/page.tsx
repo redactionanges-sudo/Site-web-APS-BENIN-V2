@@ -9,14 +9,16 @@ import { useLanguage } from '@/lib/i18n';
 import { supabaseStore, resolveMediaUrl } from '@/lib/supabase';
 import { InstitutionalPage } from '@/types';
 import { RichTextContent } from '@/components/RichTextContent';
-import { OptimizedImage } from '@/components/OptimizedImage';
 import {
   defaultInstitutionalVision,
   defaultInstitutionalMission,
   defaultInstitutionalGoal,
   defaultInstitutionalObjectives,
   defaultInstitutionalValues,
+  initialInstitutionalPages,
+  DEFAULT_INSTITUTIONAL_HERO_IMAGE,
 } from '@/lib/initial-pages';
+import { OptimizedImage } from '@/components/OptimizedImage';
 import {
   Compass,
   Eye,
@@ -45,16 +47,14 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export default function MissionVisionValeursPage() {
   const { language } = useLanguage();
-  const [pageData, setPageData] = useState<InstitutionalPage | null>(null);
-  const [presentationHero, setPresentationHero] = useState<string>('');
+  const [pageData, setPageData] = useState<InstitutionalPage | null>(() => {
+    return initialInstitutionalPages.find((p) => p.slug === 'mission-vision-valeurs') || null;
+  });
 
   useEffect(() => {
-    supabaseStore.getInstitutionalPageBySlug('mission-vision-valeurs').then(setPageData);
-
-    // Fallback ambiance hero image from presentation page
-    supabaseStore.getInstitutionalPageBySlug('presentation').then((p) => {
-      if (p?.hero_image) setPresentationHero(p.hero_image);
-    }).catch(() => {});
+    supabaseStore.getInstitutionalPageBySlug('mission-vision-valeurs', true).then((res) => {
+      if (res) setPageData(res);
+    });
 
     const handlePageChanged = (e: any) => {
       if (e?.detail?.slug === 'mission-vision-valeurs') {
@@ -201,7 +201,11 @@ export default function MissionVisionValeursPage() {
           order_index: v.order_index,
         }));
 
-  const heroImage = resolveMediaUrl(pageData?.hero_image || presentationHero);
+  const heroImage = resolveMediaUrl(pageData?.hero_image) || DEFAULT_INSTITUTIONAL_HERO_IMAGE;
+  const heroAlt =
+    language === 'en'
+      ? pageData?.hero_image_alt_en || pageData?.hero_image_alt_fr || title
+      : pageData?.hero_image_alt_fr || pageData?.hero_image_alt_en || title;
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -222,28 +226,27 @@ export default function MissionVisionValeursPage() {
         {/* ============================================================== */}
         {/* EN-TÊTE / HERO BANNER                                         */}
         {/* ============================================================== */}
-        <section className="bg-gray-950 text-white py-16 sm:py-24 relative overflow-hidden">
+        <section className="bg-gray-950 text-white py-16 sm:py-20 relative overflow-hidden">
           {heroImage && (
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <OptimizedImage
                 src={heroImage}
-                alt={title}
+                alt={heroAlt}
                 fill
                 priority
-                className="object-cover opacity-50 transform scale-102 transition-transform duration-700"
+                className="object-cover opacity-45 transform scale-102 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-950/90 via-[#92278F]/40 to-gray-950/85" />
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-950/85 via-[#92278F]/45 to-gray-950/80" />
             </div>
           )}
           {!heroImage && (
-            <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-[#92278F]/40 to-gray-950" />
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-[#92278F]/45 to-gray-950" />
           )}
-
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8">
-            <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-xs mb-3">
+            <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3 py-1 rounded bg-white/10 border border-white/20 mb-3">
               {badge}
             </span>
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading leading-tight">
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading">
               {title}
             </h1>
             {quote && (
@@ -374,7 +377,7 @@ export default function MissionVisionValeursPage() {
         {/* ============================================================== */}
         {/* SECTION 4: NOS OBJECTIFS                                       */}
         {/* ============================================================== */}
-        <section id="objectifs" className="py-16 sm:py-20 bg-white border-b border-gray-100">
+        <section id="objectifs" className="py-16 sm:py-20 bg-gray-50 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
             <div className="text-center max-w-3xl mx-auto mb-14">
               <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 font-heading">

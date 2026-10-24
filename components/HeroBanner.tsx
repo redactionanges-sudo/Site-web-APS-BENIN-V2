@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { MediaItem, BannerAnnouncement } from '@/types';
-import { initialSiteSettings } from '@/lib/initial-data';
+import { initialSiteSettings, initialHeroSlides } from '@/lib/initial-data';
 import { CallHeadquartersCTA } from '@/components/CallHeadquartersCTA';
 import {
   ArrowRight,
@@ -25,10 +26,9 @@ import {
 export const HeroBanner: React.FC = () => {
   const { language, t } = useLanguage();
 
-  // 1. Initial State: Immédiatement initialisé avec les photos du hero (dont ART5181 en priorité 1) pour un LCP instantané dès le premier octet HTML
-  const [slides, setSlides] = useState<MediaItem[]>(() => supabaseStore.getCachedHeroPhotos());
+  // 1. Initial State: Initialized with verified hero slides for instant zero-discovery-delay SSR & LCP
+  const [slides, setSlides] = useState<MediaItem[]>(initialHeroSlides);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [hasMounted, setHasMounted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -43,7 +43,6 @@ export const HeroBanner: React.FC = () => {
 
   // Load latest hero photos and announcements from Supabase without blocking the initial paint
   useEffect(() => {
-    setHasMounted(true);
     let mounted = true;
 
     const loadFreshHeroPhotos = () => {
@@ -122,54 +121,54 @@ export const HeroBanner: React.FC = () => {
   const nextIndex = slides.length > 0 ? (currentIndex + 1) % slides.length : 0;
   const nextSlideData = slides.length > 1 ? slides[nextIndex] : null;
 
-  // Preload next slide in browser background safely once initial paint & LCP are settled
-  useEffect(() => {
-    if (typeof window === 'undefined' || !nextSlideData?.url || slides.length <= 1) return;
-    const timer = setTimeout(() => {
-      const img = new window.Image();
-      img.src = nextSlideData.url;
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [nextSlideData?.url, slides.length]);
-
-  // Filter active announcements deterministically
+  // Filter active announcements based on schedule dates
   const activeAnnouncements = useMemo(() => {
-    return announcements.filter((item) => item.is_published !== false);
-  }, [announcements]);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const filtered = announcements.filter((item) => {
+      if (item.is_published === false) return false;
+      if (item.start_date && todayStr < item.start_date) return false;
+      if (item.end_date && todayStr > item.end_date) return false;
+      return true;
+    });
+
+    return filtered.length > 0 ? filtered : initialAnnouncements;
+  }, [announcements, initialAnnouncements]);
 
   return (
     <section
-      suppressHydrationWarning
       className="relative overflow-hidden bg-gray-950 text-white min-h-[640px] lg:min-h-[720px] flex flex-col justify-between"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       aria-label="Bannière d'accueil APS-BÉNIN"
     >
       {/* Dynamic Background Image Slideshow with optimized lightweight gradients */}
-      <div className="absolute inset-0 z-0 overflow-hidden bg-gray-950" suppressHydrationWarning>
+      <div className="absolute inset-0 z-0 overflow-hidden bg-gray-950">
         {currentSlide?.url ? (
-          <div
-            key={currentSlide.id}
-            className="absolute inset-0 w-full h-full transition-opacity duration-500 ease-out"
-            suppressHydrationWarning
-          >
-            <Image
-              src={currentSlide.url}
-              alt={
-                language === 'en'
-                  ? currentSlide.alt_en || currentSlide.title_en || 'APS-BENIN actions'
-                  : currentSlide.alt_fr || currentSlide.title_fr || 'APS-BÉNIN actions sur le terrain'
-              }
-              fill
-              priority={currentIndex === 0}
-              loading={currentIndex === 0 ? undefined : 'lazy'}
-              fetchPriority={currentIndex === 0 ? 'high' : 'auto'}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1920px"
-              className="object-cover object-center filter brightness-[0.92] contrast-[1.03]"
-              referrerPolicy="no-referrer"
-              unoptimized={Boolean(currentSlide.url.startsWith('data:'))}
-            />
-          </div>
+          <AnimatePresence initial={false} mode="sync">
+            <motion.div
+              key={currentSlide.id}
+              initial={{ opacity: 0, scale: 1.04 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.9, ease: 'easeOut' }}
+              className="absolute inset-0 w-full h-full"
+            >
+              <Image
+                src={currentSlide.url}
+                alt={
+                  language === 'en'
+                    ? currentSlide.alt_en || currentSlide.title_en || 'APS-BENIN actions'
+                    : currentSlide.alt_fr || currentSlide.title_fr || 'APS-BÉNIN actions sur le terrain'
+                }
+                fill
+                priority={currentIndex === 0}
+                sizes="100vw"
+                className="object-cover object-center filter brightness-[0.92] contrast-[1.03]"
+                referrerPolicy="no-referrer"
+                unoptimized={Boolean(currentSlide.url.startsWith('data:'))}
+              />
+            </motion.div>
+          </AnimatePresence>
         ) : (
           /* Neutral branded gradient backdrop matching APS-BÉNIN corporate visual identity */
           <div className="absolute inset-0 bg-gradient-to-br from-[#2f0d2e] via-[#1a081a] to-gray-950">
@@ -178,6 +177,10 @@ export const HeroBanner: React.FC = () => {
           </div>
         )}
 
+        {/* Hidden link tag to preload ONLY the immediate next image */}
+        {nextSlideData?.url && (
+          <link rel="prefetch" href={nextSlideData.url} as="image" />
+        )}
 
         {/* Lighter, controlled gradient overlay:
             Photos remain clearly visible and vibrant while ensuring maximum text readability */}
@@ -190,7 +193,10 @@ export const HeroBanner: React.FC = () => {
       <div className="relative z-10 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12 flex-1 flex flex-col justify-center">
         <div className="max-w-3xl space-y-6">
           {/* Badge with pulse indicator */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
             className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-xs font-semibold text-orange-300 shadow-sm"
           >
             <span className="relative flex h-2.5 w-2.5">
@@ -198,36 +204,49 @@ export const HeroBanner: React.FC = () => {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF8C00]" />
             </span>
             <span>{t('hero.badge')} • Comè, Mono (Bénin)</span>
-          </div>
+          </motion.div>
 
           {/* Main Headline with subtle text-shadow for crisp legibility */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight font-heading drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
               AGISSONS POUR SAUVER
               <span className="block text-2xl sm:text-4xl lg:text-5xl font-extrabold text-[#FF8C00] mt-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
                 APS-BÉNIN
               </span>
             </h1>
-          </div>
+          </motion.div>
 
           {/* Slogan */}
-          <p
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg sm:text-2xl font-serif italic text-purple-100 border-l-4 border-[#FF8C00] pl-4 py-1.5 bg-black/35 backdrop-blur-xs rounded-r-lg max-w-2xl drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]"
           >
             « {language === 'en' ? 'For a more just and egalitarian world' : 'Pour un monde plus juste et égalitaire'} »
-          </p>
+          </motion.p>
 
           {/* Descriptive Excerpt */}
-          <p
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
             className="text-base sm:text-lg text-gray-100 leading-relaxed max-w-2xl font-normal drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)]"
           >
             {language === 'en'
               ? 'Founded in 2014, APS-BENIN takes tangible action across the Mono department to defend human rights, advance gender equality, safeguard sexual and reproductive health, and empower women and vulnerable youth.'
               : "Organisation citoyenne créée en 2014, APS-BÉNIN agit concrètement sur le terrain dans le département du Mono pour la défense des droits humains, l'égalité de genre, la santé sexuelle et reproductive et l'autonomie des femmes et des jeunes vulnérables."}
-          </p>
+          </motion.p>
 
           {/* Action CTA Buttons */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
             className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4"
           >
             {/* Primary CTA: Découvrir */}
@@ -259,7 +278,7 @@ export const HeroBanner: React.FC = () => {
 
             {/* Direct Line Headquarters CTA */}
             <CallHeadquartersCTA variant="hero" />
-          </div>
+          </motion.div>
         </div>
 
         {/* Carousel Navigation Controls & Photo Caption Info */}
@@ -278,7 +297,7 @@ export const HeroBanner: React.FC = () => {
                     <ChevronLeft className="w-4 h-4" />
                   </button>
 
-                  <div className="flex items-center gap-1.5 px-2" suppressHydrationWarning>
+                  <div className="flex items-center gap-1.5 px-2">
                     {slides.map((slide, idx) => (
                       <button
                         key={slide.id}
@@ -304,7 +323,7 @@ export const HeroBanner: React.FC = () => {
                   </button>
                 </div>
 
-                <span className="text-xs text-gray-200 hidden sm:inline-flex items-center gap-1.5" suppressHydrationWarning>
+                <span className="text-xs text-gray-200 hidden sm:inline-flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-[#FF8C00]" />
                   {`${currentIndex + 1} / ${slides.length}`}
                 </span>

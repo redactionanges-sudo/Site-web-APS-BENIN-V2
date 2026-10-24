@@ -155,12 +155,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link href="/mediatheque/photos" className="hover:text-[#FF8C00] transition-colors">
-                  {t('nav.mediatheque')} (Photos)
-                </Link>
-              </li>
-              <li>
-                <Link href="/mediatheque/videos" className="hover:text-[#FF8C00] transition-colors">
-                  {language === 'en' ? 'Videos & Reports' : 'Vidéos & Reportages'}
+                  {t('nav.mediatheque')}
                 </Link>
               </li>
               <li>
@@ -288,7 +283,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <p suppressHydrationWarning>
+          <p>
             © {currentYear} {orgName || 'AGISSONS POUR SAUVER (APS-BÉNIN)'}. {t('footer.rights')}
           </p>
 

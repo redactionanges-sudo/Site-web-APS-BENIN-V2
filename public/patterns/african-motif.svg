@@ -3,22 +3,22 @@
     <style>
       .stroke-primary {
         stroke: #92278F;
-        stroke-width: 1.1;
+        stroke-width: 1.85;
         stroke-linecap: round;
         stroke-linejoin: round;
         fill: none;
       }
       .stroke-secondary {
         stroke: #92278F;
-        stroke-width: 0.85;
+        stroke-width: 1.4;
         stroke-linecap: round;
         stroke-linejoin: round;
         fill: none;
       }
       .stroke-dashed {
         stroke: #92278F;
-        stroke-width: 0.75;
-        stroke-dasharray: 3 3.5;
+        stroke-width: 1.25;
+        stroke-dasharray: 3.5 4;
         stroke-linecap: round;
         stroke-linejoin: round;
         fill: none;

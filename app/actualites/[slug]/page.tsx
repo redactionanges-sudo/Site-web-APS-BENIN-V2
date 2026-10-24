@@ -8,11 +8,11 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialNews } from '@/lib/initial-data';
 import { NewsItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { getVideoEmbedUrl, parseVideoUrl } from '@/lib/video-utils';
 import { RichTextContent } from '@/components/RichTextContent';
+import { VideoPlayer } from '@/components/VideoPlayer';
 import {
   ArrowLeft,
   Calendar,
@@ -32,35 +32,21 @@ interface PageProps {
 export default function NewsDetailPage({ params }: PageProps) {
   const { slug } = use(params);
   const { language, t } = useLanguage();
-  const fallback = initialNews.find((n) => n.slug === slug) || null;
-  const [article, setArticle] = useState<NewsItem | null>(() => fallback);
-  const [loading, setLoading] = useState(() => !fallback);
+  const [article, setArticle] = useState<NewsItem | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getNewsBySlug(slug)
-      .then((res) => {
-        if (isMounted) {
-          if (res) {
-            setArticle(res);
-            trackEvent('view_news', {
-              target_id: res.id,
-              target_title: res.title_fr,
-              path: `/actualites/${slug}`,
-            });
-          }
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement actualité Supabase :', err);
-        if (isMounted) setLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    supabaseStore.getNewsBySlug(slug).then((res) => {
+      setArticle(res);
+      setLoading(false);
+      if (res) {
+        trackEvent('view_news', {
+          target_id: res.id,
+          target_title: res.title_fr,
+          path: `/actualites/${slug}`,
+        });
+      }
+    });
   }, [slug]);
 
   if (loading) {
@@ -154,13 +140,13 @@ export default function NewsDetailPage({ params }: PageProps) {
           <div className="max-w-4xl mx-auto px-4 sm:px-8 space-y-8">
             {/* Featured Image - Only rendered if an authentic image is published */}
             {article.main_image && (
-              <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm h-64 sm:h-96 md:h-[460px] w-full bg-gray-100">
+              <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm aspect-video sm:aspect-[21/9] max-h-[460px] bg-gray-100">
                 <OptimizedImage
                   src={article.main_image}
                   alt={language === 'en' ? article.title_en : article.title_fr}
                   fill
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 896px"
+                  priority={true}
+                  sizes="(max-width: 896px) 100vw, 896px"
                   className="object-cover"
                 />
               </div>
@@ -179,36 +165,18 @@ export default function NewsDetailPage({ params }: PageProps) {
               />
             </div>
 
-            {/* Video embed only if a valid, supported video URL is provided */}
-            {article.video_url && parseVideoUrl(article.video_url).platform !== 'unknown' && (
+            {/* Video embed only if a valid video URL is provided */}
+            {article.video_url && (
               <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
                 <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
                   <Play className="w-4 h-4 text-[#92278F]" />
                   <span>{language === 'en' ? 'Associated Video' : 'Vidéo associée'}</span>
                 </h3>
-                <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-xs">
-                  {(() => {
-                    const info = parseVideoUrl(article.video_url);
-                    if (info.platform === 'storage' || info.platform === 'direct') {
-                      return (
-                        <video
-                          src={info.embedUrl || article.video_url}
-                          controls
-                          className="w-full h-full object-contain"
-                        />
-                      );
-                    }
-                    return (
-                      <iframe
-                        src={getVideoEmbedUrl(article.video_url)!}
-                        title={language === 'en' ? `${article.title_en || article.title_fr} - Video` : `${article.title_fr} - Vidéo`}
-                        className="w-full h-full border-0"
-                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    );
-                  })()}
-                </div>
+                <VideoPlayer
+                  url={article.video_url}
+                  title={language === 'en' ? `${article.title_en || article.title_fr} - Video` : `${article.title_fr} - Vidéo`}
+                  poster={article.main_image}
+                />
               </div>
             )}
 

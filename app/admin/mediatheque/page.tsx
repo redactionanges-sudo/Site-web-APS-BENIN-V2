@@ -31,7 +31,6 @@ import {
   Eye,
   EyeOff,
   RotateCcw,
-  FolderOpen,
 } from 'lucide-react';
 import {
   parseVideoUrl,
@@ -48,7 +47,7 @@ import {
 import { MediaTargetModule } from '@/types';
 
 export default function AdminMediathequePage() {
-  const [activeTab, setActiveTab] = useState<'photos' | 'videos' | 'albums'>('photos');
+  const [activeTab, setActiveTab] = useState<'all' | 'photos' | 'videos' | 'albums'>('all');
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [albums, setAlbums] = useState<PhotoAlbum[]>([]);
   const [projects, setProjects] = useState<ProjectItem[]>([]);
@@ -75,10 +74,6 @@ export default function AdminMediathequePage() {
   const [albumModalOpen, setAlbumModalOpen] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<PhotoAlbum | null>(null);
 
-  // Album Explorer state
-  const [exploringAlbum, setExploringAlbum] = useState<PhotoAlbum | null>(null);
-  const [albumMediaFilter, setAlbumMediaFilter] = useState<'all' | 'photo' | 'video'>('all');
-
   // Delete modal state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string; title: string; type: 'media' | 'album' } | null>(null);
@@ -103,6 +98,7 @@ export default function AdminMediathequePage() {
     show_in_hero: false,
     hero_order: 1,
     is_active: true,
+    show_in_public_gallery: true,
   });
 
   // Album Form state
@@ -132,7 +128,7 @@ export default function AdminMediathequePage() {
     loadData();
   }, []);
 
-  const openNewMediaModal = (type: 'photo' | 'video' = 'photo', defaultAlbumId?: string) => {
+  const openNewMediaModal = (type: 'photo' | 'video' = 'photo') => {
     setEditingMedia(null);
     setVideoSourceMode('youtube');
     setCustomThumbnailMode(false);
@@ -142,7 +138,7 @@ export default function AdminMediathequePage() {
       type,
       url: '',
       thumbnail_url: '',
-      album_id: defaultAlbumId !== undefined ? defaultAlbumId : (albums[0]?.id || ''),
+      album_id: albums[0]?.id || '',
       project_id: projects[0]?.id || '',
       category: type === 'video' ? 'Reportages & Vidéos' : 'Activités de terrain',
       date: new Date().toISOString().split('T')[0],
@@ -155,6 +151,7 @@ export default function AdminMediathequePage() {
       show_in_hero: false,
       hero_order: mediaList.filter(m => m.show_in_hero).length + 1,
       is_active: true,
+      show_in_public_gallery: true,
     });
     setMediaModalOpen(true);
   };
@@ -182,6 +179,7 @@ export default function AdminMediathequePage() {
       show_in_hero: !!item.show_in_hero,
       hero_order: item.hero_order || 1,
       is_active: item.is_active !== false,
+      show_in_public_gallery: item.show_in_public_gallery !== false,
     });
     setMediaModalOpen(true);
   };
@@ -246,35 +244,6 @@ export default function AdminMediathequePage() {
     };
     await supabaseStore.saveMedia(updated);
     setMediaList((prev) => prev.map((m) => (m.id === item.id ? updated : m)));
-  };
-
-  const handleSetAlbumCover = async (album: PhotoAlbum, coverUrl: string) => {
-    try {
-      const updatedAlbum: PhotoAlbum = {
-        ...album,
-        cover_image: coverUrl,
-      };
-      await supabaseStore.saveAlbum(updatedAlbum);
-      setAlbums((prev) => prev.map((a) => (a.id === album.id ? updatedAlbum : a)));
-      if (exploringAlbum?.id === album.id) {
-        setExploringAlbum(updatedAlbum);
-      }
-    } catch (err: any) {
-      alert(`Erreur mise à jour couverture : ${err.message || 'Impossible de mettre à jour la couverture'}`);
-    }
-  };
-
-  const handleDetachFromAlbum = async (mediaItem: MediaItem) => {
-    try {
-      const updated: MediaItem = {
-        ...mediaItem,
-        album_id: '',
-      };
-      await supabaseStore.saveMedia(updated);
-      setMediaList((prev) => prev.map((m) => (m.id === mediaItem.id ? updated : m)));
-    } catch (err: any) {
-      alert(`Erreur détachement média : ${err.message || 'Impossible de détacher le média'}`);
-    }
   };
 
   const openNewAlbumModal = () => {
@@ -405,6 +374,7 @@ export default function AdminMediathequePage() {
       show_in_hero: !!mediaForm.show_in_hero,
       hero_order: Number(mediaForm.hero_order) || 1,
       is_active: mediaForm.is_active !== false,
+      show_in_public_gallery: mediaForm.show_in_public_gallery !== false,
     };
 
     try {
@@ -464,7 +434,12 @@ export default function AdminMediathequePage() {
 
   const filteredMedia = mediaList
     .filter((m) => {
-      const matchesTab = activeTab === 'photos' ? m.type === 'photo' : m.type === 'video';
+      const matchesTab =
+        activeTab === 'all'
+          ? true
+          : activeTab === 'photos'
+          ? m.type === 'photo'
+          : m.type === 'video';
       const matchesAlbum = selectedAlbumFilter === 'all' || m.album_id === selectedAlbumFilter;
       const matchesHero = !heroFilterOnly || (m.type === 'photo' && m.show_in_hero);
       const q = search.toLowerCase();
@@ -520,11 +495,30 @@ export default function AdminMediathequePage() {
       <main className="p-6 space-y-6 max-w-7xl">
         {/* Navigation Tabs */}
         <div className="bg-white p-3 rounded-2xl border border-gray-200 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setActiveTab('photos')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              onClick={() => {
+                setActiveTab('all');
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors ${
+                activeTab === 'all'
+                  ? 'bg-[#92278F] text-white shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-[#FF8C00]" />
+              <span>Tous les médias ({mediaList.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('photos');
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors ${
                 activeTab === 'photos'
                   ? 'bg-[#92278F] text-white shadow-xs'
                   : 'text-gray-600 hover:bg-gray-100'
@@ -536,8 +530,11 @@ export default function AdminMediathequePage() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('videos')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              onClick={() => {
+                setActiveTab('videos');
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors ${
                 activeTab === 'videos'
                   ? 'bg-[#92278F] text-white shadow-xs'
                   : 'text-gray-600 hover:bg-gray-100'
@@ -549,8 +546,11 @@ export default function AdminMediathequePage() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('albums')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
+              onClick={() => {
+                setActiveTab('albums');
+                setCurrentPage(1);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors ${
                 activeTab === 'albums'
                   ? 'bg-[#92278F] text-white shadow-xs'
                   : 'text-gray-600 hover:bg-gray-100'
@@ -584,9 +584,7 @@ export default function AdminMediathequePage() {
                 onChange={(e) => setSelectedAlbumFilter(e.target.value)}
                 className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs bg-white text-gray-800"
               >
-                <option value="all">
-                  {activeTab === 'videos' ? 'Toutes les activités' : 'Tous les albums'}
-                </option>
+                <option value="all">Tous les albums</option>
                 {albums.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.title_fr}
@@ -607,6 +605,28 @@ export default function AdminMediathequePage() {
             </div>
           )}
         </div>
+
+        {/* Active album banner when filtered */}
+        {activeTab !== 'albums' && selectedAlbumFilter !== 'all' && (
+          <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between gap-3 text-xs animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Folder className="w-4 h-4 text-[#92278F] shrink-0" />
+              <span className="font-bold text-gray-900">
+                Album : {albums.find(a => a.id === selectedAlbumFilter)?.title_fr || selectedAlbumFilter}
+              </span>
+              <span className="text-[11px] text-purple-700 bg-white px-2 py-0.5 rounded-full border border-purple-100">
+                {filteredMedia.length} {filteredMedia.length > 1 ? 'médias associés' : 'média associé'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedAlbumFilter('all')}
+              className="text-[#92278F] hover:text-[#741772] hover:underline font-bold text-xs shrink-0"
+            >
+              Afficher tous les albums
+            </button>
+          </div>
+        )}
 
         {/* Tab 1 & 2: Media Grid (Photos / Videos) */}
         {activeTab !== 'albums' && (
@@ -862,82 +882,71 @@ export default function AdminMediathequePage() {
         {activeTab === 'albums' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {albums.map((alb) => {
-              const albumPhotos = mediaList.filter((m) => m.album_id === alb.id && m.type === 'photo');
-              const albumVideos = mediaList.filter((m) => m.album_id === alb.id && m.type === 'video');
-              const totalAlbumMedia = albumPhotos.length + albumVideos.length;
+              const photoCount = mediaList.filter((m) => m.album_id === alb.id && m.type === 'photo').length;
+              const videoCount = mediaList.filter((m) => m.album_id === alb.id && m.type === 'video').length;
+              const totalCount = photoCount + videoCount;
 
               return (
                 <div
                   key={alb.id}
-                  className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-xs flex flex-col justify-between hover:border-[#92278F] transition-all group"
+                  className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-xs flex flex-col justify-between hover:border-[#92278F] transition-all"
                 >
                   <div>
-                    <div
-                      className="relative h-44 w-full bg-gray-900 cursor-pointer overflow-hidden"
-                      onClick={() => {
-                        setExploringAlbum(alb);
-                        setAlbumMediaFilter('all');
-                      }}
-                    >
+                    <div className="relative h-44 w-full bg-gray-100">
                       <img
                         src={alb.cover_image}
                         alt={alb.title_fr}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-3">
-                        <span className="text-white text-xs font-bold flex items-center gap-1.5 drop-shadow-sm">
-                          <FolderOpen className="w-4 h-4 text-[#FF8C00]" />
-                          Ouvrir l’album
+                      <div className="absolute top-2 right-2">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/75 text-white backdrop-blur-xs shadow-xs">
+                          {totalCount} {totalCount > 1 ? 'médias' : 'média'}
                         </span>
                       </div>
                     </div>
                     <div className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-[#FF8C00] uppercase tracking-wider px-2 py-0.5 rounded bg-orange-50 border border-orange-100">
-                          Album Multimédia
-                        </span>
-                        <span className="text-gray-400 font-mono text-[11px]">{alb.date}</span>
-                      </div>
-
+                      <span className="text-[10px] font-bold text-[#FF8C00] uppercase tracking-wider block">
+                        Album Multimédia
+                      </span>
                       <h3 className="font-bold text-sm text-gray-900 font-heading">
                         {alb.title_fr}
                       </h3>
-                      <p className="text-xs text-gray-600 line-clamp-2">
-                        {alb.description_fr}
-                      </p>
+                      {alb.description_fr && (
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          {alb.description_fr}
+                        </p>
+                      )}
 
                       {/* Photo and Video counts */}
-                      <div className="flex items-center gap-3 pt-2 text-xs font-semibold border-t border-gray-100">
-                        <span className="inline-flex items-center gap-1 text-gray-700">
+                      <div className="flex items-center gap-2 pt-1 text-xs">
+                        <span className="inline-flex items-center gap-1.5 text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 font-bold text-[11px]">
                           <ImageIcon className="w-3.5 h-3.5 text-[#92278F]" />
-                          {albumPhotos.length} photo{albumPhotos.length > 1 ? 's' : ''}
+                          <span>{photoCount} {photoCount > 1 ? 'photos' : 'photo'}</span>
                         </span>
-                        <span className="text-gray-300">•</span>
-                        <span className="inline-flex items-center gap-1 text-gray-700">
-                          <Play className="w-3.5 h-3.5 text-[#FF8C00]" />
-                          {albumVideos.length} vidéo{albumVideos.length > 1 ? 's' : ''}
+                        <span className="inline-flex items-center gap-1.5 text-orange-700 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100 font-bold text-[11px]">
+                          <Film className="w-3.5 h-3.5 text-[#FF8C00]" />
+                          <span>{videoCount} {videoCount > 1 ? 'vidéos' : 'vidéo'}</span>
                         </span>
                       </div>
 
-                      {/* Explorer button */}
+                      {/* Action button to explore all media in this album */}
                       <button
                         type="button"
                         onClick={() => {
-                          setExploringAlbum(alb);
-                          setAlbumMediaFilter('all');
+                          setSelectedAlbumFilter(alb.id);
+                          setActiveTab('all');
+                          setCurrentPage(1);
                         }}
-                        className="w-full mt-2 py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#92278F] text-xs font-bold transition-colors flex items-center justify-center gap-2 border border-purple-200"
+                        className="w-full mt-2 py-2 px-3 rounded-lg bg-gray-50 hover:bg-[#92278F] text-gray-700 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 border border-gray-200 transition-colors"
                       >
-                        <FolderOpen className="w-4 h-4" />
-                        <span>Explorer les médias ({totalAlbumMedia})</span>
+                        <Folder className="w-3.5 h-3.5" />
+                        <span>Consulter les photos & vidéos ({totalCount})</span>
                       </button>
                     </div>
                   </div>
 
                   <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
-                    <span className="text-gray-500 font-medium text-[11px]">
-                      {totalAlbumMedia} élément{totalAlbumMedia > 1 ? 's' : ''} au total
-                    </span>
+                    <span className="text-gray-400 font-mono text-[11px]">{alb.date}</span>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -962,290 +971,6 @@ export default function AdminMediathequePage() {
                 </div>
               );
             })}
-          </div>
-        )}
-
-        {/* Modal: Album Media Explorer */}
-        {exploringAlbum && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-              {/* Header */}
-              <div className="p-5 sm:p-6 bg-gray-950 text-white rounded-t-2xl flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-800 border border-gray-700 shrink-0">
-                    <img
-                      src={exploringAlbum.cover_image}
-                      alt={exploringAlbum.title_fr}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-bold text-[#FF8C00] uppercase tracking-wider px-2 py-0.5 rounded bg-white/10">
-                        Album Multimédia
-                      </span>
-                      <span className="text-xs text-gray-400">{exploringAlbum.date}</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-white font-heading mt-1">
-                      {exploringAlbum.title_fr}
-                    </h3>
-                    <p className="text-xs text-gray-300 max-w-xl line-clamp-1 mt-0.5">
-                      {exploringAlbum.description_fr}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setExploringAlbum(null)}
-                  className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Sub-bar: Filter Tabs & Add Buttons */}
-              {(() => {
-                const albumAll = mediaList.filter((m) => m.album_id === exploringAlbum.id);
-                const albumPhotos = albumAll.filter((m) => m.type === 'photo');
-                const albumVideos = albumAll.filter((m) => m.type === 'video');
-
-                const displayedMedia = albumMediaFilter === 'all'
-                  ? albumAll
-                  : albumMediaFilter === 'photo'
-                  ? albumPhotos
-                  : albumVideos;
-
-                return (
-                  <>
-                    <div className="p-4 sm:px-6 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-gray-200">
-                        <button
-                          type="button"
-                          onClick={() => setAlbumMediaFilter('all')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            albumMediaFilter === 'all'
-                              ? 'bg-[#92278F] text-white shadow-xs'
-                              : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                        >
-                          Tous ({albumAll.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAlbumMediaFilter('photo')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                            albumMediaFilter === 'photo'
-                              ? 'bg-[#92278F] text-white shadow-xs'
-                              : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                        >
-                          <ImageIcon className="w-3.5 h-3.5" />
-                          <span>Photos ({albumPhotos.length})</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAlbumMediaFilter('video')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                            albumMediaFilter === 'video'
-                              ? 'bg-[#92278F] text-white shadow-xs'
-                              : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                        >
-                          <Play className="w-3.5 h-3.5 text-[#FF8C00]" />
-                          <span>Vidéos ({albumVideos.length})</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openNewMediaModal('photo', exploringAlbum.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-purple-50 hover:text-[#92278F] text-gray-700 text-xs font-bold transition-colors shadow-2xs"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-[#92278F]" />
-                          <span>+ Ajouter Photo</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openNewMediaModal('video', exploringAlbum.id)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-colors shadow-xs"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-[#FF8C00]" />
-                          <span>+ Ajouter Vidéo</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Media Grid inside Album */}
-                    <div className="p-6 overflow-y-auto min-h-[300px]">
-                      {displayedMedia.length === 0 ? (
-                        <div className="py-16 text-center border-2 border-dashed border-gray-200 rounded-2xl p-6 bg-gray-50/50">
-                          <FolderOpen className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                          <h4 className="text-sm font-bold text-gray-700">
-                            Aucun média {albumMediaFilter === 'video' ? 'vidéo' : albumMediaFilter === 'photo' ? 'photo' : ''} dans cet album
-                          </h4>
-                          <p className="text-xs text-gray-500 mt-1 mb-4">
-                            Utilisez les boutons ci-dessus pour associer des photos ou vidéos à cet album.
-                          </p>
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openNewMediaModal('photo', exploringAlbum.id)}
-                              className="px-3.5 py-2 rounded-lg bg-purple-50 text-[#92278F] text-xs font-bold border border-purple-200 hover:bg-purple-100"
-                            >
-                              Ajouter une photo
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openNewMediaModal('video', exploringAlbum.id)}
-                              className="px-3.5 py-2 rounded-lg bg-[#92278F] text-white text-xs font-bold hover:bg-[#741772]"
-                            >
-                              Ajouter une vidéo
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          {displayedMedia.map((item) => {
-                            const isVid = item.type === 'video';
-                            const thumb = isVid
-                              ? getVideoThumbnail(item.url, item.thumbnail_url)
-                              : item.url;
-                            const platform = isVid
-                              ? getVideoPlatformLabel(item.video_platform || parseVideoUrl(item.url).platform)
-                              : null;
-
-                            return (
-                              <div
-                                key={item.id}
-                                className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between group"
-                              >
-                                <div>
-                                  <div
-                                    className="relative aspect-video bg-gray-900 overflow-hidden cursor-pointer"
-                                    onClick={() => {
-                                      if (isVid) {
-                                        setAdminPreviewVideo(item);
-                                      }
-                                    }}
-                                  >
-                                    <img
-                                      src={thumb}
-                                      alt={item.title_fr}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                      onError={(e) => {
-                                        (e.currentTarget as HTMLImageElement).src = DEFAULT_VIDEO_FALLBACK_POSTER;
-                                      }}
-                                    />
-
-                                    {/* Video overlay and play badge */}
-                                    {isVid && (
-                                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex items-center justify-center transition-colors">
-                                        <div className="w-10 h-10 rounded-full bg-[#92278F] group-hover:bg-[#FF8C00] text-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-                                          <Play className="w-4 h-4 fill-current ml-0.5" />
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Type badge */}
-                                    <div className="absolute top-2 left-2 flex items-center gap-1.5 flex-wrap">
-                                      <span
-                                        className={`px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-xs ${
-                                          isVid ? 'bg-purple-700' : 'bg-emerald-600'
-                                        }`}
-                                      >
-                                        {isVid ? 'VIDÉO' : 'PHOTO'}
-                                      </span>
-                                      {platform && (
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold shadow-xs ${platform.color}`}>
-                                          {platform.label}
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {/* Is album cover badge */}
-                                    {exploringAlbum.cover_image === item.url && (
-                                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-[#FF8C00] text-white shadow-xs">
-                                        Couverture de l’album
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="p-3 space-y-1">
-                                    <h4 className="text-xs font-bold text-gray-900 truncate">
-                                      {item.title_fr}
-                                    </h4>
-                                    <div className="flex items-center justify-between text-[11px] text-gray-500">
-                                      <span>{item.category}</span>
-                                      <span>{item.date}</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="p-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSetAlbumCover(exploringAlbum, isVid && item.thumbnail_url ? item.thumbnail_url : item.url)}
-                                    className="text-[11px] text-gray-500 hover:text-[#92278F] font-semibold"
-                                    title="Définir comme photo de couverture de cet album"
-                                  >
-                                    Définir couverture
-                                  </button>
-
-                                  <div className="flex items-center gap-1">
-                                    {isVid && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setAdminPreviewVideo(item)}
-                                        className="p-1 rounded text-purple-700 hover:bg-purple-100"
-                                        title="Lire la vidéo"
-                                      >
-                                        <Play className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => openEditMediaModal(item)}
-                                      className="p-1 rounded text-gray-600 hover:bg-gray-200"
-                                      title="Modifier"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDetachFromAlbum(item)}
-                                      className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                      title="Détacher de cet album"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        Total : {albumPhotos.length} photos • {albumVideos.length} vidéos
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setExploringAlbum(null)}
-                        className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold"
-                      >
-                        Fermer l’explorateur
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
           </div>
         )}
 
@@ -1785,6 +1510,25 @@ export default function AdminMediathequePage() {
                     </label>
                     <span className="text-[11px] text-gray-500">
                       {mediaForm.is_active !== false ? 'Actif' : 'Masqué'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-purple-100">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={mediaForm.show_in_public_gallery !== false}
+                        onChange={(e) =>
+                          setMediaForm({ ...mediaForm, show_in_public_gallery: e.target.checked })
+                        }
+                        className="w-4 h-4 text-[#92278F] rounded border-gray-300 focus:ring-[#92278F]"
+                      />
+                      <span className="text-xs font-semibold text-gray-800">
+                        Visible dans la Médiathèque publique (Accessible à tous les visiteurs)
+                      </span>
+                    </label>
+                    <span className="text-[11px] text-gray-500">
+                      {mediaForm.show_in_public_gallery !== false ? 'Public' : 'Réservé'}
                     </span>
                   </div>
                 </div>

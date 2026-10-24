@@ -6,85 +6,34 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore, resolveMediaUrl } from '@/lib/supabase';
-import { initialHistory } from '@/lib/initial-data';
-import { initialInstitutionalPages } from '@/lib/initial-pages';
 import { HistoryMilestone, InstitutionalPage } from '@/types';
 import { RichTextContent } from '@/components/RichTextContent';
 import { Calendar, CheckCircle2, Award, Clock, EyeOff } from 'lucide-react';
+import { initialInstitutionalPages, DEFAULT_INSTITUTIONAL_HERO_IMAGE } from '@/lib/initial-pages';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export default function HistoirePage() {
   const { language } = useLanguage();
-  const fallbackPage = initialInstitutionalPages.find((p) => p.slug === 'histoire') || null;
-  const [milestones, setMilestones] = useState<HistoryMilestone[]>(() => initialHistory);
-  const [pageData, setPageData] = useState<InstitutionalPage | null>(() => fallbackPage);
-  const [presentationHero, setPresentationHero] = useState<string>('');
+  const [milestones, setMilestones] = useState<HistoryMilestone[]>([]);
+  const [pageData, setPageData] = useState<InstitutionalPage | null>(() => {
+    return initialInstitutionalPages.find((p) => p.slug === 'histoire') || null;
+  });
 
   useEffect(() => {
-    let isMounted = true;
-
-    // Load presentation page hero as ambiance fallback if histoire has none configured
-    supabaseStore.getInstitutionalPageBySlug('presentation').then((p) => {
-      if (isMounted && p?.hero_image) {
-        setPresentationHero(p.hero_image);
-      }
-    }).catch(() => {});
-
-    supabaseStore.getHistory()
-      .then((res) => {
-        if (isMounted && Array.isArray(res) && res.length > 0) {
-          setMilestones(res);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement histoire Supabase, maintien des données initiales :', err);
-      });
-
-    supabaseStore.getInstitutionalPageBySlug('histoire')
-      .then((data) => {
-        if (isMounted && data) {
-          setPageData(data);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement page histoire Supabase :', err);
-      });
+    supabaseStore.getHistory().then(setMilestones);
+    supabaseStore.getInstitutionalPageBySlug('histoire', true).then((res) => {
+      if (res) setPageData(res);
+    });
 
     const handlePageChanged = (e: any) => {
-      if (e?.detail?.slug === 'histoire' && isMounted) {
+      if (e?.detail?.slug === 'histoire') {
         setPageData(e.detail);
       }
     };
-
-    const handleStorage = (e: StorageEvent) => {
-      if ((e.key === 'aps_benin_institutional_pages' || e.key === 'aps_page_last_updated') && isMounted) {
-        supabaseStore.getInstitutionalPageBySlug('histoire')
-          .then((d) => {
-            if (d && isMounted) setPageData(d);
-          })
-          .catch(() => {});
-      }
-    };
-
-    const handleMilestonesChanged = () => {
-      supabaseStore.getHistory()
-        .then((res) => {
-          if (isMounted && Array.isArray(res) && res.length > 0) {
-            setMilestones(res);
-          }
-        })
-        .catch(() => {});
-    };
-
     window.addEventListener('aps_page_changed', handlePageChanged);
-    window.addEventListener('aps_history_changed', handleMilestonesChanged);
-    window.addEventListener('storage', handleStorage);
 
     return () => {
-      isMounted = false;
       window.removeEventListener('aps_page_changed', handlePageChanged);
-      window.removeEventListener('aps_history_changed', handleMilestonesChanged);
-      window.removeEventListener('storage', handleStorage);
     };
   }, []);
 
@@ -112,7 +61,11 @@ export default function HistoirePage() {
     ? 'From grassroots citizen mobilization in 2014 to a recognized institution for human rights and equality in Benin.'
     : "D'une mobilisation citoyenne spontanée en 2014 à une institution reconnue pour les droits humains et l'égalité au Bénin.";
 
-  const heroImage = resolveMediaUrl(pageData?.hero_image || presentationHero);
+  const heroImage = resolveMediaUrl(pageData?.hero_image) || DEFAULT_INSTITUTIONAL_HERO_IMAGE;
+  const heroAlt =
+    language === 'en'
+      ? pageData?.hero_image_alt_en || pageData?.hero_image_alt_fr || title
+      : pageData?.hero_image_alt_fr || pageData?.hero_image_alt_en || title;
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -130,39 +83,38 @@ export default function HistoirePage() {
       )}
 
       <main className="flex-1">
-        {/* Header / Hero */}
-        <section className="bg-gray-950 text-white py-16 sm:py-24 relative overflow-hidden">
+        {/* Header */}
+        <section className="bg-gray-950 text-white py-16 sm:py-20 relative overflow-hidden">
           {heroImage && (
             <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
               <OptimizedImage
                 src={heroImage}
-                alt={title}
+                alt={heroAlt}
                 fill
                 priority
-                className="object-cover opacity-50 transform scale-102 transition-transform duration-700"
+                className="object-cover opacity-45 transform scale-102 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-gray-950/90 via-[#92278F]/40 to-gray-950/85" />
+              <div className="absolute inset-0 bg-gradient-to-r from-gray-950/85 via-[#92278F]/45 to-gray-950/80" />
             </div>
           )}
           {!heroImage && (
-            <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-[#92278F]/40 to-gray-950" />
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-[#92278F]/45 to-gray-950" />
           )}
-
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8">
-            <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 backdrop-blur-xs mb-3">
+            <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#FF8C00] px-3 py-1 rounded bg-white/10 border border-white/20 mb-3">
               {badge}
             </span>
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading leading-tight">
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight font-heading">
               {title}
             </h1>
-            <p className="text-base sm:text-lg text-purple-100 max-w-2xl mt-3 leading-relaxed font-sans">
+            <p className="text-base sm:text-lg text-purple-100 max-w-2xl mt-3 leading-relaxed">
               {subtitle}
             </p>
           </div>
         </section>
 
         {/* Timeline */}
-        <section className="py-20 bg-white border-b border-gray-100">
+        <section className="py-20 bg-gray-50">
           <div className="max-w-5xl mx-auto px-4 sm:px-8">
             {milestones.length === 0 ? (
               <div className="text-center py-12 text-sm text-gray-500 bg-white rounded-2xl border border-gray-200 p-8">

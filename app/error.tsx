@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
 
-export default function ErrorBoundary({
+export default function GlobalError({
   error,
   reset,
 }: {

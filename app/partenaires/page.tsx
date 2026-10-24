@@ -6,48 +6,18 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialPartners } from '@/lib/initial-data';
 import { PartnerItem } from '@/types';
 import { ExternalLink, Handshake, ShieldCheck, Building2 } from 'lucide-react';
 
 export default function PartenairesPage() {
   const { language, t } = useLanguage();
-  const [partners, setPartners] = useState<PartnerItem[]>(() =>
-    initialPartners.filter((p) => p.is_active)
-  );
+  const [partners, setPartners] = useState<PartnerItem[]>([]);
   const [selectedCat, setSelectedCat] = useState('all');
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getPartners()
-      .then((res) => {
-        if (isMounted && Array.isArray(res) && res.length > 0) {
-          setPartners(res.filter((p) => p.is_active));
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement partenaires Supabase, maintien des données initiales :', err);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getPartners()
-        .then((res) => {
-          if (isMounted && Array.isArray(res) && res.length > 0) {
-            setPartners(res.filter((p) => p.is_active));
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_partners_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_partners_changed', handleSync);
-    };
+    supabaseStore.getPartners().then((res) => {
+      setPartners(res.filter((p) => p.is_active));
+    });
   }, []);
 
   const filtered = selectedCat === 'all'
@@ -158,10 +128,12 @@ export default function PartenairesPage() {
                           <img
                             src={item.logo}
                             alt={`Logo ${item.name}`}
-                            width={64}
-                            height={48}
+                            width={80}
+                            height={64}
                             className="max-w-full max-h-full object-contain"
                             loading="lazy"
+                            decoding="async"
+                            referrerPolicy="no-referrer"
                           />
                         </div>
                       ) : (

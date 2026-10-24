@@ -117,6 +117,9 @@ export const defaultInstitutionalValues = [
   },
 ];
 
+export const DEFAULT_INSTITUTIONAL_HERO_IMAGE =
+  'https://ezbpbjtddeytbyedfioo.supabase.co/storage/v1/object/public/images/uploads/1791743173055_20261010_114017.jpg';
+
 export const initialInstitutionalPages: InstitutionalPage[] = [
   // ... existing presentation and histoire ...
   {
@@ -138,7 +141,7 @@ APS-BÉNIN œuvre au quotidien pour éliminer toutes les formes de discriminatio
     body_html_en: `Officially registered in September 2017 with the Ministry of Interior and Public Security (Prefectural Order N°9/040PDM/SG/STCCD- and published in the Official Gazette of the Republic of Benin N°21 of November 1, 2017), the NGO has established a solid operational footprint in the Mono department.
 
 APS-BENIN works every day to eliminate all forms of discrimination against women and girls, fight gender-based violence, ensure comprehensive access to sexual and reproductive health information, and support socioeconomic independence through vocational training and solidarity cooperatives.`,
-    hero_image: '',
+    hero_image: DEFAULT_INSTITUTIONAL_HERO_IMAGE,
     hero_image_alt_fr: 'Engagement communautaire APS-BÉNIN à Comè',
     hero_image_alt_en: 'APS-BENIN community commitment in Comè',
     images: [
@@ -228,7 +231,7 @@ APS-BENIN works every day to eliminate all forms of discrimination against women
     quote_en: 'Every step counts to sustainably transform lives.',
     intro_fr: "Fondée en septembre 2014 à Comè, APS-BÉNIN est née de la volonté d'un collectif d'acteurs de la société civile de répondre aux urgences sociales et de bâtir une gouvernance démocratique exemplaire.",
     intro_en: 'Founded in September 2014 in Comè, APS-BENIN emerged from the will of civil society activists to address social emergencies and build exemplary democratic governance.',
-    hero_image: '',
+    hero_image: DEFAULT_INSTITUTIONAL_HERO_IMAGE,
     hero_image_alt_fr: 'Histoire et parcours APS-BÉNIN',
     hero_image_alt_en: 'History and journey of APS-BENIN',
     images: [],
@@ -254,7 +257,7 @@ APS-BENIN works every day to eliminate all forms of discrimination against women
     intro_en: defaultInstitutionalMission.content_en,
     body_html_fr: defaultInstitutionalGoal.content_fr,
     body_html_en: defaultInstitutionalGoal.content_en,
-    hero_image: '',
+    hero_image: DEFAULT_INSTITUTIONAL_HERO_IMAGE,
     hero_image_alt_fr: 'Mission, Vision et Valeurs de APS-BÉNIN',
     hero_image_alt_en: 'Mission, Vision and Values of APS-BENIN',
     images: [],

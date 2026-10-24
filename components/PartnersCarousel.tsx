@@ -4,47 +4,17 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialPartners } from '@/lib/initial-data';
 import { PartnerItem } from '@/types';
 import { ArrowRight, ExternalLink, Building2 } from 'lucide-react';
 
 export const PartnersCarousel: React.FC = () => {
   const { language, t } = useLanguage();
-  const [partners, setPartners] = useState<PartnerItem[]>(() => {
-    return initialPartners.filter((p) => p.is_active);
-  });
+  const [partners, setPartners] = useState<PartnerItem[]>([]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getPartners()
-      .then((list) => {
-        if (isMounted && Array.isArray(list) && list.length > 0) {
-          setPartners(list.filter((p) => p.is_active));
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement carrousel partenaires Supabase :', err);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getPartners()
-        .then((list) => {
-          if (isMounted && Array.isArray(list) && list.length > 0) {
-            setPartners(list.filter((p) => p.is_active));
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_partners_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_partners_changed', handleSync);
-    };
+    supabaseStore.getPartners().then((list) => {
+      setPartners(list.filter((p) => p.is_active));
+    });
   }, []);
 
   const getCategoryLabel = (category: PartnerItem['category']) => {
@@ -88,10 +58,12 @@ export const PartnersCarousel: React.FC = () => {
                   <img
                     src={partner.logo}
                     alt={partner.name}
-                    width={120}
-                    height={48}
-                    className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105 duration-200"
+                    width={140}
+                    height={52}
                     loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    className="max-w-full max-h-full object-contain transition-transform group-hover:scale-105 duration-200"
                   />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-purple-50 text-[#92278F] flex items-center justify-center">

@@ -8,7 +8,6 @@ import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
-import { initialOpportunities } from '@/lib/initial-data';
 import { OpportunityItem } from '@/types';
 import {
   Briefcase,
@@ -26,42 +25,13 @@ function OpportunitiesContent() {
   const initialType = searchParams.get('type') || 'all';
 
   const { language, t } = useLanguage();
-  const [items, setItems] = useState<OpportunityItem[]>(() => initialOpportunities);
+  const [items, setItems] = useState<OpportunityItem[]>([]);
   const [activeTab, setActiveTab] = useState<'open' | 'closed'>('open');
   const [selectedType, setSelectedType] = useState<string>(initialType);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabaseStore.getOpportunities()
-      .then((res) => {
-        if (isMounted && Array.isArray(res) && res.length > 0) {
-          setItems(res);
-        }
-      })
-      .catch((err) => {
-        console.warn('Erreur chargement opportunités Supabase, maintien des données initiales :', err);
-      });
-
-    const handleSync = () => {
-      supabaseStore.getOpportunities()
-        .then((res) => {
-          if (isMounted && Array.isArray(res) && res.length > 0) {
-            setItems(res);
-          }
-        })
-        .catch(() => {});
-    };
-
-    window.addEventListener('storage', handleSync);
-    window.addEventListener('aps_opportunities_changed', handleSync);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('storage', handleSync);
-      window.removeEventListener('aps_opportunities_changed', handleSync);
-    };
+    supabaseStore.getOpportunities().then(setItems);
   }, []);
 
   const openCount = items.filter((i) => i.status === 'open').length;

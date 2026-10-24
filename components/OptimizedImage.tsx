@@ -50,10 +50,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     setIsLoaded(false);
   }, [src]);
 
-  const rawSrc = resolveMediaUrl(src, {
-    width: width || (fill ? 1080 : 600),
-    profile: aspectRatio === 'square' || (width && width <= 400) ? 'thumbnail' : 'medium'
-  });
+  const rawSrc = resolveMediaUrl(src);
   const effectiveSrc = hasError || !rawSrc ? (fallbackSrc ? resolveMediaUrl(fallbackSrc) : '') : rawSrc;
 
   // Déterminer les classes de conteneur d'aspect ratio
@@ -127,7 +124,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     if (fill) {
       return (
         <div
-          className={`relative w-full h-full overflow-hidden bg-gray-100 ${ratioClass} ${containerClassName}`}
+          className={`relative w-full h-full overflow-hidden ${ratioClass} ${containerClassName}`}
           onClick={onClick}
         >
           <img
@@ -143,7 +140,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
     return (
       <div
-        className={`relative inline-block overflow-hidden bg-gray-100 ${ratioClass} ${containerClassName}`}
+        className={`relative inline-block overflow-hidden ${ratioClass} ${containerClassName}`}
         onClick={onClick}
       >
         <img
@@ -162,7 +159,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   if (fill) {
     return (
       <div
-        className={`relative w-full h-full overflow-hidden bg-gray-100 ${ratioClass} ${containerClassName}`}
+        className={`relative w-full h-full overflow-hidden ${ratioClass} ${containerClassName}`}
         onClick={onClick}
       >
         <Image
@@ -170,12 +167,13 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           alt={alt || 'APS-BÉNIN'}
           fill
           priority={priority}
-          loading={priority ? undefined : 'lazy'}
-          fetchPriority={priority ? 'high' : 'auto'}
           sizes={sizes}
-          className={`${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
+          className={`transition-opacity duration-300 ${
+            priority || isLoaded ? 'opacity-100' : 'opacity-0'
+          } ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
           referrerPolicy="no-referrer"
           unoptimized={shouldUnoptimize}
+          onLoad={() => setIsLoaded(true)}
           onError={() => {
             if (!useRawImg && rawSrc && rawSrc !== fallbackSrc) {
               setUseRawImg(true);
@@ -184,13 +182,16 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
             }
           }}
         />
+        {!isLoaded && !priority && (
+          <div className="absolute inset-0 bg-gray-100 animate-pulse pointer-events-none" aria-hidden="true" />
+        )}
       </div>
     );
   }
 
   return (
     <div
-      className={`relative inline-block overflow-hidden bg-gray-100 ${ratioClass} ${containerClassName}`}
+      className={`relative inline-block overflow-hidden ${ratioClass} ${containerClassName}`}
       onClick={onClick}
     >
       <Image
@@ -199,12 +200,13 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
         width={width || 600}
         height={height || 400}
         priority={priority}
-        loading={priority ? undefined : 'lazy'}
-        fetchPriority={priority ? 'high' : 'auto'}
         sizes={sizes}
-        className={`${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
+        className={`transition-opacity duration-300 ${
+          priority || isLoaded ? 'opacity-100' : 'opacity-0'
+        } ${objectFit === 'contain' ? 'object-contain' : 'object-cover'} ${className}`}
         referrerPolicy="no-referrer"
         unoptimized={shouldUnoptimize}
+        onLoad={() => setIsLoaded(true)}
         onError={() => {
           if (!useRawImg && rawSrc && rawSrc !== fallbackSrc) {
             setUseRawImg(true);
@@ -213,6 +215,13 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
           }
         }}
       />
+      {!isLoaded && !priority && (
+        <div
+          className="absolute inset-0 bg-gray-100 animate-pulse pointer-events-none"
+          style={{ width: width ? `${width}px` : '100%', height: height ? `${height}px` : '100%' }}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 };
