@@ -728,7 +728,12 @@ async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId:
               target_module: _____,
               ...sqlPayload
             } = packed;
-            upsertPayload = sqlPayload;
+            // Explicitly set empty strings or undefined to null for SQL foreign keys
+            upsertPayload = {
+              ...sqlPayload,
+              album_id: sqlPayload.album_id && String(sqlPayload.album_id).trim() ? String(sqlPayload.album_id).trim() : null,
+              project_id: sqlPayload.project_id && String(sqlPayload.project_id).trim() ? String(sqlPayload.project_id).trim() : null,
+            };
           }
 
           let { error } = await supabase.from(table).upsert(upsertPayload);

@@ -80,9 +80,9 @@ export default function HomePage() {
         {/* 2. Institutional Presentation Section */}
         <section className="py-20 bg-white/75 backdrop-blur-xs border-b border-purple-100/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 xl:gap-14 items-center">
               {/* Text column */}
-              <div className="lg:col-span-7 space-y-6">
+              <div className="lg:col-span-6 space-y-6">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-xs font-bold uppercase tracking-wider text-[#92278F] border border-purple-100">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#FF8C00]" />
                   <span>{t('home.presentation_badge')}</span>
@@ -154,61 +154,59 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Visual column with authentic photography or sober institutional card */}
-              <div className="lg:col-span-5">
-                <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-gray-200 h-[440px] bg-gradient-to-br from-[#2f0d2e] via-[#1a081a] to-gray-950 flex flex-col justify-between p-8 text-white">
-                  {presImage ? (
-                    <>
-                      <OptimizedImage
+              {/* Visual column with natural photo proportions and clean institutional presentation */}
+              <div className="lg:col-span-6">
+                {presImage ? (
+                  <div className="space-y-3">
+                    <div className="relative rounded-2xl overflow-hidden shadow-lg border border-purple-100/70 bg-white">
+                      <img
                         src={presImage}
                         alt={presAlt}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 42vw"
-                        className="object-cover"
+                        className="w-full h-auto block"
+                        loading="eager"
+                        referrerPolicy="no-referrer"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex items-end p-6 z-10">
-                        <div className="text-white">
-                          <p className="text-xs font-semibold uppercase tracking-wider text-orange-400">
-                            Djacoṭé-Comè • Mono
-                          </p>
-                          <h4 className="font-bold text-base mt-1 font-heading">
-                            {language === 'en'
-                              ? 'Empowering women artisans and grassroots leaders'
-                              : 'Autonomisation des femmes artisanes et leaders locales'}
-                          </h4>
-                          <p className="text-xs text-gray-300 mt-1">
-                            {language === 'en'
-                              ? '10+ years of active engagement on the ground in Benin.'
-                              : 'Plus de 10 ans d’engagement actif sur le terrain béninois.'}
-                          </p>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="relative z-10 flex flex-col justify-between h-full">
-                      <div className="space-y-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-orange-300 text-xs font-semibold">
-                          <span>Djacoṭé-Comè • Mono</span>
-                        </div>
-                        <h4 className="text-2xl font-extrabold font-heading text-white leading-snug">
-                          {language === 'en'
-                            ? 'Empowering women artisans and grassroots leaders'
-                            : 'Autonomisation des femmes artisanes et leaders locales'}
-                        </h4>
-                        <p className="text-sm text-purple-100/80 leading-relaxed font-sans">
-                          {language === 'en'
-                            ? 'Action at the root of social and gender inequalities, dedicated legal assistance, and socio-economic support across Benin.'
-                            : 'Agir à la racine des inégalités sociales et de genre, assistance juridique continue et appui socio-économique aux communautés.'}
-                        </p>
-                      </div>
-
-                      <div className="pt-6 border-t border-white/10 flex items-center justify-between text-xs text-gray-300 font-sans">
-                        <span className="font-medium">ONG AGISSONS POUR SAUVER</span>
-                        <span className="text-[#FF8C00] font-bold">Depuis 2014</span>
-                      </div>
                     </div>
-                  )}
-                </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-gray-500">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#FF8C00] shrink-0" />
+                        <span className="font-semibold text-gray-700">Djacoṭé-Comè • Département du Mono</span>
+                        <span aria-hidden="true" className="text-gray-300">·</span>
+                        <span className="truncate">
+                          {language === 'en'
+                            ? 'Community action and grassroots leadership'
+                            : 'Autonomisation des femmes et action de terrain'}
+                        </span>
+                      </div>
+                      <span className="text-gray-400 font-medium shrink-0">
+                        {language === 'en' ? 'APS-BENIN' : 'APS-BÉNIN'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl p-8 bg-gradient-to-br from-[#92278F] to-[#591457] text-white shadow-lg space-y-6">
+                    <div className="space-y-4">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-orange-300 text-xs font-semibold">
+                        <span>Djacoṭé-Comè • Mono</span>
+                      </div>
+                      <h4 className="text-2xl font-extrabold font-heading text-white leading-snug">
+                        {language === 'en'
+                          ? 'Empowering women artisans and grassroots leaders'
+                          : 'Autonomisation des femmes artisanes et leaders locales'}
+                      </h4>
+                      <p className="text-sm text-purple-100/90 leading-relaxed font-sans">
+                        {language === 'en'
+                          ? 'Action at the root of social and gender inequalities, dedicated legal assistance, and socio-economic support across Benin.'
+                          : 'Agir à la racine des inégalités sociales et de genre, assistance juridique continue et appui socio-économique aux communautés.'}
+                      </p>
+                    </div>
+
+                    <div className="pt-6 border-t border-white/10 flex items-center justify-between text-xs text-purple-200 font-sans">
+                      <span className="font-medium">ONG AGISSONS POUR SAUVER</span>
+                      <span className="text-[#FF8C00] font-bold">Depuis 2014</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

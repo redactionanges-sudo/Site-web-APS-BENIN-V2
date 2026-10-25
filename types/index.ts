@@ -332,7 +332,7 @@ export interface MediaItem {
   type: 'photo' | 'video';
   url: string;
   thumbnail_url?: string;
-  album_id?: string;
+  album_id?: string | null;
   project_id?: string;
   category: string;
   date: string;

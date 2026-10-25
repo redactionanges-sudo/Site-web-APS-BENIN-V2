@@ -248,6 +248,9 @@ function sanitizeRow(table: string, raw: any): any {
     if (!clean.title_en) {
       clean.title_en = clean.title_fr || 'Untitled';
     }
+    // Explicitly normalize empty or missing foreign keys to SQL null
+    clean.album_id = clean.album_id && String(clean.album_id).trim() ? String(clean.album_id).trim() : null;
+    clean.project_id = clean.project_id && String(clean.project_id).trim() ? String(clean.project_id).trim() : null;
 
     let is_active = raw.is_active;
     let show_in_hero = raw.show_in_hero;

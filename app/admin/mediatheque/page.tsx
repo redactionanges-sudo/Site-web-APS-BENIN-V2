@@ -31,6 +31,9 @@ import {
   Eye,
   EyeOff,
   RotateCcw,
+  Link2,
+  Unlink,
+  Check,
 } from 'lucide-react';
 import {
   parseVideoUrl,
@@ -73,6 +76,16 @@ export default function AdminMediathequePage() {
   // Album Modal state
   const [albumModalOpen, setAlbumModalOpen] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<PhotoAlbum | null>(null);
+
+  // Album Media Management & Association state
+  const [managingAlbum, setManagingAlbum] = useState<PhotoAlbum | null>(null);
+  const [albumMediaTab, setAlbumMediaTab] = useState<'all' | 'photo' | 'video'>('all');
+  const [associateModalOpen, setAssociateModalOpen] = useState(false);
+  const [associateMediaType, setAssociateMediaType] = useState<'all' | 'photo' | 'video'>('all');
+  const [associateSearch, setAssociateSearch] = useState('');
+  const [selectedMediaIdsToAssociate, setSelectedMediaIdsToAssociate] = useState<string[]>([]);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [mediaToUnlink, setMediaToUnlink] = useState<MediaItem | null>(null);
 
   // Delete modal state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -215,7 +228,8 @@ export default function AdminMediathequePage() {
     } catch (err: any) {
       console.error('Erreur toggle Hero:', err);
       setMediaList((prev) => prev.map((m) => (m.id === item.id ? item : m)));
-      alert(`Erreur d'enregistrement : ${err.message || 'Impossible de mettre à jour le Hero'}`);
+      setActionFeedback(`Erreur d'enregistrement : ${err.message || 'Impossible de mettre à jour le Hero'}`);
+      setTimeout(() => setActionFeedback(null), 5000);
     }
   };
 
@@ -265,6 +279,93 @@ export default function AdminMediathequePage() {
     setEditingAlbum(alb);
     setAlbumForm({ ...alb });
     setAlbumModalOpen(true);
+  };
+
+  const openNewMediaModalForAlbum = (type: 'photo' | 'video', albumId: string) => {
+    setEditingMedia(null);
+    setVideoSourceMode('youtube');
+    setCustomThumbnailMode(false);
+    setMediaForm({
+      title_fr: '',
+      title_en: '',
+      type,
+      url: '',
+      thumbnail_url: '',
+      album_id: albumId,
+      project_id: projects[0]?.id || '',
+      category: type === 'video' ? 'Reportages & Vidéos' : 'Activités de terrain',
+      date: new Date().toISOString().split('T')[0],
+      location: 'Comè, Département du Mono',
+      alt_fr: '',
+      alt_en: '',
+      description_fr: '',
+      description_en: '',
+      video_platform: 'youtube',
+      show_in_hero: false,
+      hero_order: mediaList.filter((m) => m.show_in_hero).length + 1,
+      is_active: true,
+      show_in_public_gallery: true,
+    });
+    setMediaModalOpen(true);
+  };
+
+  const openAssociateModalForAlbum = (album: PhotoAlbum) => {
+    setManagingAlbum(album);
+    setSelectedMediaIdsToAssociate([]);
+    setAssociateSearch('');
+    setAssociateMediaType('all');
+    setAssociateModalOpen(true);
+  };
+
+  const handleAssociateSelectedMedia = async () => {
+    if (!managingAlbum || selectedMediaIdsToAssociate.length === 0) return;
+    try {
+      const itemsToUpdate = mediaList.filter((m) => selectedMediaIdsToAssociate.includes(m.id));
+      for (const item of itemsToUpdate) {
+        const updated: MediaItem = { ...item, album_id: managingAlbum.id };
+        await supabaseStore.saveMedia(updated);
+      }
+      setMediaList((prev) =>
+        prev.map((m) =>
+          selectedMediaIdsToAssociate.includes(m.id)
+            ? { ...m, album_id: managingAlbum.id }
+            : m
+        )
+      );
+      setActionFeedback(
+        `${selectedMediaIdsToAssociate.length} média(s) associé(s) à l’album « ${managingAlbum.title_fr} » avec succès.`
+      );
+      setAssociateModalOpen(false);
+      setSelectedMediaIdsToAssociate([]);
+      setTimeout(() => setActionFeedback(null), 5000);
+    } catch (err: any) {
+      setActionFeedback(`Erreur lors de l’association : ${err.message || 'Impossible d’associer les médias'}`);
+      setTimeout(() => setActionFeedback(null), 5000);
+    }
+  };
+
+  const handleUnlinkMediaFromAlbum = (item: MediaItem) => {
+    setMediaToUnlink(item);
+  };
+
+  const confirmUnlinkMedia = async () => {
+    if (!mediaToUnlink) return;
+    const item = mediaToUnlink;
+    setMediaToUnlink(null);
+    try {
+      const updated: MediaItem = { ...item, album_id: undefined };
+      await supabaseStore.saveMedia(updated);
+      setMediaList((prev) =>
+        prev.map((m) => (m.id === item.id ? { ...m, album_id: undefined } : m))
+      );
+      setActionFeedback(
+        `« ${item.title_fr} » a été retiré de l’album (fichier conservé dans la médiathèque).`
+      );
+      setTimeout(() => setActionFeedback(null), 5000);
+    } catch (err: any) {
+      setActionFeedback(`Erreur lors du retrait : ${err.message || 'Impossible de dissocier le média'}`);
+      setTimeout(() => setActionFeedback(null), 5000);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -337,7 +438,8 @@ export default function AdminMediathequePage() {
     const cleanUrl = (mediaForm.url || '').trim();
 
     if (!cleanTitle || !cleanUrl) {
-      alert('Veuillez renseigner le titre et l’URL du média.');
+      setActionFeedback('Veuillez renseigner le titre et l’URL du média.');
+      setTimeout(() => setActionFeedback(null), 5000);
       return;
     }
 
@@ -381,15 +483,19 @@ export default function AdminMediathequePage() {
       await supabaseStore.saveMedia(payload);
       await loadData();
       setMediaModalOpen(false);
+      setActionFeedback(`Média « ${payload.title_fr} » enregistré avec succès.`);
+      setTimeout(() => setActionFeedback(null), 5000);
     } catch (err: any) {
-      alert(`Erreur d'enregistrement : ${err.message || "Impossible d'enregistrer le média dans Supabase"}`);
+      setActionFeedback(`Erreur d'enregistrement : ${err.message || "Impossible d'enregistrer le média dans Supabase"}`);
+      setTimeout(() => setActionFeedback(null), 6000);
     }
   };
 
   const handleSaveAlbum = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!albumForm.title_fr) {
-      alert('Veuillez renseigner le titre de l’album.');
+      setActionFeedback('Veuillez renseigner le titre de l’album.');
+      setTimeout(() => setActionFeedback(null), 5000);
       return;
     }
 
@@ -411,8 +517,14 @@ export default function AdminMediathequePage() {
       await supabaseStore.saveAlbum(payload);
       await loadData();
       setAlbumModalOpen(false);
+      setManagingAlbum(payload);
+      setActionFeedback(
+        `Album « ${payload.title_fr} » enregistré. Vous pouvez maintenant y ajouter des photos ou des vidéos.`
+      );
+      setTimeout(() => setActionFeedback(null), 6000);
     } catch (err: any) {
-      alert(`Erreur d'enregistrement : ${err.message || "Impossible d'enregistrer l'album dans Supabase"}`);
+      setActionFeedback(`Erreur d'enregistrement : ${err.message || "Impossible d'enregistrer l'album dans Supabase"}`);
+      setTimeout(() => setActionFeedback(null), 6000);
     }
   };
 
@@ -427,8 +539,11 @@ export default function AdminMediathequePage() {
       await loadData();
       setDeleteConfirmOpen(false);
       setItemToDelete(null);
+      setActionFeedback('Élément supprimé avec succès.');
+      setTimeout(() => setActionFeedback(null), 5000);
     } catch (err: any) {
-      alert(`Erreur de suppression : ${err.message || "Impossible de supprimer l'élément dans Supabase"}`);
+      setActionFeedback(`Erreur de suppression : ${err.message || "Impossible de supprimer l'élément dans Supabase"}`);
+      setTimeout(() => setActionFeedback(null), 6000);
     }
   };
 
@@ -493,6 +608,22 @@ export default function AdminMediathequePage() {
       />
 
       <main className="p-6 space-y-6 max-w-7xl">
+        {actionFeedback && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-3 rounded-xl flex items-center justify-between text-xs font-semibold animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{actionFeedback}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActionFeedback(null)}
+              className="text-emerald-700 hover:text-emerald-900"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="bg-white p-3 rounded-2xl border border-gray-200 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
@@ -607,26 +738,79 @@ export default function AdminMediathequePage() {
         </div>
 
         {/* Active album banner when filtered */}
-        {activeTab !== 'albums' && selectedAlbumFilter !== 'all' && (
-          <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center justify-between gap-3 text-xs animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <Folder className="w-4 h-4 text-[#92278F] shrink-0" />
-              <span className="font-bold text-gray-900">
-                Album : {albums.find(a => a.id === selectedAlbumFilter)?.title_fr || selectedAlbumFilter}
-              </span>
-              <span className="text-[11px] text-purple-700 bg-white px-2 py-0.5 rounded-full border border-purple-100">
-                {filteredMedia.length} {filteredMedia.length > 1 ? 'médias associés' : 'média associé'}
-              </span>
+        {activeTab !== 'albums' && selectedAlbumFilter !== 'all' && (() => {
+          const currentFilteredAlbum = albums.find((a) => a.id === selectedAlbumFilter);
+          return (
+            <div className="p-4 bg-purple-50/90 border border-purple-200 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs animate-in fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#92278F] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Folder className="w-5 h-5 text-[#FF8C00]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-gray-900 text-sm font-heading">
+                      Album : {currentFilteredAlbum?.title_fr || selectedAlbumFilter}
+                    </span>
+                    <span className="text-[11px] text-purple-700 bg-white px-2 py-0.5 rounded-full border border-purple-100 font-semibold">
+                      {filteredMedia.length} {filteredMedia.length > 1 ? 'médias associés' : 'média associé'}
+                    </span>
+                  </div>
+                  {currentFilteredAlbum?.description_fr && (
+                    <p className="text-[11px] text-gray-600 line-clamp-1 mt-0.5">
+                      {currentFilteredAlbum.description_fr}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {currentFilteredAlbum && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setManagingAlbum(currentFilteredAlbum)}
+                      className="px-3 py-1.5 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                    >
+                      <Folder className="w-3.5 h-3.5 text-[#FF8C00]" />
+                      <span>Gérer l’album</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openNewMediaModalForAlbum('photo', currentFilteredAlbum.id)}
+                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-purple-50 text-[#92278F] border border-purple-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#FF8C00]" />
+                      <span>+ Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openNewMediaModalForAlbum('video', currentFilteredAlbum.id)}
+                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-orange-50 text-orange-800 border border-orange-200 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#92278F]" />
+                      <span>+ Vidéo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAssociateModalForAlbum(currentFilteredAlbum)}
+                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                    >
+                      <Link2 className="w-3.5 h-3.5 text-[#92278F]" />
+                      <span>Associer</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAlbumFilter('all')}
+                  className="px-2.5 py-1.5 text-gray-600 hover:text-gray-900 hover:underline font-bold text-xs shrink-0"
+                >
+                  Tous les albums
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setSelectedAlbumFilter('all')}
-              className="text-[#92278F] hover:text-[#741772] hover:underline font-bold text-xs shrink-0"
-            >
-              Afficher tous les albums
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Tab 1 & 2: Media Grid (Photos / Videos) */}
         {activeTab !== 'albums' && (
@@ -929,19 +1113,46 @@ export default function AdminMediathequePage() {
                         </span>
                       </div>
 
-                      {/* Action button to explore all media in this album */}
+                      {/* Primary Action Button: Gérer les contenus de l'album */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedAlbumFilter(alb.id);
-                          setActiveTab('all');
-                          setCurrentPage(1);
-                        }}
-                        className="w-full mt-2 py-2 px-3 rounded-lg bg-gray-50 hover:bg-[#92278F] text-gray-700 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 border border-gray-200 transition-colors"
+                        onClick={() => setManagingAlbum(alb)}
+                        className="w-full mt-2 py-2.5 px-3 rounded-xl bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors"
                       >
-                        <Folder className="w-3.5 h-3.5" />
-                        <span>Consulter les photos & vidéos ({totalCount})</span>
+                        <Folder className="w-4 h-4 text-[#FF8C00]" />
+                        <span>Gérer les contenus ({totalCount})</span>
                       </button>
+
+                      {/* Secondary quick actions: Ajouter des photos, vidéos ou associer */}
+                      <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => openNewMediaModalForAlbum('photo', alb.id)}
+                          className="py-1.5 px-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-[#92278F] text-[11px] font-bold flex items-center justify-center gap-1 border border-purple-200 transition-colors"
+                          title="Téléverser ou ajouter une nouvelle photo à cet album"
+                        >
+                          <Plus className="w-3 h-3 text-[#FF8C00]" />
+                          <span>+ Photo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openNewMediaModalForAlbum('video', alb.id)}
+                          className="py-1.5 px-2 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-800 text-[11px] font-bold flex items-center justify-center gap-1 border border-orange-200 transition-colors"
+                          title="Ajouter une nouvelle vidéo à cet album"
+                        >
+                          <Plus className="w-3 h-3 text-[#92278F]" />
+                          <span>+ Vidéo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAssociateModalForAlbum(alb)}
+                          className="py-1.5 px-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-700 text-[11px] font-bold flex items-center justify-center gap-1 border border-gray-200 transition-colors"
+                          title="Sélectionner des médias existants dans la médiathèque pour les lier à cet album"
+                        >
+                          <Link2 className="w-3 h-3 text-[#92278F]" />
+                          <span>Associer</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -950,8 +1161,20 @@ export default function AdminMediathequePage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
+                        onClick={() => {
+                          setSelectedAlbumFilter(alb.id);
+                          setActiveTab('all');
+                          setCurrentPage(1);
+                        }}
+                        className="text-gray-600 hover:text-[#92278F] hover:underline font-semibold text-[11px]"
+                      >
+                        Filtrer
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        type="button"
                         onClick={() => openEditAlbumModal(alb)}
-                        className="text-[#92278F] hover:underline font-bold"
+                        className="text-[#92278F] hover:underline font-bold text-[11px]"
                       >
                         Modifier
                       </button>
@@ -962,7 +1185,7 @@ export default function AdminMediathequePage() {
                           setItemToDelete({ id: alb.id, title: alb.title_fr, type: 'album' });
                           setDeleteConfirmOpen(true);
                         }}
-                        className="text-red-600 hover:underline font-bold"
+                        className="text-red-600 hover:underline font-bold text-[11px]"
                       >
                         Supprimer
                       </button>
@@ -1398,7 +1621,7 @@ export default function AdminMediathequePage() {
                       Album rattaché
                     </label>
                     <select
-                      value={mediaForm.album_id}
+                      value={mediaForm.album_id || ''}
                       onChange={(e) => setMediaForm({ ...mediaForm, album_id: e.target.value })}
                       className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none bg-white"
                     >
@@ -1416,7 +1639,7 @@ export default function AdminMediathequePage() {
                       Projet rattaché
                     </label>
                     <select
-                      value={mediaForm.project_id}
+                      value={mediaForm.project_id || ''}
                       onChange={(e) => setMediaForm({ ...mediaForm, project_id: e.target.value })}
                       className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none bg-white"
                     >
@@ -1630,6 +1853,562 @@ export default function AdminMediathequePage() {
           </div>
         )}
 
+        {/* Modal: Gérer les contenus de l'album (Photos et Vidéos) */}
+        {managingAlbum && !associateModalOpen && (
+          <div className="fixed inset-0 z-40 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-gray-200 overflow-hidden animate-fadeIn">
+              {/* Header */}
+              <div className="p-5 sm:p-6 bg-gradient-to-r from-purple-950 via-[#92278F] to-[#2f0d2e] text-white flex items-start justify-between gap-4">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white backdrop-blur-xs flex items-center gap-1">
+                      <Folder className="w-3 h-3 text-[#FF8C00]" />
+                      Album photo & vidéo
+                    </span>
+                    <span className="text-xs text-purple-200 font-mono">
+                      {managingAlbum.date || 'Non daté'}
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-bold font-heading truncate">
+                    {managingAlbum.title_fr}
+                  </h3>
+                  {managingAlbum.description_fr && (
+                    <p className="text-xs text-purple-100/90 line-clamp-2 max-w-2xl">
+                      {managingAlbum.description_fr}
+                    </p>
+                  )}
+                  <div className="pt-1 flex items-center gap-3 text-xs text-purple-200 font-medium">
+                    <span>
+                      {mediaList.filter((m) => m.album_id === managingAlbum.id && m.type === 'photo').length} photo(s)
+                    </span>
+                    <span>•</span>
+                    <span>
+                      {mediaList.filter((m) => m.album_id === managingAlbum.id && m.type === 'video').length} vidéo(s)
+                    </span>
+                    <span>•</span>
+                    <span className="text-white font-bold">
+                      {mediaList.filter((m) => m.album_id === managingAlbum.id).length} média(s) rattaché(s)
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setManagingAlbum(null)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors shrink-0"
+                  title="Fermer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => openNewMediaModalForAlbum('photo', managingAlbum.id)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#92278F] hover:bg-[#7a1f77] text-white text-xs font-bold transition-colors shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Ajouter une photo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openNewMediaModalForAlbum('video', managingAlbum.id)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FF8C00] hover:bg-[#e07b00] text-white text-xs font-bold transition-colors shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Ajouter une vidéo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openAssociateModalForAlbum(managingAlbum)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-purple-50 text-purple-900 border border-purple-200 text-xs font-bold transition-colors shadow-xs"
+                  >
+                    <Link2 className="w-4 h-4 text-[#92278F]" />
+                    <span>Associer des médias existants</span>
+                  </button>
+                </div>
+
+                {/* Sub-tab filter inside album */}
+                <div className="flex items-center bg-white p-1 rounded-xl border border-gray-200 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setAlbumMediaTab('all')}
+                    className={`px-3 py-1 rounded-lg transition-colors ${
+                      albumMediaTab === 'all'
+                        ? 'bg-[#92278F] text-white shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Tous ({mediaList.filter((m) => m.album_id === managingAlbum.id).length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAlbumMediaTab('photo')}
+                    className={`px-3 py-1 rounded-lg transition-colors ${
+                      albumMediaTab === 'photo'
+                        ? 'bg-[#92278F] text-white shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Photos ({mediaList.filter((m) => m.album_id === managingAlbum.id && m.type === 'photo').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAlbumMediaTab('video')}
+                    className={`px-3 py-1 rounded-lg transition-colors ${
+                      albumMediaTab === 'video'
+                        ? 'bg-[#92278F] text-white shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Vidéos ({mediaList.filter((m) => m.album_id === managingAlbum.id && m.type === 'video').length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Media Grid */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-[300px] max-h-[60vh] bg-gray-50/50">
+                {(() => {
+                  const albumItems = mediaList.filter((m) => {
+                    if (m.album_id !== managingAlbum.id) return false;
+                    if (albumMediaTab === 'photo') return m.type === 'photo';
+                    if (albumMediaTab === 'video') return m.type === 'video';
+                    return true;
+                  });
+
+                  if (albumItems.length === 0) {
+                    return (
+                      <div className="py-14 text-center max-w-md mx-auto space-y-4">
+                        <div className="w-16 h-16 rounded-2xl bg-purple-100 text-[#92278F] flex items-center justify-center mx-auto shadow-inner">
+                          <Folder className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-base font-bold text-gray-900">
+                            Aucun média {albumMediaTab !== 'all' ? (albumMediaTab === 'photo' ? 'photo' : 'vidéo') : ''} dans cet album
+                          </h4>
+                          <p className="text-xs text-gray-500 leading-relaxed">
+                            Cet album est actuellement vide. Vous pouvez y ajouter de nouveaux médias ou y rattacher des médias existants de la médiathèque.
+                          </p>
+                        </div>
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openNewMediaModalForAlbum('photo', managingAlbum.id)}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#92278F] text-white text-xs font-bold hover:bg-[#7a1f77] transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Ajouter une photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openNewMediaModalForAlbum('video', managingAlbum.id)}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF8C00] text-white text-xs font-bold hover:bg-[#e07b00] transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Ajouter une vidéo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openAssociateModalForAlbum(managingAlbum)}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white text-gray-800 border border-gray-300 text-xs font-bold hover:bg-gray-100 transition-colors"
+                          >
+                            <Link2 className="w-4 h-4 text-[#92278F]" />
+                            <span>Choisir dans la médiathèque</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {albumItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col"
+                        >
+                          <div className="relative aspect-video bg-gray-100 overflow-hidden group">
+                            <img
+                              src={item.thumbnail_url || item.url}
+                              alt={item.title_fr}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                              {item.type === 'video' ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF8C00] text-white flex items-center gap-1 shadow-xs">
+                                  <Video className="w-3 h-3" />
+                                  Vidéo
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#92278F] text-white flex items-center gap-1 shadow-xs">
+                                  <ImageIcon className="w-3 h-3" />
+                                  Photo
+                                </span>
+                              )}
+                              {item.category && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black/60 text-white backdrop-blur-xs truncate max-w-[120px]">
+                                  {item.category}
+                                </span>
+                              )}
+                            </div>
+
+                            {item.type === 'video' && (
+                              <button
+                                type="button"
+                                onClick={() => setAdminPreviewVideo(item)}
+                                className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors"
+                                title="Lire la vidéo"
+                              >
+                                <div className="w-10 h-10 rounded-full bg-white/90 text-[#FF8C00] flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                                </div>
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="p-3.5 flex-1 flex flex-col justify-between space-y-3">
+                            <div className="space-y-1">
+                              <h5 className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug">
+                                {item.title_fr}
+                              </h5>
+                              <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                                {item.date && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-gray-400" />
+                                    {item.date}
+                                  </span>
+                                )}
+                                {item.location && (
+                                  <span className="flex items-center gap-1 truncate max-w-[130px]">
+                                    <MapPin className="w-3 h-3 text-gray-400" />
+                                    {item.location}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openEditMediaModal(item)}
+                                className="text-xs text-[#92278F] hover:text-[#7a1f77] font-bold inline-flex items-center gap-1"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Modifier</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleUnlinkMediaFromAlbum(item)}
+                                className="text-xs text-red-600 hover:text-red-700 font-semibold inline-flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                                title="Retirer de l’album (le média est conservé dans la médiathèque)"
+                              >
+                                <Unlink className="w-3.5 h-3.5" />
+                                <span>Retirer</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-white border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <span className="text-gray-500 text-[11px]">
+                  💡 Les ajouts et retraits sont immédiatement synchronisés avec Supabase.
+                </span>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAlbumFilter(managingAlbum.id);
+                      setActiveTab('all');
+                      setCurrentPage(1);
+                      setManagingAlbum(null);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
+                  >
+                    Voir dans la vue générale
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setManagingAlbum(null)}
+                    className="px-4 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-bold"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Associer des médias existants à l'album */}
+        {associateModalOpen && managingAlbum && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-gray-200 overflow-hidden animate-fadeIn">
+              {/* Header */}
+              <div className="p-5 sm:p-6 bg-[#92278F] text-white flex items-start justify-between gap-4">
+                <div className="min-w-0 space-y-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white backdrop-blur-xs inline-flex items-center gap-1">
+                    <Link2 className="w-3 h-3 text-[#FF8C00]" />
+                    Association de médias existants
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-bold font-heading truncate">
+                    Associer des médias à « {managingAlbum.title_fr} »
+                  </h3>
+                  <p className="text-xs text-purple-100">
+                    Cochez les photos et vidéos de la médiathèque à intégrer à cet album.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAssociateModalOpen(false)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filter & Search Bar */}
+              <div className="p-4 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={associateSearch}
+                    onChange={(e) => setAssociateSearch(e.target.value)}
+                    placeholder="Rechercher par titre, catégorie, lieu..."
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none bg-white"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center bg-white p-1 rounded-xl border border-gray-200 text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setAssociateMediaType('all')}
+                      className={`px-2.5 py-1 rounded-lg transition-colors ${
+                        associateMediaType === 'all'
+                          ? 'bg-[#92278F] text-white shadow-xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Tous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAssociateMediaType('photo')}
+                      className={`px-2.5 py-1 rounded-lg transition-colors ${
+                        associateMediaType === 'photo'
+                          ? 'bg-[#92278F] text-white shadow-xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Photos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAssociateMediaType('video')}
+                      className={`px-2.5 py-1 rounded-lg transition-colors ${
+                        associateMediaType === 'video'
+                          ? 'bg-[#92278F] text-white shadow-xs'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Vidéos
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Candidates Grid */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 min-h-[300px] max-h-[58vh] bg-gray-50/50">
+                {(() => {
+                  const eligibleItems = mediaList.filter((m) => {
+                    // Exclude media already in this album
+                    if (m.album_id === managingAlbum.id) return false;
+                    if (associateMediaType !== 'all' && m.type !== associateMediaType) return false;
+                    if (associateSearch.trim()) {
+                      const q = associateSearch.toLowerCase();
+                      const matchTitle = (m.title_fr || '').toLowerCase().includes(q) || (m.title_en || '').toLowerCase().includes(q);
+                      const matchCat = (m.category || '').toLowerCase().includes(q);
+                      const matchLoc = (m.location || '').toLowerCase().includes(q);
+                      if (!matchTitle && !matchCat && !matchLoc) return false;
+                    }
+                    return true;
+                  });
+
+                  if (eligibleItems.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-gray-500 space-y-2">
+                        <Folder className="w-10 h-10 text-gray-300 mx-auto" />
+                        <p className="text-sm font-semibold">Aucun média éligible trouvé</p>
+                        <p className="text-xs text-gray-400">
+                          {associateSearch ? 'Essayez avec un autre mot-clé de recherche.' : 'Tous les médias de cette catégorie sont déjà associés à cet album.'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  const allEligibleSelected =
+                    eligibleItems.length > 0 &&
+                    eligibleItems.every((item) => selectedMediaIdsToAssociate.includes(item.id));
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-gray-200 text-xs">
+                        <span className="text-gray-600 font-medium">
+                          {eligibleItems.length} média(s) disponible(s) •{' '}
+                          <span className="font-bold text-[#92278F]">
+                            {selectedMediaIdsToAssociate.length} sélectionné(s)
+                          </span>
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (allEligibleSelected) {
+                                setSelectedMediaIdsToAssociate([]);
+                              } else {
+                                setSelectedMediaIdsToAssociate(eligibleItems.map((item) => item.id));
+                              }
+                            }}
+                            className="text-xs text-[#92278F] hover:underline font-semibold"
+                          >
+                            {allEligibleSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {eligibleItems.map((item) => {
+                          const isSelected = selectedMediaIdsToAssociate.includes(item.id);
+                          const currentAlb = albums.find((a) => a.id === item.album_id);
+
+                          return (
+                            <div
+                              key={item.id}
+                              onClick={() => {
+                                setSelectedMediaIdsToAssociate((prev) =>
+                                  isSelected
+                                    ? prev.filter((id) => id !== item.id)
+                                    : [...prev, item.id]
+                                );
+                              }}
+                              className={`cursor-pointer rounded-xl border-2 transition-all p-2 bg-white flex flex-col justify-between gap-2 text-left relative ${
+                                isSelected
+                                  ? 'border-[#92278F] bg-purple-50/40 ring-2 ring-purple-200'
+                                  : 'border-gray-200 hover:border-gray-300 shadow-xs'
+                              }`}
+                            >
+                              <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-100">
+                                <img
+                                  src={item.thumbnail_url || item.url}
+                                  alt={item.title_fr}
+                                  className="w-full h-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+
+                                <div className="absolute top-1.5 left-1.5">
+                                  {item.type === 'video' ? (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#FF8C00] text-white">
+                                      Vidéo
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#92278F] text-white">
+                                      Photo
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="absolute top-1.5 right-1.5">
+                                  <div
+                                    className={`w-5 h-5 rounded-full flex items-center justify-center text-xs transition-colors ${
+                                      isSelected
+                                        ? 'bg-[#92278F] text-white shadow-xs'
+                                        : 'bg-white/90 text-gray-400 border border-gray-300'
+                                    }`}
+                                  >
+                                    {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <h6 className="text-xs font-bold text-gray-900 line-clamp-1">
+                                  {item.title_fr}
+                                </h6>
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="text-gray-400 truncate max-w-[120px]">
+                                    {item.category}
+                                  </span>
+                                  {currentAlb ? (
+                                    <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded truncate max-w-[130px]" title={`Actuellement dans : ${currentAlb.title_fr}`}>
+                                      Album : {currentAlb.title_fr}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 italic">Non classé</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-white border-t border-gray-200 flex items-center justify-between gap-3 text-xs">
+                <span className="text-gray-600 font-semibold">
+                  {selectedMediaIdsToAssociate.length} média(s) sélectionné(s)
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssociateModalOpen(false);
+                      setSelectedMediaIdsToAssociate([]);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selectedMediaIdsToAssociate.length === 0}
+                    onClick={handleAssociateSelectedMedia}
+                    className={`px-4 py-1.5 rounded-xl font-bold text-white transition-colors ${
+                      selectedMediaIdsToAssociate.length === 0
+                        ? 'bg-gray-300 cursor-not-allowed'
+                        : 'bg-[#92278F] hover:bg-[#7a1f77] shadow-xs'
+                    }`}
+                  >
+                    Associer la sélection ({selectedMediaIdsToAssociate.length})
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Video Player Preview Modal for Administrators */}
         {adminPreviewVideo && (
           <div
@@ -1724,6 +2503,16 @@ export default function AdminMediathequePage() {
             setDeleteConfirmOpen(false);
             setItemToDelete(null);
           }}
+        />
+
+        {/* Unlink Confirmation Modal */}
+        <ConfirmModal
+          isOpen={Boolean(mediaToUnlink)}
+          title="Retirer ce média de l’album ?"
+          message={`Êtes-vous sûr de vouloir retirer « ${mediaToUnlink?.title_fr} » de cet album ?\n\nLe fichier média est conservé intact dans la médiathèque générale.`}
+          confirmLabel="Retirer de l’album"
+          onConfirm={confirmUnlinkMedia}
+          onCancel={() => setMediaToUnlink(null)}
         />
       </main>
     </AdminAuthGuard>
