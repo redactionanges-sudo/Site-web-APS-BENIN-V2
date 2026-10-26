@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem } from '@/types';
 import { ArrowRight, Clock, MapPin, Briefcase } from 'lucide-react';
@@ -99,11 +99,11 @@ export const OpenOpportunities: React.FC = () => {
                 </div>
 
                 <h3 className="text-base font-bold text-gray-900 group-hover:text-[#92278F] transition-colors font-heading mb-3 line-clamp-2 leading-snug">
-                  {language === 'en' ? opp.title_en : opp.title_fr}
+                  {getLocalizedText(opp.title_fr, opp.title_en, language)}
                 </h3>
 
                 <p className="text-xs sm:text-sm text-gray-600 line-clamp-3 leading-relaxed mb-4">
-                  {language === 'en' ? opp.description_en : opp.description_fr}
+                  {getLocalizedText(opp.description_fr, opp.description_en, language)}
                 </p>
               </div>
 
@@ -111,7 +111,7 @@ export const OpenOpportunities: React.FC = () => {
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-[#FF8C00]" />
-                    <span className="line-clamp-1">{language === 'en' ? opp.location_en : opp.location_fr}</span>
+                    <span className="line-clamp-1">{getLocalizedText(opp.location_fr, opp.location_en, language)}</span>
                   </span>
                   <span className="flex items-center gap-1 font-semibold text-[#92278F]">
                     <Clock className="w-3.5 h-3.5" />

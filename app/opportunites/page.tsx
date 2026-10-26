@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem } from '@/types';
 import {
@@ -232,7 +232,7 @@ function OpportunitiesContent() {
                       <div className="h-44 w-full overflow-hidden bg-gray-100 relative">
                         <img
                           src={opp.main_image}
-                          alt={language === 'en' ? opp.title_en : opp.title_fr}
+                          alt={getLocalizedText(opp.title_fr, opp.title_en, language)}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           loading="lazy"
                         />
@@ -282,11 +282,11 @@ function OpportunitiesContent() {
 
                     <div className="p-6 pt-4">
                       <h2 className="text-base font-bold text-gray-900 group-hover:text-[#92278F] transition-colors font-heading mb-3 line-clamp-2 leading-snug">
-                        {language === 'en' ? opp.title_en : opp.title_fr}
+                        {getLocalizedText(opp.title_fr, opp.title_en, language)}
                       </h2>
 
                       <p className="text-xs sm:text-sm text-gray-600 line-clamp-3 leading-relaxed mb-4">
-                        {language === 'en' ? opp.description_en : opp.description_fr}
+                        {getLocalizedText(opp.description_fr, opp.description_en, language)}
                       </p>
                     </div>
                   </div>
@@ -297,7 +297,7 @@ function OpportunitiesContent() {
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-[#FF8C00]" />
                           <span className="line-clamp-1">
-                            {language === 'en' ? opp.location_en : opp.location_fr}
+                            {getLocalizedText(opp.location_fr, opp.location_en, language)}
                           </span>
                         </span>
                         <span className="flex items-center gap-1 font-semibold text-[#92278F]">

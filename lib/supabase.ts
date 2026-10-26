@@ -118,6 +118,27 @@ function setStoredItem<T>(key: string, value: T): void {
   }
 }
 
+export function applyCustomOrder<T extends { id: string }>(items: T[], orderedIds?: string[]): T[] {
+  if (!orderedIds || !Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return items;
+  }
+  const orderMap = new Map<string, number>();
+  orderedIds.forEach((id, idx) => {
+    orderMap.set(String(id), idx);
+  });
+
+  return [...items].sort((a, b) => {
+    const hasA = orderMap.has(String(a.id));
+    const hasB = orderMap.has(String(b.id));
+    if (hasA && hasB) {
+      return orderMap.get(String(a.id))! - orderMap.get(String(b.id))!;
+    }
+    if (hasA && !hasB) return -1;
+    if (!hasA && hasB) return 1;
+    return 0;
+  });
+}
+
 export function unpackStatistic(row: any): KeyStatistic {
   if (!row) return row;
   let label_en = row.label_en || '';
@@ -1130,27 +1151,53 @@ export const supabaseStore = {
     return await this.getDomains();
   },
 
+  // Helper to reorder items based on an ordered array of IDs
+  async getContentOrder(category: 'projects' | 'news' | 'opportunities'): Promise<string[]> {
+    try {
+      const settings = await this.getSettings();
+      const orders = settings?.seo?.content_orders;
+      if (orders && Array.isArray(orders[category]) && orders[category].length > 0) {
+        return orders[category];
+      }
+      const directKey = `${category}_order` as keyof typeof settings.seo;
+      if (settings?.seo && Array.isArray(settings.seo[directKey]) && (settings.seo[directKey] as string[]).length > 0) {
+        return settings.seo[directKey] as string[];
+      }
+    } catch (e) {
+      console.warn(`Failed to read order for ${category}:`, e);
+    }
+    return getStoredItem<string[]>(`${category}_order`, []);
+  },
+
   // Projects
   async getProjects(): Promise<ProjectItem[]> {
     const cached = getCachedData<ProjectItem[]>('projects');
     if (cached) return cached;
 
+    let list: ProjectItem[] = [];
     if (supabase) {
       try {
         const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
         if (!error && data) {
-          const res = data as ProjectItem[];
-          setCachedData('projects', res);
-          setStoredItem('projects', res);
-          return res;
+          list = data as ProjectItem[];
         }
       } catch (e) {
         console.warn('Supabase projects fallback:', e);
       }
     }
-    const local = getStoredItem('projects', initialProjects);
-    setCachedData('projects', local);
-    return local;
+    if (!list || list.length === 0) {
+      list = getStoredItem('projects', initialProjects);
+    }
+
+    const orderIds = await this.getContentOrder('projects');
+    const sorted = applyCustomOrder(list, orderIds).map((item, idx) => ({
+      ...item,
+      order_index: idx + 1,
+    }));
+
+    setCachedData('projects', sorted);
+    setStoredItem('projects', sorted);
+    return sorted;
   },
 
   async getProjectBySlug(slug: string): Promise<ProjectItem | null> {
@@ -1164,6 +1211,22 @@ export const supabaseStore = {
     return await this.getProjects();
   },
 
+  async saveProjectsOrder(orderedIds: string[]): Promise<ProjectItem[]> {
+    const settings = await this.getSettings();
+    const updatedSeo = {
+      ...settings.seo,
+      content_orders: {
+        ...settings.seo?.content_orders,
+        projects: orderedIds,
+      },
+      projects_order: orderedIds,
+    };
+    await this.updateSettings({ ...settings, seo: updatedSeo });
+    setStoredItem('projects_order', orderedIds);
+    invalidateCache('projects');
+    return await this.getProjects();
+  },
+
   async deleteProject(id: string): Promise<ProjectItem[]> {
     const list = await this.getProjects();
     const target = list.find((p) => p.id === id);
@@ -1172,6 +1235,13 @@ export const supabaseStore = {
     } else {
       await mutateTable('projects', 'delete', id);
     }
+    // Clean up from manual order if present
+    try {
+      const orderIds = await this.getContentOrder('projects');
+      if (orderIds.includes(id)) {
+        await this.saveProjectsOrder(orderIds.filter(x => x !== id));
+      }
+    } catch {}
     invalidateCache('projects');
     return await this.getProjects();
   },
@@ -1181,22 +1251,30 @@ export const supabaseStore = {
     const cached = getCachedData<NewsItem[]>('news');
     if (cached) return cached;
 
+    let list: NewsItem[] = [];
     if (supabase) {
       try {
         const { data, error } = await supabase.from('news').select('*').order('published_at', { ascending: false });
         if (!error && data) {
-          const res = data as NewsItem[];
-          setCachedData('news', res);
-          setStoredItem('news', res);
-          return res;
+          list = data as NewsItem[];
         }
       } catch (e) {
         console.warn('Supabase news fallback:', e);
       }
     }
-    const local = getStoredItem('news', initialNews);
-    setCachedData('news', local);
-    return local;
+    if (!list || list.length === 0) {
+      list = getStoredItem('news', initialNews);
+    }
+
+    const orderIds = await this.getContentOrder('news');
+    const sorted = applyCustomOrder(list, orderIds).map((item, idx) => ({
+      ...item,
+      order_index: idx + 1,
+    }));
+
+    setCachedData('news', sorted);
+    setStoredItem('news', sorted);
+    return sorted;
   },
 
   async getNewsBySlug(slug: string): Promise<NewsItem | null> {
@@ -1210,6 +1288,22 @@ export const supabaseStore = {
     return await this.getNews();
   },
 
+  async saveNewsOrder(orderedIds: string[]): Promise<NewsItem[]> {
+    const settings = await this.getSettings();
+    const updatedSeo = {
+      ...settings.seo,
+      content_orders: {
+        ...settings.seo?.content_orders,
+        news: orderedIds,
+      },
+      news_order: orderedIds,
+    };
+    await this.updateSettings({ ...settings, seo: updatedSeo });
+    setStoredItem('news_order', orderedIds);
+    invalidateCache('news');
+    return await this.getNews();
+  },
+
   async deleteNews(id: string): Promise<NewsItem[]> {
     const list = await this.getNews();
     const target = list.find((n) => n.id === id);
@@ -1218,6 +1312,13 @@ export const supabaseStore = {
     } else {
       await mutateTable('news', 'delete', id);
     }
+    // Clean up from manual order if present
+    try {
+      const orderIds = await this.getContentOrder('news');
+      if (orderIds.includes(id)) {
+        await this.saveNewsOrder(orderIds.filter(x => x !== id));
+      }
+    } catch {}
     invalidateCache('news');
     return await this.getNews();
   },
@@ -1227,6 +1328,7 @@ export const supabaseStore = {
     const cached = getCachedData<OpportunityItem[]>('opportunities');
     if (cached) return cached;
 
+    let res: OpportunityItem[] = [];
     if (supabase) {
       try {
         const { data, error } = await supabase.from('opportunities').select('*').order('published_at', { ascending: false });
@@ -1234,7 +1336,7 @@ export const supabaseStore = {
           const localList = getStoredItem<OpportunityItem[]>('opportunities', initialOpportunities);
           const localMap = new Map(localList.map(item => [item.id, item]));
 
-          const res = (data as any[]).map(item => {
+          res = (data as any[]).map(item => {
             let main_image = item.main_image || '';
             let gallery: string[] = Array.isArray(item.gallery) ? item.gallery : [];
             let video_url = item.video_url || '';
@@ -1277,23 +1379,45 @@ export const supabaseStore = {
               external_link,
             } as OpportunityItem;
           });
-
-          setCachedData('opportunities', res);
-          setStoredItem('opportunities', res);
-          return res;
         }
       } catch (e) {
         console.warn('Supabase opportunities fallback:', e);
       }
     }
-    const local = getStoredItem('opportunities', initialOpportunities);
-    setCachedData('opportunities', local);
-    return local;
+    if (!res || res.length === 0) {
+      res = getStoredItem('opportunities', initialOpportunities);
+    }
+
+    const orderIds = await this.getContentOrder('opportunities');
+    const sorted = applyCustomOrder(res, orderIds).map((item, idx) => ({
+      ...item,
+      order_index: idx + 1,
+    }));
+
+    setCachedData('opportunities', sorted);
+    setStoredItem('opportunities', sorted);
+    return sorted;
   },
 
   async getOpportunityBySlug(slug: string): Promise<OpportunityItem | null> {
     const list = await this.getOpportunities();
     return list.find(o => o.slug === slug) || null;
+  },
+
+  async saveOpportunitiesOrder(orderedIds: string[]): Promise<OpportunityItem[]> {
+    const settings = await this.getSettings();
+    const updatedSeo = {
+      ...settings.seo,
+      content_orders: {
+        ...settings.seo?.content_orders,
+        opportunities: orderedIds,
+      },
+      opportunities_order: orderedIds,
+    };
+    await this.updateSettings({ ...settings, seo: updatedSeo });
+    setStoredItem('opportunities_order', orderedIds);
+    invalidateCache('opportunities');
+    return await this.getOpportunities();
   },
 
   async saveOpportunity(opp: OpportunityItem): Promise<OpportunityItem[]> {

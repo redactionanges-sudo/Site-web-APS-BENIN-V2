@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Language } from '@/types';
+import { getCachedTranslation, clientTranslateText } from './translation-service';
 
 interface LanguageContextType {
   language: Language;
@@ -148,13 +149,20 @@ const translations: Record<Language, Record<string, string>> = {
     'contact.form_success': 'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
     'contact.form_error': 'Une erreur est survenue lors de l’envoi. Veuillez réessayer ou nous joindre directement.',
 
-    // Common words
+    // Common words & UI
     'common.search': 'Rechercher...',
     'common.filter_all': 'Tous',
     'common.download': 'Télécharger',
     'common.view': 'Consulter',
     'common.back': 'Retour',
     'common.close': 'Fermer',
+    'common.reset_filters': 'Réinitialiser les filtres',
+    'common.loading': 'Chargement...',
+    'common.no_results': 'Aucun résultat trouvé.',
+    'common.read_more': 'Lire la suite',
+    'common.published_on': 'Publié le',
+    'common.updated_on': 'Mis à jour le',
+    'common.by': 'Par',
 
     // Logo & Branding Settings
     'settings.logo_title': 'Logo Officiel du Site',
@@ -308,13 +316,20 @@ const translations: Record<Language, Record<string, string>> = {
     'contact.form_success': 'Your message has been successfully sent. We will reply to you shortly.',
     'contact.form_error': 'An error occurred while sending. Please try again or reach out directly.',
 
-    // Common words
+    // Common words & UI
     'common.search': 'Search...',
     'common.filter_all': 'All',
     'common.download': 'Download',
     'common.view': 'View',
     'common.back': 'Back',
     'common.close': 'Close',
+    'common.reset_filters': 'Reset filters',
+    'common.loading': 'Loading...',
+    'common.no_results': 'No results found.',
+    'common.read_more': 'Read more',
+    'common.published_on': 'Published on',
+    'common.updated_on': 'Updated on',
+    'common.by': 'By',
 
     // Logo & Branding Settings
     'settings.logo_title': 'Official Website Logo',
@@ -371,6 +386,28 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!item) return '';
     const localizedKey = `${field}_${language}`;
     const fallbackKey = `${field}_fr`;
+
+    if (language === 'en') {
+      const enVal = item[localizedKey];
+      if (typeof enVal === 'string' && enVal.trim().length > 0) {
+        return enVal;
+      }
+
+      // Check cache for French text
+      const frVal = item[fallbackKey] || item[field] || '';
+      if (typeof frVal === 'string' && frVal.trim().length > 0) {
+        const cached = getCachedTranslation(frVal);
+        if (cached) return cached;
+
+        // Auto trigger background translation
+        if (typeof window !== 'undefined') {
+          clientTranslateText(frVal, field);
+        }
+        return frVal; // Safe fallback: never empty!
+      }
+      return enVal || frVal || item[field] || '';
+    }
+
     return item[localizedKey] || item[fallbackKey] || item[field] || '';
   };
 
@@ -382,3 +419,65 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 };
 
 export const useLanguage = () => useContext(LanguageContext);
+
+/**
+ * Universal safe helper to get localized text.
+ * Guarantees that content NEVER disappears if English is empty.
+ * If English is selected and missing, returns cached translation or falls back to French
+ * while triggering background hydration.
+ */
+export function getLocalizedText(
+  fr?: string | null,
+  en?: string | null,
+  lang: Language = 'fr'
+): string {
+  if (lang === 'en') {
+    if (en && typeof en === 'string' && en.trim().length > 0) {
+      return en;
+    }
+    if (fr && typeof fr === 'string' && fr.trim().length > 0) {
+      const cached = getCachedTranslation(fr);
+      if (cached) return cached;
+      // Kick off background translation if running in browser
+      if (typeof window !== 'undefined') {
+        clientTranslateText(fr);
+      }
+      return fr; // Return French immediately so section NEVER disappears
+    }
+    return en || '';
+  }
+  return fr || en || '';
+}
+
+/**
+ * React hook that reacts to language changes AND background translation events.
+ */
+export function useLocalizedText(fr?: string | null, en?: string | null): string {
+  const { language } = useLanguage();
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (language !== 'en' || !fr) return;
+
+    // If English is already present, nothing to translate
+    if (en && typeof en === 'string' && en.trim().length > 0) return;
+
+    // Check if translation is cached
+    const cached = getCachedTranslation(fr);
+    if (!cached) {
+      // Trigger translation
+      clientTranslateText(fr).then(() => {
+        setTick((t) => t + 1);
+      });
+    }
+
+    const handler = () => {
+      setTick((t) => t + 1);
+    };
+
+    window.addEventListener('aps_translation_updated', handler);
+    return () => window.removeEventListener('aps_translation_updated', handler);
+  }, [language, fr, en]);
+
+  return getLocalizedText(fr, en, language);
+}

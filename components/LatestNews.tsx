@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem } from '@/types';
 import { ArrowRight, Calendar, User } from 'lucide-react';
@@ -90,11 +90,11 @@ export const LatestNews: React.FC = () => {
                   </div>
 
                   <h3 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-[#92278F] transition-colors font-heading line-clamp-2 leading-snug mb-2">
-                    {language === 'en' ? item.title_en : item.title_fr}
+                    {getLocalizedText(item.title_fr, item.title_en, language)}
                   </h3>
 
                   <p className="text-xs sm:text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                    {language === 'en' ? item.summary_en : item.summary_fr}
+                    {getLocalizedText(item.summary_fr, item.summary_en, language)}
                   </p>
                 </div>
 

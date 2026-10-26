@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { PartnerItem } from '@/types';
 import { ExternalLink, Handshake, ShieldCheck, Building2 } from 'lucide-react';
@@ -152,7 +152,7 @@ export default function PartenairesPage() {
                     </div>
 
                     <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-4">
-                      {language === 'en' ? item.description_en : item.description_fr}
+                      {getLocalizedText(item.description_fr, item.description_en, language)}
                     </p>
 
                     <div className="p-3 rounded-lg bg-purple-50/50 border border-purple-100 text-xs">

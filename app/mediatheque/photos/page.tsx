@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { PhotoAlbum, MediaItem } from '@/types';
 import { Image as ImageIcon, Calendar, MapPin, X, ZoomIn, Folder, Camera, Film } from 'lucide-react';
@@ -212,7 +212,7 @@ export default function PhotosMediathequePage() {
                         </motion.div>
                       </div>
                       <h3 className="font-bold text-base text-white line-clamp-2 font-heading leading-tight mb-2">
-                        {language === 'en' ? item.title_en : item.title_fr}
+                        {getLocalizedText(item.title_fr, item.title_en, language)}
                       </h3>
                       <div className="flex items-center gap-4 text-[11px] text-gray-300 font-mono">
                         <span className="flex items-center gap-1">
@@ -274,13 +274,11 @@ export default function PhotosMediathequePage() {
                     <span className="font-mono text-gray-400">{activePhoto.date}</span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold font-heading mb-2">
-                    {language === 'en' ? activePhoto.title_en : activePhoto.title_fr}
+                    {getLocalizedText(activePhoto.title_fr, activePhoto.title_en, language)}
                   </h3>
                   {(activePhoto.description_fr || activePhoto.description_en) && (
                     <p className="text-sm text-gray-300 leading-relaxed mb-3">
-                      {language === 'en'
-                        ? activePhoto.description_en || activePhoto.description_fr
-                        : activePhoto.description_fr}
+                      {getLocalizedText(activePhoto.description_fr, activePhoto.description_en, language)}
                     </p>
                   )}
                   {activePhoto.location && (

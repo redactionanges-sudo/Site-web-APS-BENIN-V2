@@ -6,6 +6,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem, NewsStatus } from '@/types';
+import { clientTranslateFields } from '@/lib/translation-service';
 import { ImagePickerField, MultiImageGalleryField, VideoPickerField } from '@/components/admin/MediaSelectorModal';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import {
@@ -18,6 +19,14 @@ import {
   X,
   Globe,
   Tag,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
+  Check,
+  CheckCircle,
+  AlertCircle,
+  RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 
 export default function AdminNewsPage() {
@@ -25,11 +34,21 @@ export default function AdminNewsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // Manual reordering state
+  const [hasOrderChanged, setHasOrderChanged] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [saveOrderSuccess, setSaveOrderSuccess] = useState<string | null>(null);
+  const [saveOrderError, setSaveOrderError] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingNews, setEditingNews] = useState<NewsItem | null>(null);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [newsToDelete, setNewsToDelete] = useState<NewsItem | null>(null);
+  const [isAutoTranslating, setIsAutoTranslating] = useState(false);
+  const [batchTranslating, setBatchTranslating] = useState(false);
+  const [batchTranslateNotice, setBatchTranslateNotice] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState<Partial<NewsItem>>({
@@ -106,6 +125,88 @@ export default function AdminNewsPage() {
     }));
   };
 
+  const handleAutoTranslateModal = async () => {
+    const toTranslate: Record<string, string> = {};
+    if (form.title_fr) toTranslate.title_en = form.title_fr;
+    if (form.summary_fr) toTranslate.summary_en = form.summary_fr;
+    if (form.content_fr) toTranslate.content_en = form.content_fr;
+    if (form.category_fr) toTranslate.category_en = form.category_fr;
+
+    if (Object.keys(toTranslate).length === 0) {
+      alert('Veuillez d’abord renseigner des champs en français à traduire.');
+      return;
+    }
+
+    setIsAutoTranslating(true);
+    try {
+      const translated = await clientTranslateFields(toTranslate, 'news');
+      setForm((prev) => ({
+        ...prev,
+        title_en: translated.title_en || prev.title_en,
+        summary_en: translated.summary_en || prev.summary_en,
+        content_en: translated.content_en || prev.content_en,
+        category_en: translated.category_en || prev.category_en,
+      }));
+    } catch (err: any) {
+      alert(`Erreur de traduction : ${err.message || 'Impossible de contacter le service'}`);
+    } finally {
+      setIsAutoTranslating(false);
+    }
+  };
+
+  const handleBatchTranslateNews = async () => {
+    const incomplete = news.filter(
+      (n) =>
+        (!n.content_en || !n.summary_en || !n.title_en) &&
+        Boolean(n.content_fr || n.summary_fr || n.title_fr)
+    );
+
+    if (incomplete.length === 0) {
+      alert('Toutes les actualités disposent déjà d’une version anglaise complète.');
+      return;
+    }
+
+    if (!confirm(`Traduire automatiquement en anglais les ${incomplete.length} actualité(s) dont la version anglaise est incomplète ?`)) {
+      return;
+    }
+
+    setBatchTranslating(true);
+    setBatchTranslateNotice(`Traduction en cours de ${incomplete.length} actualité(s)...`);
+
+    try {
+      for (let i = 0; i < incomplete.length; i++) {
+        const item = incomplete[i];
+        setBatchTranslateNotice(`Traduction de l'actualité ${i + 1}/${incomplete.length} : « ${item.title_fr} »...`);
+        const toTranslate: Record<string, string> = {};
+        if (!item.title_en && item.title_fr) toTranslate.title_en = item.title_fr;
+        if (!item.summary_en && item.summary_fr) toTranslate.summary_en = item.summary_fr;
+        if (!item.content_en && item.content_fr) toTranslate.content_en = item.content_fr;
+        if (!item.category_en && item.category_fr) toTranslate.category_en = item.category_fr;
+
+        if (Object.keys(toTranslate).length > 0) {
+          const trans = await clientTranslateFields(toTranslate, 'news');
+          const updated: NewsItem = {
+            ...item,
+            title_en: item.title_en || trans.title_en || item.title_fr,
+            summary_en: item.summary_en || trans.summary_en || item.summary_fr,
+            content_en: item.content_en || trans.content_en || item.content_fr,
+            category_en: item.category_en || trans.category_en || item.category_fr,
+          };
+          await supabaseStore.saveNews(updated);
+        }
+      }
+
+      await loadNews();
+      setBatchTranslateNotice(`Succès : ${incomplete.length} actualité(s) ont été traduites et mises à jour.`);
+      setTimeout(() => setBatchTranslateNotice(null), 5000);
+    } catch (err: any) {
+      alert(`Erreur lors de la traduction en masse : ${err.message}`);
+      setBatchTranslateNotice(null);
+    } finally {
+      setBatchTranslating(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title_fr || !form.slug) {
@@ -113,18 +214,51 @@ export default function AdminNewsPage() {
       return;
     }
 
+    let title_en = (form.title_en || '').trim();
+    let summary_en = (form.summary_en || '').trim();
+    let content_en = (form.content_en || '').trim();
+    let category_en = (form.category_en || '').trim();
+
+    // Check if any English fields are missing while French counterparts exist
+    const missingFields: Record<string, string> = {};
+    if (!title_en && form.title_fr) missingFields.title_en = form.title_fr;
+    if (!summary_en && form.summary_fr) missingFields.summary_en = form.summary_fr;
+    if (!content_en && form.content_fr) missingFields.content_en = form.content_fr;
+    if (!category_en && form.category_fr) missingFields.category_en = form.category_fr;
+
+    if (Object.keys(missingFields).length > 0) {
+      setIsAutoTranslating(true);
+      try {
+        const translated = await clientTranslateFields(missingFields, 'news');
+        if (translated.title_en) title_en = translated.title_en;
+        if (translated.summary_en) summary_en = translated.summary_en;
+        if (translated.content_en) content_en = translated.content_en;
+        if (translated.category_en) category_en = translated.category_en;
+      } catch (e) {
+        console.warn('Auto translation during save failed, falling back to French:', e);
+      } finally {
+        setIsAutoTranslating(false);
+      }
+    }
+
+    // Safe fallbacks so content never blanks
+    title_en = title_en || form.title_fr || '';
+    summary_en = summary_en || form.summary_fr || '';
+    content_en = content_en || form.content_fr || '';
+    category_en = category_en || form.category_fr || 'News';
+
     const payload: NewsItem = {
       id: editingNews?.id || 'news-' + Date.now(),
       slug: form.slug!,
       title_fr: form.title_fr || '',
-      title_en: form.title_en || form.title_fr || '',
+      title_en,
       summary_fr: form.summary_fr || '',
-      summary_en: form.summary_en || form.summary_fr || '',
+      summary_en,
       content_fr: form.content_fr || '',
-      content_en: form.content_en || form.content_fr || '',
+      content_en,
       author: form.author || 'Cellule Communication APS-BÉNIN',
       category_fr: form.category_fr || 'Actualité',
-      category_en: form.category_en || 'News',
+      category_en,
       main_image: form.main_image || '',
       gallery: form.gallery || [],
       video_url: form.video_url || '',
@@ -157,6 +291,105 @@ export default function AdminNewsPage() {
     }
   };
 
+  // Reordering handlers
+  const handleMove = (id: string, direction: 'up' | 'down') => {
+    const currentIndex = news.findIndex((n) => n.id === id);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= news.length) return;
+
+    const next = [...news];
+    const temp = next[currentIndex];
+    next[currentIndex] = next[targetIndex];
+    next[targetIndex] = temp;
+
+    const reordered = next.map((n, idx) => ({ ...n, order_index: idx + 1 }));
+    setNews(reordered);
+    setHasOrderChanged(true);
+    setSaveOrderSuccess(null);
+    setSaveOrderError(null);
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+    const idx = news.findIndex((n) => n.id === id);
+    setDraggedIndex(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData('text/plain');
+    if (!sourceId || sourceId === targetId) {
+      setDraggedIndex(null);
+      return;
+    }
+    const sourceIndex = news.findIndex((n) => n.id === sourceId);
+    const targetIndex = news.findIndex((n) => n.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const next = [...news];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+
+    const reordered = next.map((n, idx) => ({ ...n, order_index: idx + 1 }));
+    setNews(reordered);
+    setDraggedIndex(null);
+    setHasOrderChanged(true);
+    setSaveOrderSuccess(null);
+    setSaveOrderError(null);
+  };
+
+  const handleSaveOrder = async () => {
+    setSavingOrder(true);
+    setSaveOrderSuccess(null);
+    setSaveOrderError(null);
+    try {
+      const ids = news.map((n) => n.id);
+      const updated = await supabaseStore.saveNewsOrder(ids);
+      setNews(updated);
+      setHasOrderChanged(false);
+      setSaveOrderSuccess("L'ordre d'affichage des actualités a été enregistré avec succès !");
+      setTimeout(() => setSaveOrderSuccess(null), 4000);
+    } catch (err: any) {
+      console.error("Erreur enregistrement ordre actualités:", err);
+      setSaveOrderError(
+        err?.message || "Impossible d'enregistrer le nouvel ordre dans Supabase."
+      );
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
+  const handleCancelReorder = async () => {
+    setSavingOrder(true);
+    await loadNews();
+    setHasOrderChanged(false);
+    setSaveOrderSuccess(null);
+    setSaveOrderError(null);
+    setSavingOrder(false);
+  };
+
+  const handleResetChronological = () => {
+    const sorted = [...news].sort((a, b) => {
+      const dateA = new Date(a.published_at || a.created_at || 0).getTime();
+      const dateB = new Date(b.published_at || b.created_at || 0).getTime();
+      return dateB - dateA;
+    }).map((n, idx) => ({ ...n, order_index: idx + 1 }));
+    setNews(sorted);
+    setHasOrderChanged(true);
+    setSaveOrderSuccess(null);
+    setSaveOrderError(null);
+  };
+
   const filtered = news.filter((item) => {
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
     const q = search.toLowerCase();
@@ -164,24 +397,164 @@ export default function AdminNewsPage() {
     return matchesStatus && matchesSearch;
   });
 
+  const isFiltered = statusFilter !== 'all' || search.trim() !== '';
+
   return (
     <AdminAuthGuard>
       <AdminHeader
         title="Gestion des Actualités (CMS)"
-        subtitle="Rédigez, publiez et archivez les articles et communiqués d’APS-BÉNIN"
+        subtitle="Rédigez, publiez, réorganisez et archivez les articles et communiqués d’APS-BÉNIN"
         actionButton={
-          <button
-            type="button"
-            onClick={openNewModal}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4 text-[#FF8C00]" />
-            <span>Rédiger un Article</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBatchTranslateNews}
+              disabled={batchTranslating}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold transition-colors disabled:opacity-50"
+              title="Générer automatiquement la version anglaise des actualités incomplètes"
+            >
+              {batchTranslating ? (
+                <span className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+              )}
+              <span>{batchTranslating ? 'Traduction en cours...' : 'Traduire en anglais'}</span>
+            </button>
+            {hasOrderChanged && (
+              <button
+                type="button"
+                onClick={handleSaveOrder}
+                disabled={savingOrder}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-xs"
+              >
+                {savingOrder ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 text-white" />
+                )}
+                <span>Enregistrer l'ordre</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={openNewModal}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-colors shadow-xs"
+            >
+              <Plus className="w-4 h-4 text-[#FF8C00]" />
+              <span>Rédiger un Article</span>
+            </button>
+          </div>
         }
       />
 
       <main className="p-6 space-y-6 max-w-7xl">
+        {batchTranslateNotice && (
+          <div className="bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-xl p-4 flex items-center justify-between gap-3 shadow-xs animate-in fade-in">
+            <div className="flex items-center gap-2.5 text-xs font-semibold">
+              <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span>{batchTranslateNotice}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBatchTranslateNotice(null)}
+              className="text-indigo-700 hover:text-indigo-900 p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {/* Success alert */}
+        {saveOrderSuccess && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5 text-xs font-semibold">
+              <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{saveOrderSuccess}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSaveOrderSuccess(null)}
+              className="text-emerald-700 hover:text-emerald-900 p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Error alert */}
+        {saveOrderError && (
+          <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5 text-xs font-semibold">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{saveOrderError}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveOrder}
+                className="text-xs font-bold px-2.5 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Réessayer
+              </button>
+              <button
+                type="button"
+                onClick={() => setSaveOrderError(null)}
+                className="text-red-700 hover:text-red-900 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Sticky/Prominent Pending Order Save Banner */}
+        {hasOrderChanged && (
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-2.5 text-xs font-bold text-amber-900">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>
+                L'ordre d'affichage des actualités a été modifié manuellement. Les visiteurs du site verront cet ordre une fois enregistré.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleResetChronological}
+                title="Rétablir le tri par date de parution"
+                className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 flex items-center gap-1.5 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-gray-500" />
+                <span>Par date</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelReorder}
+                disabled={savingOrder}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveOrder}
+                disabled={savingOrder}
+                className="px-4 py-1.5 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-colors shadow-xs flex items-center gap-2"
+              >
+                {savingOrder ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Sauvegarde en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4 text-[#FF8C00]" />
+                    <span>Enregistrer l'ordre</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Filter bar */}
         <div className="bg-white p-4 rounded-xl border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -235,12 +608,32 @@ export default function AdminNewsPage() {
           </div>
         </div>
 
+        {/* Filter warning notice */}
+        {isFiltered && (
+          <div className="bg-purple-50/60 border border-purple-200 rounded-lg px-4 py-2 text-xs text-purple-900 flex items-center justify-between gap-2">
+            <span>
+              Filtre actif : la réorganisation manuelle s’effectue sur la liste complète des actualités.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('all');
+                setSearch('');
+              }}
+              className="font-bold underline text-[#92278F] hover:text-[#741772] shrink-0"
+            >
+              Afficher toute la liste pour réorganiser
+            </button>
+          </div>
+        )}
+
         {/* News Table */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 font-bold uppercase tracking-wider">
                 <tr>
+                  <th className="py-3 px-4 w-32">Ordre</th>
                   <th className="py-3 px-4">Article</th>
                   <th className="py-3 px-4">Catégorie</th>
                   <th className="py-3 px-4">Statut</th>
@@ -249,8 +642,62 @@ export default function AdminNewsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-gray-700">
-                {filtered.map((item) => (
-                  <tr key={item.id} className="hover:bg-purple-50/30 transition-colors">
+                {filtered.map((item) => {
+                  const globalIdx = news.findIndex((n) => n.id === item.id);
+                  const isFirst = globalIdx === 0;
+                  const isLast = globalIdx === news.length - 1;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      draggable={!isFiltered}
+                      onDragStart={(e) => handleDragStart(e, item.id)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, item.id)}
+                      className={`hover:bg-purple-50/30 transition-colors ${
+                        draggedIndex === globalIdx ? 'opacity-40 bg-purple-100' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            title={isFiltered ? "Désactivez le filtre pour glisser-déposer" : "Glisser pour réorganiser"}
+                            className={`p-1 rounded text-gray-400 ${
+                              isFiltered ? 'cursor-not-allowed opacity-40' : 'cursor-grab hover:text-gray-700 hover:bg-gray-100 active:cursor-grabbing'
+                            }`}
+                          >
+                            <GripVertical className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-[#92278F] min-w-[28px] text-center">
+                            #{globalIdx + 1}
+                          </span>
+                          <div className="flex flex-col gap-0.5 ml-1">
+                            <button
+                              type="button"
+                              onClick={() => handleMove(item.id, 'up')}
+                              disabled={isFirst}
+                              title="Monter"
+                              className={`p-0.5 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors ${
+                                isFirst ? 'opacity-20 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMove(item.id, 'down')}
+                              disabled={isLast}
+                              title="Descendre"
+                              className={`p-0.5 rounded text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors ${
+                                isLast ? 'opacity-20 cursor-not-allowed' : ''
+                              }`}
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <img
@@ -323,7 +770,8 @@ export default function AdminNewsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
@@ -347,6 +795,30 @@ export default function AdminNewsPage() {
               </div>
 
               <form onSubmit={handleSave} className="space-y-6">
+                {/* Bilingual Helper Banner */}
+                <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-indigo-950">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>
+                      <strong>Système bilingue automatique :</strong> Rédigez sereinement en français. Les champs anglais sont auto-générés à l'enregistrement s'ils sont laissés vides.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAutoTranslateModal}
+                    disabled={isAutoTranslating || !form.title_fr}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shrink-0 disabled:opacity-50 transition-colors shadow-xs"
+                    title="Pré-remplir immédiatement les champs anglais à partir des textes français saisis"
+                  >
+                    {isAutoTranslating ? (
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isAutoTranslating ? 'Traduction en cours...' : 'Pré-remplir l’anglais'}</span>
+                  </button>
+                </div>
+
                 {/* Titles */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -564,9 +1036,19 @@ export default function AdminNewsPage() {
 
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold shadow-xs"
+                    disabled={isAutoTranslating}
+                    className="px-5 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold shadow-xs disabled:opacity-50 flex items-center gap-2"
                   >
-                    {editingNews ? 'Enregistrer les modifications' : 'Publier l’article'}
+                    {isAutoTranslating && (
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
+                    <span>
+                      {isAutoTranslating
+                        ? 'Traduction & enregistrement...'
+                        : editingNews
+                        ? 'Enregistrer les modifications'
+                        : 'Publier l’article'}
+                    </span>
                   </button>
                 </div>
               </form>

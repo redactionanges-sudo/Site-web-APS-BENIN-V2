@@ -6,12 +6,12 @@ import Image from 'next/image';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { OpportunityItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
-import { RichTextContent } from '@/components/RichTextContent';
+import { RichTextContent, LocalizedRichContent } from '@/components/RichTextContent';
 import {
   ArrowLeft,
   Calendar,
@@ -146,21 +146,27 @@ export default function OpportunityDetailPage({ params }: PageProps) {
               </div>
 
               <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight font-heading leading-tight">
-                {language === 'en' ? opp.title_en : opp.title_fr}
+                {getLocalizedText(opp.title_fr, opp.title_en, language)}
               </h1>
 
               <div className="flex flex-wrap items-center gap-6 text-xs text-purple-100 pt-2">
                 <span className="flex items-center gap-1.5 font-medium">
                   <MapPin className="w-4 h-4 text-[#FF8C00]" />
-                  <span>{language === 'en' ? opp.location_en : opp.location_fr}</span>
+                  <span>{getLocalizedText(opp.location_fr, opp.location_en, language)}</span>
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
                   <Calendar className="w-4 h-4 text-[#FF8C00]" />
-                  <span>Publié le {formatDate(opp.published_at)}</span>
+                  <span>
+                    {language === 'en' ? 'Published on ' : 'Publié le '}
+                    {formatDate(opp.published_at)}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1.5 font-bold text-orange-300 bg-white/10 px-3 py-1 rounded border border-white/20">
                   <Clock className="w-4 h-4" />
-                  <span>Date limite : {formatDate(opp.deadline)}</span>
+                  <span>
+                    {language === 'en' ? 'Deadline: ' : 'Date limite : '}
+                    {formatDate(opp.deadline)}
+                  </span>
                 </span>
               </div>
             </div>
@@ -177,7 +183,7 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                   <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-xs bg-gray-50 h-72 sm:h-96">
                     <img
                       src={opp.main_image}
-                      alt={language === 'en' ? opp.title_en : opp.title_fr}
+                      alt={getLocalizedText(opp.title_fr, opp.title_en, language)}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -189,7 +195,7 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                     {language === 'en' ? 'Position / Mission Overview' : 'Description du Poste & Contexte'}
                   </h2>
                   <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                    <RichTextContent content={language === 'en' ? opp.description_en : opp.description_fr} />
+                    <LocalizedRichContent fr={opp.description_fr} en={opp.description_en} />
                   </div>
                 </div>
 
@@ -199,7 +205,7 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                     {language === 'en' ? 'Eligibility & Qualifications' : 'Conditions de Candidature & Profil'}
                   </h2>
                   <div className="p-6 rounded-xl bg-purple-50/50 border border-purple-100 text-sm text-gray-800 leading-relaxed">
-                    <RichTextContent content={language === 'en' ? opp.conditions_en : opp.conditions_fr} />
+                    <LocalizedRichContent fr={opp.conditions_fr} en={opp.conditions_en} />
                   </div>
                 </div>
 
@@ -209,7 +215,7 @@ export default function OpportunityDetailPage({ params }: PageProps) {
                     {language === 'en' ? 'Required Application Documents' : 'Dossier de Candidature / Pièces à Fournir'}
                   </h2>
                   <div className="p-6 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-800 leading-relaxed">
-                    <RichTextContent content={language === 'en' ? opp.documents_required_en : opp.documents_required_fr} />
+                    <LocalizedRichContent fr={opp.documents_required_fr} en={opp.documents_required_en} />
                   </div>
                 </div>
 

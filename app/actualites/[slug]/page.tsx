@@ -6,12 +6,12 @@ import { motion } from 'motion/react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import { getVideoEmbedUrl, parseVideoUrl } from '@/lib/video-utils';
-import { RichTextContent } from '@/components/RichTextContent';
+import { RichTextContent, LocalizedRichContent } from '@/components/RichTextContent';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import {
   ArrowLeft,
@@ -113,11 +113,11 @@ export default function NewsDetailPage({ params }: PageProps) {
 
             <div className="space-y-4">
               <span className="inline-block bg-[#92278F] text-white text-xs font-semibold px-3 py-1 rounded">
-                {language === 'en' ? article.category_en : article.category_fr}
+                {getLocalizedText(article.category_fr, article.category_en, language)}
               </span>
 
               <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 font-heading leading-tight">
-                {language === 'en' ? article.title_en : article.title_fr}
+                {getLocalizedText(article.title_fr, article.title_en, language)}
               </h1>
 
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-200">
@@ -143,7 +143,7 @@ export default function NewsDetailPage({ params }: PageProps) {
               <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm aspect-video sm:aspect-[21/9] max-h-[460px] bg-gray-100">
                 <OptimizedImage
                   src={article.main_image}
-                  alt={language === 'en' ? article.title_en : article.title_fr}
+                  alt={getLocalizedText(article.title_fr, article.title_en, language)}
                   fill
                   priority={true}
                   sizes="(max-width: 896px) 100vw, 896px"
@@ -154,13 +154,14 @@ export default function NewsDetailPage({ params }: PageProps) {
 
             {/* Excerpt */}
             <div className="p-6 rounded-xl bg-purple-50/60 border-l-4 border-[#92278F] text-sm sm:text-base text-gray-800 font-medium leading-relaxed italic">
-              {language === 'en' ? article.summary_en : article.summary_fr}
+              {getLocalizedText(article.summary_fr, article.summary_en, language)}
             </div>
 
             {/* Rich content */}
             <div className="text-gray-700 leading-relaxed text-base">
-              <RichTextContent
-                content={language === 'en' ? article.content_en : article.content_fr}
+              <LocalizedRichContent
+                fr={article.content_fr}
+                en={article.content_en}
                 className="prose-purple max-w-none"
               />
             </div>

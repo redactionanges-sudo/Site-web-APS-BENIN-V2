@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { DomainOfIntervention } from '@/types';
 import {
@@ -78,11 +78,11 @@ export const DomainCards: React.FC = () => {
                 </div>
 
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2 font-heading leading-snug group-hover:text-[#92278F] transition-colors">
-                  {language === 'en' ? dom.title_en : dom.title_fr}
+                  {getLocalizedText(dom.title_fr, dom.title_en, language)}
                 </h3>
 
                 <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-4">
-                  {language === 'en' ? dom.short_desc_en : dom.short_desc_fr}
+                  {getLocalizedText(dom.short_desc_fr, dom.short_desc_en, language)}
                 </p>
               </div>
 

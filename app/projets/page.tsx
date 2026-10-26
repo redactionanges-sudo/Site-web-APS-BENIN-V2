@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem } from '@/types';
 import { Search, MapPin, Calendar, ArrowRight, Filter } from 'lucide-react';
@@ -173,7 +173,7 @@ export default function ProjetsPage() {
                     <div className="relative h-56 w-full overflow-hidden bg-gray-100">
                       <OptimizedImage
                         src={proj.main_image}
-                        alt={language === 'en' ? proj.title_en : proj.title_fr}
+                        alt={getLocalizedText(proj.title_fr, proj.title_en, language)}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="group-hover:scale-105 transition-transform duration-500"
@@ -198,11 +198,11 @@ export default function ProjetsPage() {
                         </div>
 
                         <h2 className="text-lg font-bold text-gray-900 group-hover:text-[#92278F] transition-colors font-heading line-clamp-2 leading-snug mb-3">
-                          {language === 'en' ? proj.title_en : proj.title_fr}
+                          {getLocalizedText(proj.title_fr, proj.title_en, language)}
                         </h2>
 
                         <p className="text-xs sm:text-sm text-gray-600 line-clamp-3 leading-relaxed mb-4">
-                          {language === 'en' ? proj.excerpt_en : proj.excerpt_fr}
+                          {getLocalizedText(proj.excerpt_fr, proj.excerpt_en, language)}
                         </p>
                       </div>
 

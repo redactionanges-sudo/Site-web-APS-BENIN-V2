@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { TeamMember } from '@/types';
 import { UserCheck, Award, User } from 'lucide-react';
@@ -79,10 +79,10 @@ export default function EquipePage() {
                         {member.name}
                       </h3>
                       <p className="text-xs font-bold text-[#92278F] uppercase tracking-wide mb-3">
-                        {language === 'en' ? member.role_en : member.role_fr}
+                        {getLocalizedText(member.role_fr, member.role_en, language)}
                       </p>
                       <p className="text-xs text-gray-600 leading-relaxed mb-4">
-                        {language === 'en' ? member.bio_en : member.bio_fr}
+                        {getLocalizedText(member.bio_fr, member.bio_en, language)}
                       </p>
                     </div>
 
@@ -90,7 +90,7 @@ export default function EquipePage() {
                       <div className="flex items-start gap-1.5 text-[11px] text-gray-500">
                         <Award className="w-3.5 h-3.5 text-[#FF8C00] shrink-0 mt-0.5" />
                         <span className="line-clamp-2">
-                          {language === 'en' ? member.expertise_en : member.expertise_fr}
+                          {getLocalizedText(member.expertise_fr, member.expertise_en, language)}
                         </span>
                       </div>
                     </div>

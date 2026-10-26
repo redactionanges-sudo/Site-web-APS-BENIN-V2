@@ -6,11 +6,11 @@ import { motion } from 'motion/react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem } from '@/types';
 import { trackEvent } from '@/lib/analytics';
-import { RichTextContent } from '@/components/RichTextContent';
+import { RichTextContent, LocalizedRichContent } from '@/components/RichTextContent';
 import {
   ArrowLeft,
   Calendar,
@@ -130,11 +130,11 @@ export default function ProjectDetailPage({ params }: PageProps) {
               </div>
 
               <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight font-heading leading-tight">
-                {language === 'en' ? project.title_en : project.title_fr}
+                {getLocalizedText(project.title_fr, project.title_en, language)}
               </h1>
 
               <p className="text-base text-purple-100 max-w-3xl leading-relaxed">
-                {language === 'en' ? project.excerpt_en : project.excerpt_fr}
+                {getLocalizedText(project.excerpt_fr, project.excerpt_en, language)}
               </p>
             </div>
           </div>
@@ -147,7 +147,9 @@ export default function ProjectDetailPage({ params }: PageProps) {
               <div className="flex items-center gap-3">
                 <MapPin className="w-5 h-5 text-[#FF8C00] shrink-0" />
                 <div>
-                  <span className="text-gray-400 block font-medium">Communes ciblées</span>
+                  <span className="text-gray-400 block font-medium">
+                    {language === 'en' ? 'Target Communes' : 'Communes ciblées'}
+                  </span>
                   <span className="font-bold text-gray-900">{project.communes.join(', ')}</span>
                 </div>
               </div>
@@ -155,7 +157,9 @@ export default function ProjectDetailPage({ params }: PageProps) {
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-[#92278F] shrink-0" />
                 <div>
-                  <span className="text-gray-400 block font-medium">Période d’exécution</span>
+                  <span className="text-gray-400 block font-medium">
+                    {language === 'en' ? 'Execution Period' : 'Période d’exécution'}
+                  </span>
                   <span className="font-bold text-gray-900">{project.period}</span>
                 </div>
               </div>
@@ -163,7 +167,9 @@ export default function ProjectDetailPage({ params }: PageProps) {
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-[#FF8C00] shrink-0" />
                 <div>
-                  <span className="text-gray-400 block font-medium">Durée totale</span>
+                  <span className="text-gray-400 block font-medium">
+                    {language === 'en' ? 'Total Duration' : 'Durée totale'}
+                  </span>
                   <span className="font-bold text-gray-900">{project.duration}</span>
                 </div>
               </div>
@@ -171,8 +177,16 @@ export default function ProjectDetailPage({ params }: PageProps) {
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-[#92278F] shrink-0" />
                 <div>
-                  <span className="text-gray-400 block font-medium">Statut du projet</span>
-                  <span className="font-bold text-gray-900 capitalize">{project.status.replace('_', ' ')}</span>
+                  <span className="text-gray-400 block font-medium">
+                    {language === 'en' ? 'Project Status' : 'Statut du projet'}
+                  </span>
+                  <span className="font-bold text-gray-900 capitalize">
+                    {project.status === 'in_progress'
+                      ? t('projects.status_in_progress')
+                      : project.status === 'completed'
+                      ? t('projects.status_completed')
+                      : t('projects.status_upcoming')}
+                  </span>
                 </div>
               </div>
             </div>
@@ -191,13 +205,13 @@ export default function ProjectDetailPage({ params }: PageProps) {
                     {language === 'en' ? 'Context & Problem Statement' : 'Contexte & Problématique'}
                   </h2>
                   <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                    <RichTextContent content={language === 'en' ? project.context_en : project.context_fr} />
+                    <LocalizedRichContent fr={project.context_fr} en={project.context_en} />
                   </div>
                   <div className="p-5 rounded-xl bg-orange-50/70 border border-orange-100 text-xs sm:text-sm text-gray-800">
                     <strong className="text-[#d97500] block mb-1 font-bold">
                       {language === 'en' ? 'Core Challenge Addressed:' : 'Défi Majeur Adressé :'}
                     </strong>
-                    <RichTextContent content={language === 'en' ? project.problem_en : project.problem_fr} />
+                    <LocalizedRichContent fr={project.problem_fr} en={project.problem_en} />
                   </div>
                 </div>
 
@@ -208,7 +222,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
                     <span>{language === 'en' ? 'Project Objectives' : 'Objectifs du Projet'}</span>
                   </h2>
                   <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                    <RichTextContent content={language === 'en' ? project.objectives_en : project.objectives_fr} />
+                    <LocalizedRichContent fr={project.objectives_fr} en={project.objectives_en} />
                   </div>
                 </div>
 
@@ -218,7 +232,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
                     {language === 'en' ? 'Activities Implemented' : 'Activités & Actions Déployées'}
                   </h2>
                   <div className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                    <RichTextContent content={language === 'en' ? project.activities_en : project.activities_fr} />
+                    <LocalizedRichContent fr={project.activities_fr} en={project.activities_en} />
                   </div>
                 </div>
 
@@ -230,7 +244,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
                       <span>{language === 'en' ? 'Expected Results' : 'Résultats Attendus'}</span>
                     </h3>
                     <div className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                      <RichTextContent content={language === 'en' ? project.expected_results_en : project.expected_results_fr} />
+                      <LocalizedRichContent fr={project.expected_results_fr} en={project.expected_results_en} />
                     </div>
                   </div>
 
@@ -240,7 +254,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
                       <span>{language === 'en' ? 'Results Achieved' : 'Résultats Obtenus'}</span>
                     </h3>
                     <div className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                      <RichTextContent content={language === 'en' ? project.achieved_results_en : project.achieved_results_fr} />
+                      <LocalizedRichContent fr={project.achieved_results_fr} en={project.achieved_results_en} />
                     </div>
                   </div>
                 </div>
@@ -252,7 +266,7 @@ export default function ProjectDetailPage({ params }: PageProps) {
                     <span>{language === 'en' ? 'Beneficiaries' : 'Bénéficiaires Directs & Indirects'}</span>
                   </h3>
                   <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                    {language === 'en' ? project.beneficiaries_en : project.beneficiaries_fr}
+                    {getLocalizedText(project.beneficiaries_fr, project.beneficiaries_en, language)}
                   </p>
                 </div>
 

@@ -86,6 +86,14 @@ export interface SiteSettings {
     meta_description_en: string;
     og_image: string;
     hero_announcements?: BannerAnnouncement[];
+    content_orders?: {
+      projects?: string[];
+      news?: string[];
+      opportunities?: string[];
+    };
+    projects_order?: string[];
+    news_order?: string[];
+    opportunities_order?: string[];
   };
   footer_text_fr: string;
   footer_text_en: string;
@@ -150,6 +158,7 @@ export interface ProjectItem {
   financial_partner?: string;
   status: ProjectStatus;
   is_featured: boolean;
+  order_index?: number;
   main_image: string;
   photos: string[];
   videos: string[];
@@ -172,6 +181,7 @@ export interface NewsItem {
   author: string;
   category_fr: string;
   category_en: string;
+  order_index?: number;
   main_image: string;
   gallery: string[];
   video_url?: string;
@@ -215,6 +225,7 @@ export interface OpportunityItem {
   external_link?: string;
   contact_email: string;
   status: OpportunityStatus;
+  order_index?: number;
   main_image?: string;
   gallery?: string[];
   video_url?: string;

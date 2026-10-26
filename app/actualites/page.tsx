@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { CallToAction } from '@/components/CallToAction';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem } from '@/types';
 import { Search, Calendar, User, ArrowRight, Tag } from 'lucide-react';
@@ -144,7 +144,7 @@ export default function ActualitesPage() {
                         className="group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute top-3 left-3 bg-[#92278F] text-white text-[11px] font-semibold px-2.5 py-0.5 rounded shadow-xs z-10">
-                        {language === 'en' ? item.category_en : item.category_fr}
+                        {getLocalizedText(item.category_fr, item.category_en, language)}
                       </div>
                     </div>
 
@@ -163,11 +163,11 @@ export default function ActualitesPage() {
                         </div>
 
                         <h2 className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-[#92278F] transition-colors font-heading line-clamp-2 leading-snug mb-2">
-                          {language === 'en' ? item.title_en : item.title_fr}
+                          {getLocalizedText(item.title_fr, item.title_en, language)}
                         </h2>
 
                         <p className="text-xs sm:text-sm text-gray-600 line-clamp-3 leading-relaxed">
-                          {language === 'en' ? item.summary_en : item.summary_fr}
+                          {getLocalizedText(item.summary_fr, item.summary_en, language)}
                         </p>
                       </div>
 
