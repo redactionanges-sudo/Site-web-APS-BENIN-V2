@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
@@ -15,6 +15,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Database,
+  Clock,
 } from 'lucide-react';
 
 export default function AdminLoginPage() {
@@ -28,6 +29,23 @@ export default function AdminLoginPage() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetFeedback, setResetFeedback] = useState('');
+  const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const reason = params.get('reason');
+      if (reason === 'inactivity') {
+        setLogoutNotice(
+          'Votre session administrateur a été fermée automatiquement après 30 minutes d’inactivité pour garantir la sécurité du système.'
+        );
+      } else if (reason === 'session_expired') {
+        setLogoutNotice(
+          'Votre session d’authentification a expiré. Veuillez vous reconnecter pour poursuivre.'
+        );
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +93,16 @@ export default function AdminLoginPage() {
 
         {/* Form Body */}
         <div className="p-8 space-y-6">
+          {logoutNotice && (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5 animate-in fade-in">
+              <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-bold block">Déconnexion automatique</span>
+                <span className="leading-relaxed">{logoutNotice}</span>
+              </div>
+            </div>
+          )}
+
           {errorMsg && (
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />

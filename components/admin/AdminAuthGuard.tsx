@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { AdminSidebar } from './AdminSidebar';
+import { AutoLogoutGuard } from './AutoLogoutGuard';
 import { ShieldAlert } from 'lucide-react';
 
 const AdminLayoutContext = createContext<boolean>(false);
@@ -116,6 +117,7 @@ export const AdminAuthGuard: React.FC<AdminAuthGuardProps> = ({
   // Structure maîtresse persistante avec Sidebar unique
   return (
     <div className="min-h-screen flex bg-gray-100">
+      <AutoLogoutGuard />
       <AdminSidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <AdminLayoutProvider>

@@ -12,6 +12,8 @@ import {
   Pilcrow,
   List,
   ListOrdered,
+  Indent,
+  Outdent,
   Link as LinkIcon,
   Unlink,
   AlignLeft,
@@ -79,6 +81,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     italic: false,
     underline: false,
     strike: false,
+    bulletList: false,
+    orderedList: false,
     heading: 'p',
     font: 'Open Sans',
     align: 'left',
@@ -104,6 +108,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       const italic = document.queryCommandState('italic');
       const underline = document.queryCommandState('underline');
       const strike = document.queryCommandState('strikeThrough');
+      const bulletList = document.queryCommandState('insertUnorderedList');
+      const orderedList = document.queryCommandState('insertOrderedList');
 
       let heading = 'p';
       const block = document.queryCommandValue('formatBlock');
@@ -124,6 +130,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         italic,
         underline,
         strike,
+        bulletList,
+        orderedList,
         heading,
         font: 'Open Sans',
         align,
@@ -151,6 +159,16 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     if (disabled || viewMode === 'preview') return;
     if (editorRef.current) {
       editorRef.current.focus();
+
+      // Ensure cursor / selection is placed inside editor if lost
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || !editorRef.current.contains(sel.anchorNode)) {
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
     }
     document.execCommand(command, false, arg);
     handleInput();
@@ -283,6 +301,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="flex items-center gap-0.5 pr-1 border-r border-gray-200">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('undo')}
                 className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
                 title="Annuler (Ctrl+Z)"
@@ -291,6 +310,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('redo')}
                 className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
                 title="Rétablir (Ctrl+Y)"
@@ -331,9 +351,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="flex items-center gap-0.5 pr-1 border-r border-gray-200">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('bold')}
                 className={`p-1.5 rounded transition-colors ${
-                  activeStyles.bold ? 'bg-[#92278F] text-white' : 'hover:bg-gray-200 text-gray-700'
+                  activeStyles.bold ? 'bg-[#92278F] text-white shadow-2xs' : 'hover:bg-gray-200 text-gray-700'
                 }`}
                 title="Gras (Ctrl+B)"
               >
@@ -341,9 +362,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('italic')}
                 className={`p-1.5 rounded transition-colors ${
-                  activeStyles.italic ? 'bg-[#92278F] text-white' : 'hover:bg-gray-200 text-gray-700'
+                  activeStyles.italic ? 'bg-[#92278F] text-white shadow-2xs' : 'hover:bg-gray-200 text-gray-700'
                 }`}
                 title="Italique (Ctrl+I)"
               >
@@ -351,9 +373,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('underline')}
                 className={`p-1.5 rounded transition-colors ${
-                  activeStyles.underline ? 'bg-[#92278F] text-white' : 'hover:bg-gray-200 text-gray-700'
+                  activeStyles.underline ? 'bg-[#92278F] text-white shadow-2xs' : 'hover:bg-gray-200 text-gray-700'
                 }`}
                 title="Souligné (Ctrl+U)"
               >
@@ -361,9 +384,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('strikeThrough')}
                 className={`p-1.5 rounded transition-colors ${
-                  activeStyles.strike ? 'bg-[#92278F] text-white' : 'hover:bg-gray-200 text-gray-700'
+                  activeStyles.strike ? 'bg-[#92278F] text-white shadow-2xs' : 'hover:bg-gray-200 text-gray-700'
                 }`}
                 title="Barré"
               >
@@ -375,6 +399,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="relative pr-1 border-r border-gray-200">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
                 className="p-1.5 rounded hover:bg-gray-200 text-gray-700 flex items-center gap-1 transition-colors"
                 title="Couleur de texte institutionnelle"
@@ -392,6 +417,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                       <button
                         key={preset.color}
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleApplyColor(preset.color)}
                         className="flex items-center gap-1.5 p-1 rounded hover:bg-gray-50 text-[11px] font-medium text-gray-700 text-left"
                       >
@@ -416,6 +442,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleApplyColor('#374151')}
                     className="w-full text-center text-[10px] font-semibold text-gray-500 hover:text-gray-800 pt-1"
                   >
@@ -429,6 +456,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="flex items-center gap-0.5 pr-1 border-r border-gray-200">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('justifyLeft')}
                 className={`p-1.5 rounded transition-colors ${
                   activeStyles.align === 'left' ? 'bg-gray-200 text-gray-900' : 'hover:bg-gray-200 text-gray-700'
@@ -439,6 +467,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('justifyCenter')}
                 className={`p-1.5 rounded transition-colors ${
                   activeStyles.align === 'center' ? 'bg-gray-200 text-gray-900' : 'hover:bg-gray-200 text-gray-700'
@@ -449,6 +478,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('justifyRight')}
                 className={`p-1.5 rounded transition-colors ${
                   activeStyles.align === 'right' ? 'bg-gray-200 text-gray-900' : 'hover:bg-gray-200 text-gray-700'
@@ -459,6 +489,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('justifyFull')}
                 className={`p-1.5 rounded transition-colors ${
                   activeStyles.align === 'justify' ? 'bg-gray-200 text-gray-900' : 'hover:bg-gray-200 text-gray-700'
@@ -469,23 +500,51 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
             </div>
 
-            {/* Lists: Bullets & Numbers */}
+            {/* Lists: Bullets, Numbers & Indent/Outdent */}
             <div className="flex items-center gap-0.5 pr-1 border-r border-gray-200">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('insertUnorderedList')}
-                className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
+                className={`p-1.5 rounded transition-colors ${
+                  activeStyles.bulletList
+                    ? 'bg-[#92278F] text-white shadow-2xs'
+                    : 'hover:bg-gray-200 text-gray-700'
+                }`}
                 title="Liste à puces"
               >
-                <List className="w-3.5 h-3.5 text-[#92278F]" />
+                <List className={`w-3.5 h-3.5 ${activeStyles.bulletList ? 'text-white' : 'text-[#92278F]'}`} />
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('insertOrderedList')}
-                className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
+                className={`p-1.5 rounded transition-colors ${
+                  activeStyles.orderedList
+                    ? 'bg-[#92278F] text-white shadow-2xs'
+                    : 'hover:bg-gray-200 text-gray-700'
+                }`}
                 title="Liste numérotée"
               >
-                <ListOrdered className="w-3.5 h-3.5 text-[#FF8C00]" />
+                <ListOrdered className={`w-3.5 h-3.5 ${activeStyles.orderedList ? 'text-white' : 'text-[#FF8C00]'}`} />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => exec('outdent')}
+                className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
+                title="Diminuer le retrait (Maj+Tab)"
+              >
+                <Outdent className="w-3.5 h-3.5 text-gray-600" />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => exec('indent')}
+                className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
+                title="Augmenter le retrait (Tab)"
+              >
+                <Indent className="w-3.5 h-3.5 text-gray-600" />
               </button>
             </div>
 
@@ -493,6 +552,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="flex items-center gap-0.5 pr-1 border-r border-gray-200">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('formatBlock', '<blockquote>')}
                 className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
                 title="Citation institutionnelle"
@@ -501,6 +561,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('insertHorizontalRule')}
                 className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
                 title="Ligne séparatrice (HR)"
@@ -513,6 +574,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="flex items-center gap-0.5 pr-1 border-r border-gray-200">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={openLinkModal}
                 className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
                 title="Insérer ou modifier un lien hypertexte"
@@ -521,6 +583,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
               </button>
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('unlink')}
                 className="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-colors"
                 title="Supprimer le lien"
@@ -533,6 +596,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <div className="flex items-center ml-auto">
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => exec('removeFormat')}
                 className="p-1.5 rounded hover:bg-red-50 text-gray-600 hover:text-red-600 transition-colors"
                 title="Supprimer toute la mise en forme"
@@ -552,13 +616,24 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onInput={handleInput}
             onKeyUp={updateActiveState}
             onMouseUp={updateActiveState}
+            onKeyDown={(e) => {
+              // Tab support for list indentation and outdentation
+              if (e.key === 'Tab') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                  exec('outdent');
+                } else {
+                  exec('indent');
+                }
+              }
+            }}
             onPaste={(e) => {
               // Standard paste handling
               setTimeout(handleInput, 10);
             }}
             data-placeholder={placeholder}
             style={{ minHeight }}
-            className={`p-4 outline-hidden text-sm text-gray-800 leading-relaxed font-sans overflow-y-auto ${
+            className={`aps-rich-content p-4 outline-hidden text-sm text-gray-800 leading-relaxed font-sans overflow-y-auto ${
               !value || value === '<p><br></p>' ? 'empty-editor' : ''
             }`}
           />
