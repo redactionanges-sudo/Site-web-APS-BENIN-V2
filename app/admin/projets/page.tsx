@@ -300,15 +300,15 @@ export default function AdminProjectsPage() {
     };
 
     const missingFields: Record<string, string> = {};
-    if (isUntranslated(title_en, form.title_fr)) missingFields.title_en = form.title_fr;
-    if (isUntranslated(excerpt_en, form.excerpt_fr)) missingFields.excerpt_en = form.excerpt_fr;
-    if (isUntranslated(context_en, form.context_fr)) missingFields.context_en = form.context_fr;
-    if (isUntranslated(problem_en, form.problem_fr)) missingFields.problem_en = form.problem_fr;
-    if (isUntranslated(objectives_en, form.objectives_fr)) missingFields.objectives_en = form.objectives_fr;
-    if (isUntranslated(activities_en, form.activities_fr)) missingFields.activities_en = form.activities_fr;
-    if (isUntranslated(expected_results_en, form.expected_results_fr)) missingFields.expected_results_en = form.expected_results_fr;
-    if (isUntranslated(achieved_results_en, form.achieved_results_fr)) missingFields.achieved_results_en = form.achieved_results_fr;
-    if (isUntranslated(beneficiaries_en, form.beneficiaries_fr)) missingFields.beneficiaries_en = form.beneficiaries_fr;
+    if (form.title_fr && isUntranslated(title_en, form.title_fr)) missingFields.title_en = form.title_fr;
+    if (form.excerpt_fr && isUntranslated(excerpt_en, form.excerpt_fr)) missingFields.excerpt_en = form.excerpt_fr;
+    if (form.context_fr && isUntranslated(context_en, form.context_fr)) missingFields.context_en = form.context_fr;
+    if (form.problem_fr && isUntranslated(problem_en, form.problem_fr)) missingFields.problem_en = form.problem_fr;
+    if (form.objectives_fr && isUntranslated(objectives_en, form.objectives_fr)) missingFields.objectives_en = form.objectives_fr;
+    if (form.activities_fr && isUntranslated(activities_en, form.activities_fr)) missingFields.activities_en = form.activities_fr;
+    if (form.expected_results_fr && isUntranslated(expected_results_en, form.expected_results_fr)) missingFields.expected_results_en = form.expected_results_fr;
+    if (form.achieved_results_fr && isUntranslated(achieved_results_en, form.achieved_results_fr)) missingFields.achieved_results_en = form.achieved_results_fr;
+    if (form.beneficiaries_fr && isUntranslated(beneficiaries_en, form.beneficiaries_fr)) missingFields.beneficiaries_en = form.beneficiaries_fr;
 
     if (Object.keys(missingFields).length > 0) {
       setIsAutoTranslating(true);

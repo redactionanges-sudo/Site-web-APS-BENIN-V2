@@ -119,11 +119,25 @@ export async function POST(req: NextRequest) {
     const ai = new GoogleGenAI({
       apiKey,
       httpOptions: {
+        timeout: 8000,
         headers: {
           'User-Agent': 'aistudio-build',
         },
       },
     });
+
+    const withTimeout = async <T>(promise: Promise<T>, ms = 8000): Promise<T> => {
+      let timer: NodeJS.Timeout;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Timeout of ${ms}ms exceeded`)), ms);
+      });
+      try {
+        return await Promise.race([promise, timeoutPromise]);
+      } finally {
+        // @ts-expect-error timer used after assignment
+        if (timer) clearTimeout(timer);
+      }
+    };
 
     // Helper for single text translation with rate limit guard & cache
     const translateSingleText = async (src: string, ctx?: string): Promise<string> => {
@@ -142,14 +156,17 @@ export async function POST(req: NextRequest) {
 
       try {
         recordGeminiRequest();
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: trimmed,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            temperature: 0.1,
-          },
-        });
+        const response = await withTimeout(
+          ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: trimmed,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              temperature: 0.1,
+            },
+          }),
+          8000
+        );
         const translation = response.text?.trim() || trimmed;
         setInCache(cacheKey, translation);
         return translation;
@@ -158,6 +175,13 @@ export async function POST(req: NextRequest) {
         if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
           triggerCooldown(65000);
           console.warn('Gemini Free Tier rate limit (5 RPM) reached. Activating 65s cooldown fallback.');
+        } else if (
+          errMsg.includes('Timeout') ||
+          errMsg.includes('timeout') ||
+          errMsg.includes('HeadersTimeoutError') ||
+          errMsg.includes('fetch failed')
+        ) {
+          console.warn('Gemini request timeout or network latency; returning original text fallback.');
         } else {
           console.warn('Translation error, using fallback:', errMsg.slice(0, 100));
         }
@@ -210,15 +234,18 @@ export async function POST(req: NextRequest) {
       try {
         recordGeminiRequest();
         const prompt = JSON.stringify(toTranslateTexts);
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: `Translate the following JSON array of French texts into English. Return ONLY a valid JSON array of strings of identical length and ordering:\n${prompt}`,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        });
+        const response = await withTimeout(
+          ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: `Translate the following JSON array of French texts into English. Return ONLY a valid JSON array of strings of identical length and ordering:\n${prompt}`,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          }),
+          8000
+        );
 
         const parsed = parseJsonArraySafely(response.text);
         if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
@@ -246,6 +273,13 @@ export async function POST(req: NextRequest) {
         if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
           triggerCooldown(65000);
           console.warn('Gemini Free Tier rate limit (5 RPM) reached during batch. Activating 65s cooldown fallback.');
+        } else if (
+          errMsg.includes('Timeout') ||
+          errMsg.includes('timeout') ||
+          errMsg.includes('HeadersTimeoutError') ||
+          errMsg.includes('fetch failed')
+        ) {
+          console.warn('Batch translation timed out or network error; using original text fallback.');
         } else {
           console.warn('Batch translation failed, safely returning original text:', errMsg.slice(0, 100));
         }
@@ -291,15 +325,18 @@ export async function POST(req: NextRequest) {
       try {
         recordGeminiRequest();
         const prompt = JSON.stringify(toTranslateTexts);
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: `Translate the following JSON array of French fields into English. Return ONLY a valid JSON array of strings in identical order:\n${prompt}`,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        });
+        const response = await withTimeout(
+          ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: `Translate the following JSON array of French fields into English. Return ONLY a valid JSON array of strings in identical order:\n${prompt}`,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          }),
+          8000
+        );
 
         const parsed = parseJsonArraySafely(response.text);
         if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
@@ -326,6 +363,13 @@ export async function POST(req: NextRequest) {
         if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
           triggerCooldown(65000);
           console.warn('Gemini Free Tier rate limit reached during fields translation. Activating 65s cooldown.');
+        } else if (
+          errMsg.includes('Timeout') ||
+          errMsg.includes('timeout') ||
+          errMsg.includes('HeadersTimeoutError') ||
+          errMsg.includes('fetch failed')
+        ) {
+          console.warn('Fields translation timed out or network error; using original text fallback.');
         } else {
           console.warn('Object fields batch translation failed, safely returning original text:', errMsg.slice(0, 100));
         }
@@ -347,9 +391,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   } catch (err: any) {
-    console.error('Translation API route error:', err);
+    console.warn('Translation API route warning:', err?.message || err);
     return NextResponse.json(
-      { error: err.message || 'Internal translation error', fallback: true },
+      { error: err?.message || 'Translation unavailable', fallback: true },
       { status: 200 } // Return 200 with fallback to avoid breaking client views
     );
   }

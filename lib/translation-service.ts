@@ -182,10 +182,16 @@ export async function clientTranslateBatch(texts: string[], context?: string): P
   }
 
   try {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 9000) : null;
+
     const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texts: toFetchTexts, context }),
+      signal: controller ? controller.signal : undefined,
+    }).finally(() => {
+      if (timeoutId) clearTimeout(timeoutId);
     });
 
     if (res.ok) {
@@ -210,8 +216,8 @@ export async function clientTranslateBatch(texts: string[], context?: string): P
         clientCooldownUntil = Date.now() + 60000;
       }
     }
-  } catch (err) {
-    console.warn('Batch translation request error:', err);
+  } catch {
+    // If request times out or is aborted, results array already contains original texts as default safe fallback
   }
 
   return results;
