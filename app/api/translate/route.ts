@@ -17,6 +17,30 @@ function setInCache(key: string, val: string) {
   translationCache.set(key, val);
 }
 
+function parseJsonArraySafely(raw?: string | null): any[] | null {
+  if (!raw) return null;
+  let text = raw.trim();
+  // Strip markdown code fences if present
+  if (text.startsWith('```')) {
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  }
+  try {
+    const res = JSON.parse(text);
+    if (Array.isArray(res)) return res;
+  } catch {}
+
+  const start = text.indexOf('[');
+  const end = text.lastIndexOf(']');
+  if (start !== -1 && end > start) {
+    try {
+      const slice = text.slice(start, end + 1);
+      const res = JSON.parse(slice);
+      if (Array.isArray(res)) return res;
+    } catch {}
+  }
+  return null;
+}
+
 const SYSTEM_INSTRUCTION = `You are an expert official bilingual translator for AGISSONS POUR SAUVER (APS-BÉNIN), an accredited NGO based in Comè, Department of Mono, Republic of Benin. APS-BÉNIN works for human rights, gender equality, sexual and reproductive health and rights (SRHR / DSSR), youth empowerment, and socio-economic support for vulnerable communities.
 
 Your task is to translate French content into accurate, natural, professional English suited for international donors, institutional partners (UN, USAID, EU, NGOs), and the public.
@@ -68,29 +92,35 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Helper for single text translation with system prompt
+    const translateSingleText = async (src: string, ctx?: string): Promise<string> => {
+      const trimmed = src.trim();
+      if (!trimmed) return src;
+      const cacheKey = getCacheKey(trimmed, ctx);
+      if (translationCache.has(cacheKey)) {
+        return translationCache.get(cacheKey)!;
+      }
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: trimmed,
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            temperature: 0.1,
+          },
+        });
+        const translation = response.text?.trim() || trimmed;
+        setInCache(cacheKey, translation);
+        return translation;
+      } catch (err) {
+        console.warn('Individual translation error:', err);
+        return trimmed;
+      }
+    };
+
     // 1. Single string translation
     if (typeof text === 'string') {
-      const trimmed = text.trim();
-      if (!trimmed) {
-        return NextResponse.json({ translation: text });
-      }
-
-      const cacheKey = getCacheKey(trimmed, context);
-      if (translationCache.has(cacheKey)) {
-        return NextResponse.json({ translation: translationCache.get(cacheKey) });
-      }
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: trimmed,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          temperature: 0.1,
-        },
-      });
-
-      const translation = response.text?.trim() || trimmed;
-      setInCache(cacheKey, translation);
+      const translation = await translateSingleText(text, context);
       return NextResponse.json({ translation });
     }
 
@@ -119,37 +149,41 @@ export async function POST(req: NextRequest) {
       });
 
       if (toTranslateIndices.length > 0) {
-        const prompt = JSON.stringify(toTranslateTexts);
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: `Translate the following JSON array of French texts into English. Return ONLY a valid JSON array of strings of identical length and ordering:\n${prompt}`,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        });
-
+        let batchSucceeded = false;
         try {
-          const raw = response.text?.trim() || '[]';
-          const parsed = JSON.parse(raw);
+          const prompt = JSON.stringify(toTranslateTexts);
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: `Translate the following JSON array of French texts into English. Return ONLY a valid JSON array of strings of identical length and ordering:\n${prompt}`,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          });
+
+          const parsed = parseJsonArraySafely(response.text);
           if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
             parsed.forEach((translated, i) => {
               const originalIdx = toTranslateIndices[i];
               const originalText = toTranslateTexts[i];
-              results[originalIdx] = translated;
-              setInCache(getCacheKey(originalText.trim(), context), translated);
+              results[originalIdx] = String(translated);
+              setInCache(getCacheKey(originalText.trim(), context), String(translated));
             });
-          } else {
-            toTranslateIndices.forEach((origIdx, i) => {
-              results[origIdx] = (parsed && parsed[i]) || toTranslateTexts[i];
-            });
+            batchSucceeded = true;
           }
         } catch (e) {
-          console.error('Failed to parse batch translation response:', e);
-          toTranslateIndices.forEach((origIdx, i) => {
-            results[origIdx] = toTranslateTexts[i];
+          console.warn('Batch translation parse failed, falling back to concurrent single translations:', e);
+        }
+
+        // If batch JSON parsing failed or had length mismatch, fall back to robust concurrent translation
+        if (!batchSucceeded) {
+          const fallbackPromises = toTranslateTexts.map(async (origText, i) => {
+            const originalIdx = toTranslateIndices[i];
+            const trans = await translateSingleText(origText, context);
+            results[originalIdx] = trans;
           });
+          await Promise.all(fallbackPromises);
         }
       }
 
@@ -180,35 +214,42 @@ export async function POST(req: NextRequest) {
       });
 
       if (toTranslateIndices.length > 0) {
-        const prompt = JSON.stringify(toTranslateTexts);
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents: `Translate the following JSON array of French fields into English. Return ONLY a valid JSON array of strings in identical order:\n${prompt}`,
-          config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        });
-
+        let fieldsBatchSucceeded = false;
         try {
-          const raw = response.text?.trim() || '[]';
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
+          const prompt = JSON.stringify(toTranslateTexts);
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: `Translate the following JSON array of French fields into English. Return ONLY a valid JSON array of strings in identical order:\n${prompt}`,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
+          });
+
+          const parsed = parseJsonArraySafely(response.text);
+          if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
             toTranslateIndices.forEach((origIdx, i) => {
               const k = keys[origIdx];
               const origVal = values[origIdx];
-              const transVal = parsed[i] || origVal;
+              const transVal = String(parsed[i] || origVal);
               translatedMap[k] = transVal;
               setInCache(getCacheKey(origVal.trim(), `${context}_${k}`), transVal);
             });
+            fieldsBatchSucceeded = true;
           }
         } catch (e) {
-          console.error('Failed to parse object fields translation response:', e);
-          toTranslateIndices.forEach((origIdx) => {
+          console.warn('Object fields batch translation failed, falling back to concurrent single translations:', e);
+        }
+
+        if (!fieldsBatchSucceeded) {
+          const fallbackPromises = toTranslateTexts.map(async (origVal, i) => {
+            const origIdx = toTranslateIndices[i];
             const k = keys[origIdx];
-            translatedMap[k] = values[origIdx];
+            const trans = await translateSingleText(origVal, `${context}_${k}`);
+            translatedMap[k] = trans;
           });
+          await Promise.all(fallbackPromises);
         }
       }
 

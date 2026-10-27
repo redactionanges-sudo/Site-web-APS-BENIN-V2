@@ -260,15 +260,17 @@ export default function ProjectDetailPage({ params }: PageProps) {
                 </div>
 
                 {/* Bénéficiaires */}
-                <div className="p-6 rounded-xl bg-gray-50 border border-gray-200">
-                  <h3 className="font-bold text-base text-gray-900 mb-2 flex items-center gap-2">
-                    <Users className="w-4 h-4 text-[#FF8C00]" />
-                    <span>{language === 'en' ? 'Beneficiaries' : 'Bénéficiaires Directs & Indirects'}</span>
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                    {getLocalizedText(project.beneficiaries_fr, project.beneficiaries_en, language)}
-                  </p>
-                </div>
+                {Boolean(project.beneficiaries_fr || project.beneficiaries_en) && (
+                  <div className="p-6 rounded-xl bg-gray-50 border border-gray-200">
+                    <h3 className="font-bold text-base text-gray-900 mb-2 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-[#FF8C00]" />
+                      <span>{language === 'en' ? 'Direct & Indirect Beneficiaries' : 'Bénéficiaires Directs & Indirects'}</span>
+                    </h3>
+                    <div className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                      <LocalizedRichContent fr={project.beneficiaries_fr} en={project.beneficiaries_en} />
+                    </div>
+                  </div>
+                )}
 
                 {/* Photo Gallery if any */}
                 {project.photos && project.photos.length > 0 && (

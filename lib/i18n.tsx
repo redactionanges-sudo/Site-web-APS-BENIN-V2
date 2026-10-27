@@ -432,17 +432,24 @@ export function getLocalizedText(
   lang: Language = 'fr'
 ): string {
   if (lang === 'en') {
-    if (en && typeof en === 'string' && en.trim().length > 0) {
-      return en;
+    const frTrim = (fr || '').trim();
+    const enTrim = (en || '').trim();
+
+    // If a genuine English translation exists (not empty and distinct from French)
+    if (enTrim.length > 0 && enTrim !== frTrim) {
+      return en!;
     }
-    if (fr && typeof fr === 'string' && fr.trim().length > 0) {
-      const cached = getCachedTranslation(fr);
-      if (cached) return cached;
+
+    if (frTrim.length > 0) {
+      const cached = getCachedTranslation(frTrim);
+      if (cached && cached.trim() !== frTrim) {
+        return cached;
+      }
       // Kick off background translation if running in browser
       if (typeof window !== 'undefined') {
-        clientTranslateText(fr);
+        clientTranslateText(frTrim);
       }
-      return fr; // Return French immediately so section NEVER disappears
+      return fr!; // Return French immediately so section NEVER disappears or remains blank
     }
     return en || '';
   }
@@ -459,14 +466,17 @@ export function useLocalizedText(fr?: string | null, en?: string | null): string
   useEffect(() => {
     if (language !== 'en' || !fr) return;
 
-    // If English is already present, nothing to translate
-    if (en && typeof en === 'string' && en.trim().length > 0) return;
+    const frTrim = fr.trim();
+    const enTrim = (en || '').trim();
+
+    // If a genuine English translation is already present, nothing to translate
+    if (enTrim.length > 0 && enTrim !== frTrim) return;
 
     // Check if translation is cached
-    const cached = getCachedTranslation(fr);
-    if (!cached) {
+    const cached = getCachedTranslation(frTrim);
+    if (!cached || cached.trim() === frTrim) {
       // Trigger translation
-      clientTranslateText(fr).then(() => {
+      clientTranslateText(frTrim).then(() => {
         setTick((t) => t + 1);
       });
     }

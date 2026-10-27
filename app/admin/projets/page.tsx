@@ -195,10 +195,23 @@ export default function AdminProjectsPage() {
   };
 
   const handleBatchTranslateProjects = async () => {
+    const isFieldMissingOrUntranslated = (en?: string, fr?: string) => {
+      if (!fr || !fr.trim()) return false;
+      if (!en || !en.trim()) return true;
+      return en.trim() === fr.trim();
+    };
+
     const incomplete = projects.filter(
       (p) =>
-        (!p.context_en || !p.problem_en || !p.objectives_en || !p.title_en) &&
-        Boolean(p.context_fr || p.problem_fr || p.objectives_fr || p.title_fr)
+        isFieldMissingOrUntranslated(p.title_en, p.title_fr) ||
+        isFieldMissingOrUntranslated(p.excerpt_en, p.excerpt_fr) ||
+        isFieldMissingOrUntranslated(p.context_en, p.context_fr) ||
+        isFieldMissingOrUntranslated(p.problem_en, p.problem_fr) ||
+        isFieldMissingOrUntranslated(p.objectives_en, p.objectives_fr) ||
+        isFieldMissingOrUntranslated(p.activities_en, p.activities_fr) ||
+        isFieldMissingOrUntranslated(p.expected_results_en, p.expected_results_fr) ||
+        isFieldMissingOrUntranslated(p.achieved_results_en, p.achieved_results_fr) ||
+        isFieldMissingOrUntranslated(p.beneficiaries_en, p.beneficiaries_fr)
     );
 
     if (incomplete.length === 0) {
@@ -218,29 +231,29 @@ export default function AdminProjectsPage() {
         const p = incomplete[i];
         setBatchTranslateNotice(`Traduction du projet ${i + 1}/${incomplete.length} : « ${p.title_fr} »...`);
         const toTranslate: Record<string, string> = {};
-        if (!p.title_en && p.title_fr) toTranslate.title_en = p.title_fr;
-        if (!p.excerpt_en && p.excerpt_fr) toTranslate.excerpt_en = p.excerpt_fr;
-        if (!p.context_en && p.context_fr) toTranslate.context_en = p.context_fr;
-        if (!p.problem_en && p.problem_fr) toTranslate.problem_en = p.problem_fr;
-        if (!p.objectives_en && p.objectives_fr) toTranslate.objectives_en = p.objectives_fr;
-        if (!p.activities_en && p.activities_fr) toTranslate.activities_en = p.activities_fr;
-        if (!p.expected_results_en && p.expected_results_fr) toTranslate.expected_results_en = p.expected_results_fr;
-        if (!p.achieved_results_en && p.achieved_results_fr) toTranslate.achieved_results_en = p.achieved_results_fr;
-        if (!p.beneficiaries_en && p.beneficiaries_fr) toTranslate.beneficiaries_en = p.beneficiaries_fr;
+        if (isFieldMissingOrUntranslated(p.title_en, p.title_fr)) toTranslate.title_en = p.title_fr;
+        if (isFieldMissingOrUntranslated(p.excerpt_en, p.excerpt_fr)) toTranslate.excerpt_en = p.excerpt_fr;
+        if (isFieldMissingOrUntranslated(p.context_en, p.context_fr)) toTranslate.context_en = p.context_fr;
+        if (isFieldMissingOrUntranslated(p.problem_en, p.problem_fr)) toTranslate.problem_en = p.problem_fr;
+        if (isFieldMissingOrUntranslated(p.objectives_en, p.objectives_fr)) toTranslate.objectives_en = p.objectives_fr;
+        if (isFieldMissingOrUntranslated(p.activities_en, p.activities_fr)) toTranslate.activities_en = p.activities_fr;
+        if (isFieldMissingOrUntranslated(p.expected_results_en, p.expected_results_fr)) toTranslate.expected_results_en = p.expected_results_fr;
+        if (isFieldMissingOrUntranslated(p.achieved_results_en, p.achieved_results_fr)) toTranslate.achieved_results_en = p.achieved_results_fr;
+        if (isFieldMissingOrUntranslated(p.beneficiaries_en, p.beneficiaries_fr)) toTranslate.beneficiaries_en = p.beneficiaries_fr;
 
         if (Object.keys(toTranslate).length > 0) {
           const trans = await clientTranslateFields(toTranslate, 'project');
           const updated: ProjectItem = {
             ...p,
-            title_en: p.title_en || trans.title_en || p.title_fr,
-            excerpt_en: p.excerpt_en || trans.excerpt_en || p.excerpt_fr,
-            context_en: p.context_en || trans.context_en || p.context_fr,
-            problem_en: p.problem_en || trans.problem_en || p.problem_fr,
-            objectives_en: p.objectives_en || trans.objectives_en || p.objectives_fr,
-            activities_en: p.activities_en || trans.activities_en || p.activities_fr,
-            expected_results_en: p.expected_results_en || trans.expected_results_en || p.expected_results_fr,
-            achieved_results_en: p.achieved_results_en || trans.achieved_results_en || p.achieved_results_fr,
-            beneficiaries_en: p.beneficiaries_en || trans.beneficiaries_en || p.beneficiaries_fr,
+            title_en: trans.title_en || p.title_en || p.title_fr,
+            excerpt_en: trans.excerpt_en || p.excerpt_en || p.excerpt_fr,
+            context_en: trans.context_en || p.context_en || p.context_fr,
+            problem_en: trans.problem_en || p.problem_en || p.problem_fr,
+            objectives_en: trans.objectives_en || p.objectives_en || p.objectives_fr,
+            activities_en: trans.activities_en || p.activities_en || p.activities_fr,
+            expected_results_en: trans.expected_results_en || p.expected_results_en || p.expected_results_fr,
+            achieved_results_en: trans.achieved_results_en || p.achieved_results_en || p.achieved_results_fr,
+            beneficiaries_en: trans.beneficiaries_en || p.beneficiaries_en || p.beneficiaries_fr,
             updated_at: new Date().toISOString(),
           };
           await supabaseStore.saveProject(updated);
@@ -275,31 +288,37 @@ export default function AdminProjectsPage() {
     let achieved_results_en = (form.achieved_results_en || '').trim();
     let beneficiaries_en = (form.beneficiaries_en || '').trim();
 
-    // Check if any English fields are missing while French counterparts exist
+    // Check if any English fields are missing or duplicates of French while French counterparts exist
+    const isUntranslated = (en?: string, fr?: string) => {
+      if (!fr || !fr.trim()) return false;
+      if (!en || !en.trim()) return true;
+      return en.trim() === fr.trim();
+    };
+
     const missingFields: Record<string, string> = {};
-    if (!title_en && form.title_fr) missingFields.title_en = form.title_fr;
-    if (!excerpt_en && form.excerpt_fr) missingFields.excerpt_en = form.excerpt_fr;
-    if (!context_en && form.context_fr) missingFields.context_en = form.context_fr;
-    if (!problem_en && form.problem_fr) missingFields.problem_en = form.problem_fr;
-    if (!objectives_en && form.objectives_fr) missingFields.objectives_en = form.objectives_fr;
-    if (!activities_en && form.activities_fr) missingFields.activities_en = form.activities_fr;
-    if (!expected_results_en && form.expected_results_fr) missingFields.expected_results_en = form.expected_results_fr;
-    if (!achieved_results_en && form.achieved_results_fr) missingFields.achieved_results_en = form.achieved_results_fr;
-    if (!beneficiaries_en && form.beneficiaries_fr) missingFields.beneficiaries_en = form.beneficiaries_fr;
+    if (isUntranslated(title_en, form.title_fr)) missingFields.title_en = form.title_fr;
+    if (isUntranslated(excerpt_en, form.excerpt_fr)) missingFields.excerpt_en = form.excerpt_fr;
+    if (isUntranslated(context_en, form.context_fr)) missingFields.context_en = form.context_fr;
+    if (isUntranslated(problem_en, form.problem_fr)) missingFields.problem_en = form.problem_fr;
+    if (isUntranslated(objectives_en, form.objectives_fr)) missingFields.objectives_en = form.objectives_fr;
+    if (isUntranslated(activities_en, form.activities_fr)) missingFields.activities_en = form.activities_fr;
+    if (isUntranslated(expected_results_en, form.expected_results_fr)) missingFields.expected_results_en = form.expected_results_fr;
+    if (isUntranslated(achieved_results_en, form.achieved_results_fr)) missingFields.achieved_results_en = form.achieved_results_fr;
+    if (isUntranslated(beneficiaries_en, form.beneficiaries_fr)) missingFields.beneficiaries_en = form.beneficiaries_fr;
 
     if (Object.keys(missingFields).length > 0) {
       setIsAutoTranslating(true);
       try {
         const translated = await clientTranslateFields(missingFields, 'project');
-        if (translated.title_en) title_en = translated.title_en;
-        if (translated.excerpt_en) excerpt_en = translated.excerpt_en;
-        if (translated.context_en) context_en = translated.context_en;
-        if (translated.problem_en) problem_en = translated.problem_en;
-        if (translated.objectives_en) objectives_en = translated.objectives_en;
-        if (translated.activities_en) activities_en = translated.activities_en;
-        if (translated.expected_results_en) expected_results_en = translated.expected_results_en;
-        if (translated.achieved_results_en) achieved_results_en = translated.achieved_results_en;
-        if (translated.beneficiaries_en) beneficiaries_en = translated.beneficiaries_en;
+        if (translated.title_en && translated.title_en !== form.title_fr) title_en = translated.title_en;
+        if (translated.excerpt_en && translated.excerpt_en !== form.excerpt_fr) excerpt_en = translated.excerpt_en;
+        if (translated.context_en && translated.context_en !== form.context_fr) context_en = translated.context_en;
+        if (translated.problem_en && translated.problem_en !== form.problem_fr) problem_en = translated.problem_en;
+        if (translated.objectives_en && translated.objectives_en !== form.objectives_fr) objectives_en = translated.objectives_en;
+        if (translated.activities_en && translated.activities_en !== form.activities_fr) activities_en = translated.activities_en;
+        if (translated.expected_results_en && translated.expected_results_en !== form.expected_results_fr) expected_results_en = translated.expected_results_en;
+        if (translated.achieved_results_en && translated.achieved_results_en !== form.achieved_results_fr) achieved_results_en = translated.achieved_results_en;
+        if (translated.beneficiaries_en && translated.beneficiaries_en !== form.beneficiaries_fr) beneficiaries_en = translated.beneficiaries_en;
       } catch (e) {
         console.warn('Auto translation during save failed, falling back to French:', e);
       } finally {
@@ -1180,6 +1199,24 @@ export default function AdminProjectsPage() {
                       minHeight="180px"
                     />
                   </div>
+                </div>
+
+                {/* Bénéficiaires Directs & Indirects */}
+                <div>
+                  <RichTextEditor
+                    label={editingLang === 'fr' ? 'Bénéficiaires Directs & Indirects' : 'Direct & Indirect Beneficiaries'}
+                    langTag={editingLang.toUpperCase() as 'FR' | 'EN'}
+                    value={editingLang === 'fr' ? form.beneficiaries_fr || '' : form.beneficiaries_en || ''}
+                    onChange={(html) =>
+                      setForm({
+                        ...form,
+                        [editingLang === 'fr' ? 'beneficiaries_fr' : 'beneficiaries_en']: html,
+                      })
+                    }
+                    placeholder="Décrivez les bénéficiaires directs et indirects (ex: 350 femmes artisanes directes, 2 100 membres de leurs familles...)"
+                    minHeight="140px"
+                    helpText="Ces informations sont affichées dans la section « Bénéficiaires Directs & Indirects » de la page publique du projet."
+                  />
                 </div>
 
                 {/* Communes, Période, Partenaires, Bailleur */}

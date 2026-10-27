@@ -65,15 +65,15 @@ main {
 
 /* 
   Sections publiques claires :
-  Translucides (72% - 76%) avec léger voile institutionnel
-  qui laisse clairement transparaître le motif géométrique africain sous le blanc.
+  Voile blanc renforcé (94% - 95%) offrant un confort de lecture optimal,
+  avec contraste WCAG AA préservé, tout en conservant la texture subtile en filigrane.
 */
 section.bg-white {
-  background-color: rgba(255, 255, 255, 0.74) !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
 }
 
 section.bg-gray-50 {
-  background-color: rgba(250, 247, 252, 0.70) !important;
+  background-color: rgba(250, 247, 252, 0.94) !important;
 }
 
 /* 
