@@ -193,6 +193,9 @@ export default function AdminNewsPage() {
             category_en: item.category_en || trans.category_en || item.category_fr,
           };
           await supabaseStore.saveNews(updated);
+          if (i < incomplete.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
         }
       }
 

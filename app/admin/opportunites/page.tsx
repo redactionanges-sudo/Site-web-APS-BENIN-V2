@@ -214,6 +214,9 @@ export default function AdminOpportunitiesPage() {
             documents_required_en: item.documents_required_en || trans.documents_required_en || item.documents_required_fr,
           };
           await supabaseStore.saveOpportunity(updated);
+          if (i < incomplete.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
         }
       }
 

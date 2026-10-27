@@ -257,6 +257,10 @@ export default function AdminProjectsPage() {
             updated_at: new Date().toISOString(),
           };
           await supabaseStore.saveProject(updated);
+          // Small delay between projects to respect Gemini API Free Tier limits
+          if (i < incomplete.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+          }
         }
       }
 

@@ -3,7 +3,13 @@ import { GoogleGenAI } from '@google/genai';
 
 // In-memory server-side cache
 const translationCache = new Map<string, string>();
-const MAX_CACHE_SIZE = 2500;
+const MAX_CACHE_SIZE = 3000;
+
+// Rate limit protection for Gemini Free Tier (strictly 5 RPM limit)
+let rateLimitedUntil = 0;
+const recentRequestTimestamps: number[] = [];
+const RATE_LIMIT_WINDOW_MS = 60000;
+const MAX_REQUESTS_PER_WINDOW = 4; // Safely stay under the 5 RPM ceiling
 
 function getCacheKey(text: string, context?: string): string {
   return `${context || 'general'}::${text.trim()}`;
@@ -17,16 +23,44 @@ function setInCache(key: string, val: string) {
   translationCache.set(key, val);
 }
 
-function parseJsonArraySafely(raw?: string | null): any[] | null {
+function canMakeGeminiRequest(): boolean {
+  const now = Date.now();
+  if (now < rateLimitedUntil) {
+    return false;
+  }
+  // Remove timestamps older than 60 seconds
+  while (
+    recentRequestTimestamps.length > 0 &&
+    now - recentRequestTimestamps[0] > RATE_LIMIT_WINDOW_MS
+  ) {
+    recentRequestTimestamps.shift();
+  }
+  return recentRequestTimestamps.length < MAX_REQUESTS_PER_WINDOW;
+}
+
+function recordGeminiRequest(): void {
+  recentRequestTimestamps.push(Date.now());
+}
+
+function triggerCooldown(ms = 65000): void {
+  rateLimitedUntil = Date.now() + ms;
+}
+
+function parseJsonArraySafely(raw?: string | null): string[] | null {
   if (!raw) return null;
   let text = raw.trim();
+
   // Strip markdown code fences if present
   if (text.startsWith('```')) {
     text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   }
+
   try {
     const res = JSON.parse(text);
-    if (Array.isArray(res)) return res;
+    if (Array.isArray(res)) return res.map((item) => String(item ?? ''));
+    if (res && Array.isArray(res.translations)) {
+      return res.translations.map((item: any) => String(item ?? ''));
+    }
   } catch {}
 
   const start = text.indexOf('[');
@@ -35,7 +69,7 @@ function parseJsonArraySafely(raw?: string | null): any[] | null {
     try {
       const slice = text.slice(start, end + 1);
       const res = JSON.parse(slice);
-      if (Array.isArray(res)) return res;
+      if (Array.isArray(res)) return res.map((item) => String(item ?? ''));
     } catch {}
   }
   return null;
@@ -73,7 +107,6 @@ export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn('GEMINI_API_KEY is not configured on server.');
       return NextResponse.json(
         { error: 'GEMINI_API_KEY not configured', fallback: true },
         { status: 200 }
@@ -92,15 +125,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Helper for single text translation with system prompt
+    // Helper for single text translation with rate limit guard & cache
     const translateSingleText = async (src: string, ctx?: string): Promise<string> => {
       const trimmed = src.trim();
       if (!trimmed) return src;
+
       const cacheKey = getCacheKey(trimmed, ctx);
       if (translationCache.has(cacheKey)) {
         return translationCache.get(cacheKey)!;
       }
+
+      // Check rate limit safety before calling
+      if (!canMakeGeminiRequest()) {
+        return trimmed;
+      }
+
       try {
+        recordGeminiRequest();
         const response = await ai.models.generateContent({
           model: 'gemini-3.8-flash',
           contents: trimmed,
@@ -112,8 +153,14 @@ export async function POST(req: NextRequest) {
         const translation = response.text?.trim() || trimmed;
         setInCache(cacheKey, translation);
         return translation;
-      } catch (err) {
-        console.warn('Individual translation error:', err);
+      } catch (err: any) {
+        const errMsg = String(err?.message || err);
+        if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
+          triggerCooldown(65000);
+          console.warn('Gemini Free Tier rate limit (5 RPM) reached. Activating 65s cooldown fallback.');
+        } else {
+          console.warn('Translation error, using fallback:', errMsg.slice(0, 100));
+        }
         return trimmed;
       }
     };
@@ -143,48 +190,66 @@ export async function POST(req: NextRequest) {
         if (translationCache.has(cacheKey)) {
           results[idx] = translationCache.get(cacheKey)!;
         } else {
+          // Pre-fill with original text as default safe fallback
+          results[idx] = item;
           toTranslateIndices.push(idx);
           toTranslateTexts.push(item);
         }
       });
 
-      if (toTranslateIndices.length > 0) {
-        let batchSucceeded = false;
-        try {
-          const prompt = JSON.stringify(toTranslateTexts);
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: `Translate the following JSON array of French texts into English. Return ONLY a valid JSON array of strings of identical length and ordering:\n${prompt}`,
-            config: {
-              systemInstruction: SYSTEM_INSTRUCTION,
-              responseMimeType: 'application/json',
-              temperature: 0.1,
-            },
-          });
+      // If all items were cached or nothing to translate, return immediately
+      if (toTranslateIndices.length === 0) {
+        return NextResponse.json({ translations: results });
+      }
 
-          const parsed = parseJsonArraySafely(response.text);
-          if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
-            parsed.forEach((translated, i) => {
+      // If we cannot make a Gemini request due to cooldown or RPM limits, return fallback without crashing
+      if (!canMakeGeminiRequest()) {
+        return NextResponse.json({ translations: results, fallback: true });
+      }
+
+      try {
+        recordGeminiRequest();
+        const prompt = JSON.stringify(toTranslateTexts);
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: `Translate the following JSON array of French texts into English. Return ONLY a valid JSON array of strings of identical length and ordering:\n${prompt}`,
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        });
+
+        const parsed = parseJsonArraySafely(response.text);
+        if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
+          parsed.forEach((translated, i) => {
+            const originalIdx = toTranslateIndices[i];
+            const originalText = toTranslateTexts[i];
+            const safeTranslation = String(translated || originalText);
+            results[originalIdx] = safeTranslation;
+            setInCache(getCacheKey(originalText.trim(), context), safeTranslation);
+          });
+        } else if (Array.isArray(parsed) && parsed.length > 0) {
+          // Partial match: assign what we have safely
+          parsed.forEach((translated, i) => {
+            if (i < toTranslateIndices.length) {
               const originalIdx = toTranslateIndices[i];
               const originalText = toTranslateTexts[i];
-              results[originalIdx] = String(translated);
-              setInCache(getCacheKey(originalText.trim(), context), String(translated));
-            });
-            batchSucceeded = true;
-          }
-        } catch (e) {
-          console.warn('Batch translation parse failed, falling back to concurrent single translations:', e);
-        }
-
-        // If batch JSON parsing failed or had length mismatch, fall back to robust concurrent translation
-        if (!batchSucceeded) {
-          const fallbackPromises = toTranslateTexts.map(async (origText, i) => {
-            const originalIdx = toTranslateIndices[i];
-            const trans = await translateSingleText(origText, context);
-            results[originalIdx] = trans;
+              const safeTranslation = String(translated || originalText);
+              results[originalIdx] = safeTranslation;
+              setInCache(getCacheKey(originalText.trim(), context), safeTranslation);
+            }
           });
-          await Promise.all(fallbackPromises);
         }
+      } catch (e: any) {
+        const errMsg = String(e?.message || e);
+        if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
+          triggerCooldown(65000);
+          console.warn('Gemini Free Tier rate limit (5 RPM) reached during batch. Activating 65s cooldown fallback.');
+        } else {
+          console.warn('Batch translation failed, safely returning original text:', errMsg.slice(0, 100));
+        }
+        // Fallback: results already contains the original text. DO NOT run Promise.all parallel fallback requests.
       }
 
       return NextResponse.json({ translations: results });
@@ -208,52 +273,66 @@ export async function POST(req: NextRequest) {
         if (translationCache.has(cacheKey)) {
           translatedMap[key] = translationCache.get(cacheKey)!;
         } else {
+          // Pre-fill with original text as safe fallback
+          translatedMap[key] = val;
           toTranslateIndices.push(idx);
           toTranslateTexts.push(val);
         }
       });
 
-      if (toTranslateIndices.length > 0) {
-        let fieldsBatchSucceeded = false;
-        try {
-          const prompt = JSON.stringify(toTranslateTexts);
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: `Translate the following JSON array of French fields into English. Return ONLY a valid JSON array of strings in identical order:\n${prompt}`,
-            config: {
-              systemInstruction: SYSTEM_INSTRUCTION,
-              responseMimeType: 'application/json',
-              temperature: 0.1,
-            },
-          });
+      if (toTranslateIndices.length === 0) {
+        return NextResponse.json({ translatedFields: translatedMap });
+      }
 
-          const parsed = parseJsonArraySafely(response.text);
-          if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
-            toTranslateIndices.forEach((origIdx, i) => {
+      if (!canMakeGeminiRequest()) {
+        return NextResponse.json({ translatedFields: translatedMap, fallback: true });
+      }
+
+      try {
+        recordGeminiRequest();
+        const prompt = JSON.stringify(toTranslateTexts);
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: `Translate the following JSON array of French fields into English. Return ONLY a valid JSON array of strings in identical order:\n${prompt}`,
+          config: {
+            systemInstruction: SYSTEM_INSTRUCTION,
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        });
+
+        const parsed = parseJsonArraySafely(response.text);
+        if (Array.isArray(parsed) && parsed.length === toTranslateTexts.length) {
+          toTranslateIndices.forEach((origIdx, i) => {
+            const k = keys[origIdx];
+            const origVal = values[origIdx];
+            const transVal = String(parsed[i] || origVal);
+            translatedMap[k] = transVal;
+            setInCache(getCacheKey(origVal.trim(), `${context}_${k}`), transVal);
+          });
+        } else if (Array.isArray(parsed) && parsed.length > 0) {
+          toTranslateIndices.forEach((origIdx, i) => {
+            if (i < parsed.length) {
               const k = keys[origIdx];
               const origVal = values[origIdx];
               const transVal = String(parsed[i] || origVal);
               translatedMap[k] = transVal;
               setInCache(getCacheKey(origVal.trim(), `${context}_${k}`), transVal);
-            });
-            fieldsBatchSucceeded = true;
-          }
-        } catch (e) {
-          console.warn('Object fields batch translation failed, falling back to concurrent single translations:', e);
-        }
-
-        if (!fieldsBatchSucceeded) {
-          const fallbackPromises = toTranslateTexts.map(async (origVal, i) => {
-            const origIdx = toTranslateIndices[i];
-            const k = keys[origIdx];
-            const trans = await translateSingleText(origVal, `${context}_${k}`);
-            translatedMap[k] = trans;
+            }
           });
-          await Promise.all(fallbackPromises);
         }
+      } catch (e: any) {
+        const errMsg = String(e?.message || e);
+        if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota')) {
+          triggerCooldown(65000);
+          console.warn('Gemini Free Tier rate limit reached during fields translation. Activating 65s cooldown.');
+        } else {
+          console.warn('Object fields batch translation failed, safely returning original text:', errMsg.slice(0, 100));
+        }
+        // Fallback: translatedMap is already populated with original text. DO NOT run Promise.all fallback!
       }
 
-      // Fill in any untouched keys
+      // Ensure all keys are filled
       keys.forEach((k) => {
         if (translatedMap[k] === undefined) {
           translatedMap[k] = fields[k] || '';
@@ -271,7 +350,7 @@ export async function POST(req: NextRequest) {
     console.error('Translation API route error:', err);
     return NextResponse.json(
       { error: err.message || 'Internal translation error', fallback: true },
-      { status: 500 }
+      { status: 200 } // Return 200 with fallback to avoid breaking client views
     );
   }
 }

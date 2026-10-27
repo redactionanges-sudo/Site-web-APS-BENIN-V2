@@ -5,10 +5,12 @@ const memoryCache = new Map<string, string>();
 // Pending in-flight promises to avoid duplicate requests
 const inFlight = new Map<string, Promise<string>>();
 
-const STORAGE_PREFIX = 'aps_trans_v1:';
+const STORAGE_PREFIX = 'aps_trans_v2:';
+
+// Client-side cooldown guard (in ms) to avoid hammering server if quota is reached
+let clientCooldownUntil = 0;
 
 function getStorageKey(text: string): string {
-  // Simple hash for long strings
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
     hash = (hash << 5) - hash + text.charCodeAt(i);
@@ -53,57 +55,93 @@ export function saveCachedTranslation(original: string, translated: string) {
   }
 }
 
+// Queue for batching concurrent single translation requests into a single HTTP call
+interface PendingQueueItem {
+  text: string;
+  context?: string;
+  resolve: (val: string) => void;
+}
+
+let pendingBatchQueue: PendingQueueItem[] = [];
+let batchDebounceTimer: NodeJS.Timeout | null = null;
+
+function processBatchQueue() {
+  batchDebounceTimer = null;
+  if (pendingBatchQueue.length === 0) return;
+
+  const currentBatch = pendingBatchQueue.splice(0, 25);
+  const uniqueTextsToFetch: string[] = [];
+  const textToItemsMap = new Map<string, PendingQueueItem[]>();
+
+  currentBatch.forEach((item) => {
+    const list = textToItemsMap.get(item.text) || [];
+    list.push(item);
+    textToItemsMap.set(item.text, list);
+
+    if (!uniqueTextsToFetch.includes(item.text)) {
+      uniqueTextsToFetch.push(item.text);
+    }
+  });
+
+  // Call batch translation
+  clientTranslateBatch(uniqueTextsToFetch, currentBatch[0]?.context)
+    .then((translations) => {
+      uniqueTextsToFetch.forEach((txt, idx) => {
+        const trans = translations[idx] || txt;
+        const items = textToItemsMap.get(txt) || [];
+        items.forEach((item) => item.resolve(trans));
+      });
+    })
+    .catch(() => {
+      // Fallback: resolve all with their original text
+      uniqueTextsToFetch.forEach((txt) => {
+        const items = textToItemsMap.get(txt) || [];
+        items.forEach((item) => item.resolve(txt));
+      });
+    });
+
+  // If more items remain in queue, schedule next batch
+  if (pendingBatchQueue.length > 0) {
+    batchDebounceTimer = setTimeout(processBatchQueue, 150);
+  }
+}
+
 /**
- * Translates a single text from FR to EN using the server endpoint.
- * Caches in memory and localStorage.
+ * Translates a single text from FR to EN.
+ * Automatically enqueues and batches concurrent calls into a single server request.
  */
 export async function clientTranslateText(text: string, context?: string): Promise<string> {
   if (!text || !text.trim()) return text;
   const trimmed = text.trim();
 
-  // Check cache first
+  // 1. Check cache first
   const cached = getCachedTranslation(trimmed);
   if (cached) return cached;
 
-  // Check in-flight
+  // 2. If in active client cooldown, return original text immediately without hitting server
+  if (Date.now() < clientCooldownUntil) {
+    return trimmed;
+  }
+
+  // 3. Check if already in-flight
   if (inFlight.has(trimmed)) {
     return inFlight.get(trimmed)!;
   }
 
-  const promise = (async () => {
-    try {
-      const res = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: trimmed, context }),
-      });
+  const promise = new Promise<string>((resolve) => {
+    pendingBatchQueue.push({
+      text: trimmed,
+      context,
+      resolve: (res) => {
+        inFlight.delete(trimmed);
+        resolve(res);
+      },
+    });
 
-      if (!res.ok) {
-        console.warn(`Translation API HTTP ${res.status}`);
-        return trimmed;
-      }
-
-      const data = await res.json();
-      const translation = data.translation || trimmed;
-      saveCachedTranslation(trimmed, translation);
-
-      // Dispatch event to notify any waiting components
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('aps_translation_updated', {
-            detail: { original: trimmed, translation },
-          })
-        );
-      }
-
-      return translation;
-    } catch (e) {
-      console.warn('clientTranslateText error:', e);
-      return trimmed;
-    } finally {
-      inFlight.delete(trimmed);
+    if (!batchDebounceTimer) {
+      batchDebounceTimer = setTimeout(processBatchQueue, 80);
     }
-  })();
+  });
 
   inFlight.set(trimmed, promise);
   return promise;
@@ -128,12 +166,18 @@ export async function clientTranslateBatch(texts: string[], context?: string): P
     if (cached) {
       results[idx] = cached;
     } else {
+      results[idx] = t; // Default fallback to original
       toFetchIndices.push(idx);
       toFetchTexts.push(t);
     }
   });
 
   if (toFetchIndices.length === 0) {
+    return results;
+  }
+
+  // If in client-side cooldown, return original text without spamming server
+  if (Date.now() < clientCooldownUntil) {
     return results;
   }
 
@@ -146,6 +190,11 @@ export async function clientTranslateBatch(texts: string[], context?: string): P
 
     if (res.ok) {
       const data = await res.json();
+      if (data.fallback && data.rateLimited) {
+        // Server notified us that rate limit is reached
+        clientCooldownUntil = Date.now() + 30000;
+      }
+
       const translations: string[] = data.translations || [];
       toFetchIndices.forEach((origIdx, i) => {
         const trans = translations[i] || toFetchTexts[i];
@@ -157,15 +206,12 @@ export async function clientTranslateBatch(texts: string[], context?: string): P
         window.dispatchEvent(new CustomEvent('aps_translation_updated'));
       }
     } else {
-      toFetchIndices.forEach((origIdx, i) => {
-        results[origIdx] = toFetchTexts[i];
-      });
+      if (res.status === 429) {
+        clientCooldownUntil = Date.now() + 60000;
+      }
     }
   } catch (err) {
-    console.warn('Batch translation error:', err);
-    toFetchIndices.forEach((origIdx, i) => {
-      results[origIdx] = toFetchTexts[i];
-    });
+    console.warn('Batch translation request error:', err);
   }
 
   return results;
