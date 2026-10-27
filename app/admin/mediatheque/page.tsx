@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured, supabaseStore } from '@/lib/supabase';
 import { MediaItem, PhotoAlbum, ProjectItem } from '@/types';
 import { ImagePickerField } from '@/components/admin/MediaSelectorModal';
 import { UploadProgressBar, UploadProgressData } from '@/components/admin/UploadProgressBar';
+import { BatchImageUploader } from '@/components/admin/BatchImageUploader';
 import {
   Upload,
   Plus,
@@ -87,6 +88,47 @@ export default function AdminMediathequePage() {
   const [selectedMediaIdsToAssociate, setSelectedMediaIdsToAssociate] = useState<string[]>([]);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [mediaToUnlink, setMediaToUnlink] = useState<MediaItem | null>(null);
+
+  // Batch Upload Modal state
+  const [batchUploadModalOpen, setBatchUploadModalOpen] = useState(false);
+  const [batchTargetAlbumId, setBatchTargetAlbumId] = useState<string>('');
+  const [batchCategory, setBatchCategory] = useState<string>('Médiathèque publique');
+  const [batchTargetModule, setBatchTargetModule] = useState<string>('autre');
+
+  const openBatchUpload = (albumId?: string | null) => {
+    setBatchTargetAlbumId(albumId || (selectedAlbumFilter !== 'all' ? selectedAlbumFilter : ''));
+    setBatchCategory('Médiathèque publique');
+    setBatchTargetModule('autre');
+    setBatchUploadModalOpen(true);
+  };
+
+  const handleBatchUploadComplete = async (
+    items: {
+      publicUrl: string;
+      thumbnailUrl?: string;
+      fileName: string;
+      title: string;
+      mediaItem?: MediaItem;
+    }[]
+  ) => {
+    const newMediaItems = items.map((i) => i.mediaItem).filter(Boolean) as MediaItem[];
+    if (newMediaItems.length > 0) {
+      setMediaList((prev) => [...newMediaItems, ...prev]);
+    }
+    try {
+      const refreshedAlbums = await supabaseStore.getAlbums();
+      setAlbums(refreshedAlbums);
+    } catch (e) {
+      console.warn('Could not refresh albums:', e);
+    }
+
+    const count = items.length;
+    setActionFeedback(
+      `${count} photo${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''} et enregistrée${count > 1 ? 's' : ''} avec succès dans la médiathèque.`
+    );
+    setTimeout(() => setActionFeedback(null), 5000);
+    setBatchUploadModalOpen(false);
+  };
 
   // Delete modal state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -370,9 +412,88 @@ export default function AdminMediathequePage() {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = e.target.files ? Array.from(e.target.files) : [];
+    if (fileList.length === 0) return;
 
+    // Multi-file handling for photos
+    if (fileList.length > 1 && mediaForm.type === 'photo') {
+      setIsUploading(true);
+      const newlyCreated: MediaItem[] = [];
+      let successCount = 0;
+
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        setUploadData({
+          phase: 'uploading',
+          percent: Math.round(((i + 1) / fileList.length) * 100),
+          fileName: file.name,
+          loadedBytes: i + 1,
+          totalBytes: fileList.length,
+          message: `Téléversement (${i + 1}/${fileList.length}) : ${file.name}`,
+        });
+
+        try {
+          const result = await supabaseStore.uploadFile(file, 'images', 'uploads');
+          if (result.success && result.publicUrl) {
+            const generatedTitle = file.name
+              .replace(/\.[^/.]+$/, '')
+              .replace(/[-_]/g, ' ')
+              .trim();
+
+            const newMedia: MediaItem = {
+              id: 'med-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+              title_fr: generatedTitle,
+              title_en: generatedTitle,
+              type: 'photo',
+              url: result.publicUrl,
+              thumbnail_url: result.thumbnailUrl || result.publicUrl,
+              album_id: mediaForm.album_id || undefined,
+              project_id: mediaForm.project_id || undefined,
+              category: mediaForm.category || 'Médiathèque publique',
+              date: mediaForm.date || new Date().toISOString().split('T')[0],
+              location: mediaForm.location || 'APS-BÉNIN',
+              alt_fr: generatedTitle,
+              alt_en: generatedTitle,
+              show_in_public_gallery: true,
+              is_active: true,
+            };
+
+            await supabaseStore.saveMedia(newMedia);
+            newlyCreated.push(newMedia);
+            successCount++;
+          }
+        } catch (singleErr) {
+          console.warn(`Failed to upload ${file.name}:`, singleErr);
+        }
+      }
+
+      setIsUploading(false);
+      e.target.value = '';
+
+      if (newlyCreated.length > 0) {
+        setMediaList((prev) => [...newlyCreated, ...prev]);
+        try {
+          const refreshedAlbums = await supabaseStore.getAlbums();
+          setAlbums(refreshedAlbums);
+        } catch {
+          // ignore
+        }
+        setMediaModalOpen(false);
+        setActionFeedback(
+          `${successCount} photo${successCount > 1 ? 's' : ''} importée${successCount > 1 ? 's' : ''} avec succès dans la médiathèque.`
+        );
+        setTimeout(() => setActionFeedback(null), 5000);
+      } else {
+        setUploadData({
+          phase: 'error',
+          percent: 0,
+          error: 'Échec de l’importation des photos sélectionnées.',
+        });
+      }
+      return;
+    }
+
+    const file = fileList[0];
     setIsUploading(true);
     setUploadData({
       phase: 'preparing',
@@ -597,6 +718,15 @@ export default function AdminMediathequePage() {
         subtitle="Téléversement, organisation en albums et gestion des métadonnées photos/vidéos"
         actionButton={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openBatchUpload()}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-[#92278F] to-[#FF8C00] hover:opacity-95 text-white text-xs font-bold transition-all shadow-xs"
+              title="Importer plusieurs photos simultanément depuis votre ordinateur"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Import groupé</span>
+            </button>
             <button
               type="button"
               onClick={() => openNewMediaModal(activeTab === 'videos' ? 'video' : 'photo')}
@@ -1240,16 +1370,37 @@ export default function AdminMediathequePage() {
                 {/* Photo Upload */}
                 {mediaForm.type === 'photo' && (
                   <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 space-y-3">
-                    <label className="block text-xs font-bold text-gray-800">
-                      Téléverser une image locale (Supabase Storage) :
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      disabled={isUploading}
-                      className="text-xs text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#92278F] file:text-white hover:file:bg-[#741772] disabled:opacity-50 cursor-pointer"
-                    />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <label className="block text-xs font-bold text-gray-800">
+                        Téléverser des photos locales (Supabase Storage) :
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMediaModalOpen(false);
+                          openBatchUpload(mediaForm.album_id);
+                        }}
+                        className="text-[11px] font-bold text-[#92278F] hover:underline self-start sm:self-auto flex items-center gap-1"
+                      >
+                        <Upload className="w-3 h-3 text-[#FF8C00]" />
+                        <span>Ouvrir l’importation groupée avancée</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        disabled={isUploading}
+                        className="text-xs text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#92278F] file:text-white hover:file:bg-[#741772] disabled:opacity-50 cursor-pointer"
+                      />
+                      <p className="text-[11px] text-gray-500">
+                        Vous pouvez sélectionner une seule photo ou plusieurs photos simultanément pour les enregistrer en bloc.
+                      </p>
+                    </div>
+
                     <UploadProgressBar
                       data={uploadData}
                       onReset={() => setUploadData(null)}
@@ -1945,12 +2096,22 @@ export default function AdminMediathequePage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
+                    onClick={() => openBatchUpload(managingAlbum.id)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#92278F] to-[#FF8C00] hover:opacity-95 text-white text-xs font-bold transition-all shadow-xs"
+                    title="Importer plusieurs photos simultanément depuis votre ordinateur dans cet album"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Importer des photos</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => openNewMediaModalForAlbum('photo', managingAlbum.id)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#92278F] hover:bg-[#7a1f77] text-white text-xs font-bold transition-colors shadow-xs"
                   >
                     <Plus className="w-4 h-4" />
                     <ImageIcon className="w-3.5 h-3.5" />
-                    <span>Ajouter une photo</span>
+                    <span>+ Photo unique</span>
                   </button>
 
                   <button
@@ -1960,7 +2121,7 @@ export default function AdminMediathequePage() {
                   >
                     <Plus className="w-4 h-4" />
                     <Video className="w-3.5 h-3.5" />
-                    <span>Ajouter une vidéo</span>
+                    <span>+ Vidéo</span>
                   </button>
 
                   <button
@@ -2038,27 +2199,35 @@ export default function AdminMediathequePage() {
                         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
                           <button
                             type="button"
+                            onClick={() => openBatchUpload(managingAlbum.id)}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#92278F] to-[#FF8C00] text-white text-xs font-bold hover:opacity-95 transition-all shadow-xs"
+                          >
+                            <Upload className="w-4 h-4" />
+                            <span>Importer plusieurs photos</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => openNewMediaModalForAlbum('photo', managingAlbum.id)}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#92278F] text-white text-xs font-bold hover:bg-[#7a1f77] transition-colors"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#92278F] text-white text-xs font-bold hover:bg-[#7a1f77] transition-colors"
                           >
                             <Plus className="w-4 h-4" />
-                            <span>Ajouter une photo</span>
+                            <span>Photo unique</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => openNewMediaModalForAlbum('video', managingAlbum.id)}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF8C00] text-white text-xs font-bold hover:bg-[#e07b00] transition-colors"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#FF8C00] text-white text-xs font-bold hover:bg-[#e07b00] transition-colors"
                           >
                             <Plus className="w-4 h-4" />
-                            <span>Ajouter une vidéo</span>
+                            <span>Vidéo</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => openAssociateModalForAlbum(managingAlbum)}
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white text-gray-800 border border-gray-300 text-xs font-bold hover:bg-gray-100 transition-colors"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-gray-800 border border-gray-300 text-xs font-bold hover:bg-gray-100 transition-colors"
                           >
                             <Link2 className="w-4 h-4 text-[#92278F]" />
-                            <span>Choisir dans la médiathèque</span>
+                            <span>Associer existants</span>
                           </button>
                         </div>
                       </div>
@@ -2525,6 +2694,101 @@ export default function AdminMediathequePage() {
                   <span>Ouvrir sur la plateforme source</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Batch Image Upload Modal */}
+        {batchUploadModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100">
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-gray-200 flex items-center justify-between bg-white shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#92278F] flex items-center justify-center shrink-0">
+                    <Upload className="w-5 h-5 text-[#FF8C00]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 font-heading">
+                      Importation groupée de photos
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Sélectionnez plusieurs photos sur votre ordinateur pour les importer et les enregistrer en une seule opération
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBatchUploadModalOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body with Settings & Uploader */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+                {/* Destination configuration: Album, Category */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-gray-50/80 rounded-xl border border-gray-200 text-xs">
+                  <div>
+                    <label className="block font-bold text-gray-800 mb-1 flex items-center gap-1.5">
+                      <Folder className="w-3.5 h-3.5 text-[#92278F]" />
+                      <span>Rattacher à un album (optionnel) :</span>
+                    </label>
+                    <select
+                      value={batchTargetAlbumId}
+                      onChange={(e) => setBatchTargetAlbumId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white font-medium text-xs focus:ring-2 focus:ring-[#92278F] outline-none"
+                    >
+                      <option value="">Aucun album (Médiathèque générale)</option>
+                      {albums.map((alb) => (
+                        <option key={alb.id} value={alb.id}>
+                          {alb.title_fr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-gray-800 mb-1 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[#FF8C00]" />
+                      <span>Catégorie :</span>
+                    </label>
+                    <select
+                      value={batchCategory}
+                      onChange={(e) => setBatchCategory(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-white font-medium text-xs focus:ring-2 focus:ring-[#92278F] outline-none"
+                    >
+                      <option value="Médiathèque publique">Médiathèque publique</option>
+                      <option value="Activités de terrain">Activités de terrain</option>
+                      <option value="Reportages & Vidéos">Reportages & Vidéos</option>
+                      <option value="Institutionnel & Partenariats">Institutionnel & Partenariats</option>
+                      <option value="Formations & Séminaires">Formations & Séminaires</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Batch Uploader Core Component */}
+                <BatchImageUploader
+                  multiple={true}
+                  albumId={batchTargetAlbumId || undefined}
+                  category={batchCategory}
+                  targetModule={batchTargetModule}
+                  autoSaveToMediaLibrary={true}
+                  onUploadComplete={handleBatchUploadComplete}
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="p-3 sm:p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setBatchUploadModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-xs font-bold text-gray-700 transition-colors"
+                >
+                  Fermer
+                </button>
               </div>
             </div>
           </div>

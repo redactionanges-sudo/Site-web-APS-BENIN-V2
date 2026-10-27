@@ -12,7 +12,9 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  Upload,
 } from 'lucide-react';
+import { MediaTargetModule } from '@/types';
 
 export interface MultiImageGalleryFieldProps {
   label?: string;
@@ -22,24 +24,38 @@ export interface MultiImageGalleryFieldProps {
   onSetMainImage?: (url: string) => void;
   mainImageUrl?: string;
   maxImages?: number;
+  targetModule?: MediaTargetModule;
 }
 
 /**
  * Reusable Component for Managing Multi-Image Galleries.
- * Allows adding multiple images from the Médiathèque, reordering them,
+ * Allows adding multiple images from the Médiathèque or uploading multiple photos
+ * directly from the computer in one operation, reordering them,
  * removing them from the association without deleting from Storage,
  * and setting any gallery image as the main/cover image.
  */
 export const MultiImageGalleryField: React.FC<MultiImageGalleryFieldProps> = ({
   label = 'Galerie d’images supplémentaires',
-  description = 'Sélectionnez plusieurs images depuis la Médiathèque pour enrichir ce contenu. Les fichiers ne sont jamais dupliqués.',
+  description = 'Sélectionnez ou importez plusieurs images pour enrichir ce contenu. Les fichiers sont stockés sans doublons.',
   images = [],
   onChange,
   onSetMainImage,
   mainImageUrl,
   maxImages,
+  targetModule = 'autre',
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<'browse' | 'upload'>('browse');
+
+  const openBrowse = () => {
+    setModalTab('browse');
+    setModalOpen(true);
+  };
+
+  const openUpload = () => {
+    setModalTab('upload');
+    setModalOpen(true);
+  };
 
   const handleModalConfirm = (selected: SelectedMedia[]) => {
     const currentList = Array.isArray(images) ? images : [];
@@ -69,7 +85,7 @@ export const MultiImageGalleryField: React.FC<MultiImageGalleryFieldProps> = ({
 
   return (
     <div className="space-y-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50">
-      {/* Header with Title and Add Button */}
+      {/* Header with Title and Add Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5 font-heading">
@@ -86,29 +102,59 @@ export const MultiImageGalleryField: React.FC<MultiImageGalleryFieldProps> = ({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-all shadow-xs shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Ajouter depuis la Médiathèque</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={openBrowse}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-[#92278F] border border-purple-200 text-xs font-bold transition-all shadow-2xs"
+            title="Sélectionner des visuels existants dans la médiathèque"
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>Depuis la Médiathèque</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openUpload}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold transition-all shadow-xs"
+            title="Importer plusieurs photos en une seule fois depuis votre ordinateur"
+          >
+            <Upload className="w-3.5 h-3.5 text-[#FF8C00]" />
+            <span>Importer des photos</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid of gallery images */}
       {safeImages.length === 0 ? (
-        <div
-          onClick={() => setModalOpen(true)}
-          className="border-2 border-dashed border-gray-300 hover:border-[#92278F] rounded-xl p-6 text-center cursor-pointer transition-colors bg-white group"
-        >
-          <ImageIcon className="w-8 h-8 text-gray-300 group-hover:text-[#92278F] mx-auto mb-2 transition-colors" />
-          <p className="text-xs font-bold text-gray-700 group-hover:text-[#92278F] transition-colors">
-            Aucune image supplémentaire dans la galerie
-          </p>
-          <p className="text-[11px] text-gray-400 mt-1 max-w-sm mx-auto">
-            Cliquez pour ouvrir la Médiathèque et sélectionner plusieurs photos à associer à ce contenu.
-          </p>
+        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-white space-y-3">
+          <ImageIcon className="w-8 h-8 text-gray-300 mx-auto transition-colors" />
+          <div>
+            <p className="text-xs font-bold text-gray-700">
+              Aucune image supplémentaire dans la galerie
+            </p>
+            <p className="text-[11px] text-gray-400 mt-1 max-w-sm mx-auto">
+              Sélectionnez des photos existantes ou importez-en plusieurs simultanément depuis votre appareil.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={openBrowse}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-semibold"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-[#92278F]" />
+              <span>Choisir dans la Médiathèque</span>
+            </button>
+            <button
+              type="button"
+              onClick={openUpload}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold"
+            >
+              <Upload className="w-3.5 h-3.5 text-[#FF8C00]" />
+              <span>Importer depuis l’ordinateur</span>
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -216,7 +262,9 @@ export const MultiImageGalleryField: React.FC<MultiImageGalleryFieldProps> = ({
         multiple={true}
         initialSelectedUrls={safeImages}
         onSelectMultiple={handleModalConfirm}
-        title="Sélectionner des images pour la galerie"
+        initialTab={modalTab}
+        targetModule={targetModule}
+        title="Sélectionner ou importer des images pour la galerie"
       />
     </div>
   );

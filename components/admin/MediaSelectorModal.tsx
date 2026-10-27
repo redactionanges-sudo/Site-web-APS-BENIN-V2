@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabaseStore } from '@/lib/supabase';
 import { MediaItem, PhotoAlbum } from '@/types';
 import { UploadProgressBar, UploadProgressData } from '@/components/admin/UploadProgressBar';
+import { BatchImageUploader } from '@/components/admin/BatchImageUploader';
 import {
   Image as ImageIcon,
   Upload,
@@ -39,6 +40,7 @@ interface MediaSelectorModalProps {
   initialSelectedUrls?: string[];
   allowedTypes?: ('photo' | 'video')[];
   targetModule?: MediaTargetModule;
+  initialTab?: 'browse' | 'upload';
 }
 
 const DEFAULT_ALLOWED_TYPES: ('photo' | 'video')[] = ['photo'];
@@ -54,8 +56,9 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
   initialSelectedUrls,
   allowedTypes = DEFAULT_ALLOWED_TYPES,
   targetModule = 'autre',
+  initialTab = 'browse',
 }) => {
-  const [activeTab, setActiveTab] = useState<'browse' | 'upload'>('browse');
+  const [activeTab, setActiveTab] = useState<'browse' | 'upload'>(initialTab);
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
   const [albums, setAlbums] = useState<PhotoAlbum[]>([]);
   const [loading, setLoading] = useState(false);
@@ -107,6 +110,9 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
   // Synchronize selection when modal opens or inputs change, without reloading media data
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
       if (multiple) {
         const urls = initialUrlsKey ? initialUrlsKey.split(',') : [];
         setSelectedItems(urls.map((u) => ({ url: u })));
@@ -114,7 +120,7 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
         setSelectedItem(currentUrl ? { url: currentUrl } : null);
       }
     }
-  }, [isOpen, currentUrl, multiple, initialUrlsKey]);
+  }, [isOpen, currentUrl, multiple, initialUrlsKey, initialTab]);
 
   const handleItemClick = (item: MediaItem) => {
     if (multiple) {
@@ -453,54 +459,59 @@ export const MediaSelectorModal: React.FC<MediaSelectorModalProps> = ({
               )}
             </div>
           ) : (
-            /* Upload tab */
-            <div className="max-w-md mx-auto py-8 text-center space-y-4">
-              <div className="border-2 border-dashed border-[#92278F]/40 hover:border-[#92278F] rounded-2xl p-8 bg-purple-50/30 transition-colors">
-                <div className="w-14 h-14 mx-auto rounded-full bg-purple-100 text-[#92278F] flex items-center justify-center mb-4">
-                  {uploading ? (
-                    <Loader2 className="w-7 h-7 animate-spin" />
-                  ) : (
-                    <Upload className="w-7 h-7" />
-                  )}
-                </div>
-
-                <h4 className="text-sm font-bold text-gray-900 font-heading mb-1">
-                  {uploading ? 'Téléversement vers Supabase...' : 'Téléverser un nouveau visuel'}
-                </h4>
-                <p className="text-xs text-gray-500 mb-5 max-w-xs mx-auto">
-                  Formats acceptés : PNG, JPG, WebP, GIF. Le fichier sera hébergé directement sur Supabase Storage.
-                </p>
-
-                {uploadError && !uploadData && (
-                  <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs text-left">
-                    {uploadError}
-                  </div>
-                )}
-
-                {uploadData && (
-                  <div className="mb-4 text-left">
-                    <UploadProgressBar
-                      data={uploadData}
-                      onReset={() => {
-                        setUploadData(null);
-                        setUploadError('');
-                      }}
-                    />
-                  </div>
-                )}
-
-                <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#92278F] hover:bg-[#741772] text-white text-xs font-bold cursor-pointer shadow-md transition-all">
-                  <Upload className="w-4 h-4 text-[#FF8C00]" />
-                  <span>Sélectionner un fichier sur l’appareil</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+            /* Upload tab with multi-file support, cumulative additions, previews and progress */
+            <div className="max-w-2xl mx-auto py-2">
+              <BatchImageUploader
+                multiple={multiple}
+                targetModule={targetModule}
+                category={getDefaultCategoryForModule(targetModule).category}
+                title={
+                  multiple
+                    ? 'Téléverser plusieurs visuels'
+                    : 'Téléverser un visuel'
+                }
+                subtitle={
+                  multiple
+                    ? 'Sélectionnez plusieurs photos en une seule opération depuis votre ordinateur, ou ajoutez-en en plusieurs étapes sans perdre les précédentes.'
+                    : 'Formats acceptés : PNG, JPG, WebP, GIF, SVG. Hébergé directement sur Supabase Storage.'
+                }
+                buttonLabel={
+                  multiple
+                    ? 'Choisir des photos sur l’ordinateur'
+                    : 'Choisir une photo sur l’ordinateur'
+                }
+                onUploadComplete={(items) => {
+                  const newMediaItems = items
+                    .map((i) => i.mediaItem)
+                    .filter(Boolean) as MediaItem[];
+                  if (newMediaItems.length > 0) {
+                    setMediaList((prev) => [...newMediaItems, ...prev]);
+                  }
+                  const newSelected: SelectedMedia[] = items.map((i) => ({
+                    url: i.publicUrl,
+                    alt_fr: i.title,
+                    title_fr: i.title,
+                  }));
+                  setSelectedItems((prev) => {
+                    const existingUrls = new Set(prev.map((p) => p.url));
+                    const filtered = newSelected.filter((n) => !existingUrls.has(n.url));
+                    return [...prev, ...filtered];
+                  });
+                }}
+                onSingleUploadComplete={(item) => {
+                  if (item.mediaItem) {
+                    setMediaList((prev) => [item.mediaItem!, ...prev]);
+                  }
+                  setSelectedItem({
+                    url: item.publicUrl,
+                    alt_fr: item.title,
+                    title_fr: item.title,
+                  });
+                  setTimeout(() => {
+                    setActiveTab('browse');
+                  }, 600);
+                }}
+              />
             </div>
           )}
         </div>
@@ -610,6 +621,17 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
   targetModule,
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState<'browse' | 'upload'>('browse');
+
+  const openBrowse = () => {
+    setModalInitialTab('browse');
+    setModalOpen(true);
+  };
+
+  const openUpload = () => {
+    setModalInitialTab('upload');
+    setModalOpen(true);
+  };
 
   return (
     <div className="space-y-1.5">
@@ -639,7 +661,7 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
             />
             <button
               type="button"
-              onClick={() => setModalOpen(true)}
+              onClick={openBrowse}
               className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity text-[10px] font-bold"
             >
               Changer
@@ -647,7 +669,7 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
           </div>
         ) : (
           <div
-            onClick={() => setModalOpen(true)}
+            onClick={openBrowse}
             className="w-12 h-12 rounded-lg border-2 border-dashed border-gray-300 hover:border-[#92278F] flex items-center justify-center text-gray-400 hover:text-[#92278F] cursor-pointer shrink-0 transition-colors bg-gray-50"
           >
             <ImageIcon className="w-5 h-5" />
@@ -664,14 +686,26 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
           className="flex-1 px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
         />
 
-        {/* Button to open Mediatheque modal */}
+        {/* Button to open Mediatheque modal in browse mode */}
         <button
           type="button"
-          onClick={() => setModalOpen(true)}
+          onClick={openBrowse}
           className="px-3 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 text-[#92278F] text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors"
+          title="Choisir dans la médiathèque"
         >
           <ImageIcon className="w-3.5 h-3.5" />
-          <span>Médiathèque</span>
+          <span className="hidden sm:inline">Médiathèque</span>
+        </button>
+
+        {/* Button to open Mediatheque modal in direct upload mode */}
+        <button
+          type="button"
+          onClick={openUpload}
+          className="px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors"
+          title="Importer depuis l’ordinateur"
+        >
+          <Upload className="w-3.5 h-3.5 text-[#FF8C00]" />
+          <span className="hidden sm:inline">Importer</span>
         </button>
       </div>
 
@@ -684,6 +718,7 @@ export const ImagePickerField: React.FC<ImagePickerFieldProps> = ({
         currentUrl={value}
         allowedTypes={DEFAULT_ALLOWED_TYPES}
         targetModule={targetModule}
+        initialTab={modalInitialTab}
         onSelect={(media) => {
           onChange(media.url, media.alt_fr);
         }}
