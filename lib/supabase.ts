@@ -314,6 +314,80 @@ export function packMedia(item: any): any {
   };
 }
 
+export function unpackProject(row: any): ProjectItem {
+  if (!row) return row;
+  let publication_type: 'project' | 'activity' = row.publication_type || 'project';
+  let activity_category = row.activity_category || '';
+  let related_project_id = row.related_project_id || '';
+  let related_project_title = row.related_project_title || '';
+  let participants_count = row.participants_count || '';
+  let observations_fr = row.observations_fr || '';
+  let observations_en = row.observations_en || '';
+  let problem_fr = row.problem_fr || '';
+  const problem_en = row.problem_en || '';
+
+  // Check if problem_fr contains encapsulated activity metadata
+  if (typeof problem_fr === 'string' && problem_fr.trim().startsWith('{"__aps_type":')) {
+    try {
+      const meta = JSON.parse(problem_fr);
+      if (meta.__aps_type === 'activity') {
+        publication_type = 'activity';
+        if (meta.activity_category) activity_category = meta.activity_category;
+        if (meta.related_project_id) related_project_id = meta.related_project_id;
+        if (meta.related_project_title) related_project_title = meta.related_project_title;
+        if (meta.participants_count) participants_count = meta.participants_count;
+        if (meta.observations_fr) observations_fr = meta.observations_fr;
+        if (meta.observations_en) observations_en = meta.observations_en;
+        problem_fr = meta.raw_problem_fr || '';
+      }
+    } catch {}
+  }
+
+  return {
+    ...row,
+    publication_type,
+    activity_category,
+    related_project_id: related_project_id || undefined,
+    related_project_title: related_project_title || undefined,
+    participants_count: participants_count || undefined,
+    observations_fr,
+    observations_en,
+    problem_fr,
+    problem_en,
+    communes: Array.isArray(row.communes) ? row.communes : [],
+    partners: Array.isArray(row.partners) ? row.partners : [],
+    photos: Array.isArray(row.photos) ? row.photos : [],
+    videos: Array.isArray(row.videos) ? row.videos : [],
+    documents: Array.isArray(row.documents) ? row.documents : [],
+  };
+}
+
+export function packProject(item: ProjectItem): any {
+  if (!item) return item;
+  let problem_fr = item.problem_fr || '';
+  const problem_en = item.problem_en || '';
+
+  if (item.publication_type === 'activity') {
+    const meta = {
+      __aps_type: 'activity',
+      activity_category: item.activity_category || 'Sensibilisation',
+      related_project_id: item.related_project_id || '',
+      related_project_title: item.related_project_title || '',
+      participants_count: item.participants_count || '',
+      observations_fr: item.observations_fr || '',
+      observations_en: item.observations_en || '',
+      raw_problem_fr: problem_fr && !problem_fr.startsWith('{"__aps_type":') ? problem_fr : '',
+    };
+    problem_fr = JSON.stringify(meta);
+  }
+
+  return {
+    ...item,
+    problem_fr,
+    problem_en,
+  };
+}
+
 export function isFakeOrDemoMediaUrl(urlOrPath?: string | null): boolean {
   if (!urlOrPath || typeof urlOrPath !== 'string') return true;
   const lower = urlOrPath.trim().toLowerCase();
@@ -739,6 +813,28 @@ async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId:
             }
           }
 
+          if (table === 'projects') {
+            const packed = packProject(dataOrId);
+            const {
+              publication_type: _,
+              activity_category: __,
+              related_project_id: ___,
+              related_project_title: ____,
+              participants_count: _____,
+              observations_fr: ______,
+              observations_en: _______,
+              ...sqlPayload
+            } = packed;
+            upsertPayload = sqlPayload;
+          }
+
+          if (table === 'albums') {
+            upsertPayload = {
+              ...dataOrId,
+              project_id: dataOrId.project_id && String(dataOrId.project_id).trim() ? String(dataOrId.project_id).trim() : null,
+            };
+          }
+
           if (table === 'media') {
             const packed = packMedia(dataOrId);
             const {
@@ -792,7 +888,17 @@ async function mutateTable(table: string, action: 'upsert' | 'delete', dataOrId:
 
   // 2. Server API bridge (/api/admin/mutate)
   if (typeof window !== 'undefined') {
-    const sendData = (action === 'upsert' && table === 'media') ? packMedia(dataOrId) : dataOrId;
+    let sendData = dataOrId;
+    if (action === 'upsert') {
+      if (table === 'media') sendData = packMedia(dataOrId);
+      else if (table === 'projects') sendData = packProject(dataOrId);
+      else if (table === 'albums') {
+        sendData = {
+          ...dataOrId,
+          project_id: dataOrId.project_id && String(dataOrId.project_id).trim() ? String(dataOrId.project_id).trim() : null,
+        };
+      }
+    }
     const payload = action === 'upsert'
       ? { table, action, data: sendData }
       : { table, action, id: dataOrId };
@@ -1172,21 +1278,21 @@ export const supabaseStore = {
   // Projects
   async getProjects(): Promise<ProjectItem[]> {
     const cached = getCachedData<ProjectItem[]>('projects');
-    if (cached) return cached;
+    if (cached) return cached.map(unpackProject);
 
     let list: ProjectItem[] = [];
     if (supabase) {
       try {
         const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
         if (!error && data) {
-          list = data as ProjectItem[];
+          list = (data as any[]).map(unpackProject);
         }
       } catch (e) {
         console.warn('Supabase projects fallback:', e);
       }
     }
     if (!list || list.length === 0) {
-      list = getStoredItem('projects', initialProjects);
+      list = getStoredItem<any[]>('projects', initialProjects).map(unpackProject);
     }
 
     const orderIds = await this.getContentOrder('projects');
@@ -1200,13 +1306,60 @@ export const supabaseStore = {
     return sorted;
   },
 
+  async getOnlyProjects(): Promise<ProjectItem[]> {
+    const list = await this.getProjects();
+    return list.filter((p) => p.publication_type !== 'activity');
+  },
+
+  async getOnlyActivities(): Promise<ProjectItem[]> {
+    const list = await this.getProjects();
+    return list.filter((p) => p.publication_type === 'activity');
+  },
+
+  async getActivitiesByProject(projectId: string): Promise<ProjectItem[]> {
+    const list = await this.getProjects();
+    return list.filter((p) => p.publication_type === 'activity' && p.related_project_id === projectId);
+  },
+
   async getProjectBySlug(slug: string): Promise<ProjectItem | null> {
     const projects = await this.getProjects();
     return projects.find(p => p.slug === slug) || null;
   },
 
+  async getProjectMedia(projectId: string): Promise<{
+    albums: PhotoAlbum[];
+    photos: MediaItem[];
+    videos: MediaItem[];
+    allMedia: MediaItem[];
+  }> {
+    const [albums, mediaList] = await Promise.all([
+      this.getAlbums(),
+      this.getMedia(),
+    ]);
+
+    const projectAlbums = albums.filter((a) => a.project_id === projectId);
+    const projectAlbumIds = new Set(projectAlbums.map((a) => a.id));
+
+    const projectMedia = mediaList.filter((m) => {
+      if (m.project_id === projectId) return true;
+      if (m.album_id && projectAlbumIds.has(m.album_id)) return true;
+      return false;
+    });
+
+    const photos = projectMedia.filter((m) => m.type === 'photo');
+    const videos = projectMedia.filter((m) => m.type === 'video');
+
+    return {
+      albums: projectAlbums,
+      photos,
+      videos,
+      allMedia: projectMedia,
+    };
+  },
+
   async saveProject(project: ProjectItem): Promise<ProjectItem[]> {
-    await mutateTable('projects', 'upsert', project);
+    const packed = packProject(project);
+    await mutateTable('projects', 'upsert', packed);
     invalidateCache('projects');
     return await this.getProjects();
   },

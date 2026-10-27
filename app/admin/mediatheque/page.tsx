@@ -34,6 +34,7 @@ import {
   Link2,
   Unlink,
   Check,
+  Building,
 } from 'lucide-react';
 import {
   parseVideoUrl,
@@ -515,11 +516,20 @@ export default function AdminMediathequePage() {
 
     try {
       await supabaseStore.saveAlbum(payload);
+      // Synchronise automatiquement le project_id sur les médias de cet album s'ils n'en ont pas
+      if (payload.project_id) {
+        const inThisAlbum = mediaList.filter((m) => m.album_id === payload.id && !m.project_id);
+        for (const item of inThisAlbum) {
+          try {
+            await supabaseStore.saveMedia({ ...item, project_id: payload.project_id });
+          } catch {}
+        }
+      }
       await loadData();
       setAlbumModalOpen(false);
       setManagingAlbum(payload);
       setActionFeedback(
-        `Album « ${payload.title_fr} » enregistré. Vous pouvez maintenant y ajouter des photos ou des vidéos.`
+        `Album « ${payload.title_fr} » enregistré avec succès${payload.project_id ? ' et rattaché au projet.' : '.'}`
       );
       setTimeout(() => setActionFeedback(null), 6000);
     } catch (err: any) {
@@ -1112,6 +1122,18 @@ export default function AdminMediathequePage() {
                           <span>{videoCount} {videoCount > 1 ? 'vidéos' : 'vidéo'}</span>
                         </span>
                       </div>
+
+                      {/* Associated Project badge if linked */}
+                      {alb.project_id && (
+                        <div className="pt-1">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 line-clamp-1">
+                            <Building className="w-3 h-3 text-[#FF8C00] shrink-0" />
+                            <span className="truncate">
+                              Projet : {projects.find((p) => p.id === alb.project_id)?.title_fr || alb.project_id}
+                            </span>
+                          </span>
+                        </div>
+                      )}
 
                       {/* Primary Action Button: Gérer les contenus de l'album */}
                       <button
@@ -1823,14 +1845,24 @@ export default function AdminMediathequePage() {
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">
-                    Description de l’activité / album
+                    Projet ou activité associée (optionnel)
                   </label>
-                  <textarea
-                    rows={3}
-                    value={albumForm.description_fr}
-                    onChange={(e) => setAlbumForm({ ...albumForm, description_fr: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none"
-                  />
+                  <select
+                    value={albumForm.project_id || ''}
+                    onChange={(e) => setAlbumForm({ ...albumForm, project_id: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#92278F] outline-none bg-white font-medium"
+                  >
+                    <option value="">Aucun projet (Album général / Institutionnel)</option>
+                    {projects.map((proj) => (
+                      <option key={proj.id} value={proj.id}>
+                        {proj.publication_type === 'activity' ? '⚡ [Activité] ' : '📁 [Projet] '}
+                        {proj.title_fr} ({proj.period || 'En cours'})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    En sélectionnant un projet, cet album et l'ensemble de ses médias (photos et vidéos) apparaîtront automatiquement sur la page publique du projet sans devoir les réimporter.
+                  </p>
                 </div>
 
                 <div className="pt-3 border-t border-gray-200 flex items-center justify-end gap-2">
@@ -1865,6 +1897,12 @@ export default function AdminMediathequePage() {
                       <Folder className="w-3 h-3 text-[#FF8C00]" />
                       Album photo & vidéo
                     </span>
+                    {managingAlbum.project_id && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FF8C00] text-white flex items-center gap-1 shadow-2xs">
+                        <Building className="w-3 h-3 text-white" />
+                        <span>Rattaché au projet : {projects.find((p) => p.id === managingAlbum.project_id)?.title_fr || managingAlbum.project_id}</span>
+                      </span>
+                    )}
                     <span className="text-xs text-purple-200 font-mono">
                       {managingAlbum.date || 'Non daté'}
                     </span>

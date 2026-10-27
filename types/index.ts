@@ -129,9 +129,28 @@ export interface DomainOfIntervention {
 
 export type ProjectStatus = 'upcoming' | 'in_progress' | 'completed';
 
+export type PublicationType = 'project' | 'activity';
+
+export type ActivityCategory =
+  | 'sensibilisation'
+  | 'formation'
+  | 'atelier'
+  | 'campagne'
+  | 'plaidoyer'
+  | 'distribution'
+  | 'reunion'
+  | 'autre';
+
 export interface ProjectItem {
   id: string;
   slug: string;
+  publication_type?: PublicationType; // 'project' (défaut) ou 'activity' (Activité phare)
+  activity_category?: string; // Ex: Sensibilisation, Formation, Atelier, Campagne, etc.
+  related_project_id?: string; // ID du projet cadre rattaché (ou vide si autonome)
+  related_project_title?: string; // Titre dénormalisé du projet cadre pour affichage rapide
+  participants_count?: string; // Ex: 150 participants
+  observations_fr?: string;
+  observations_en?: string;
   title_fr: string;
   title_en: string;
   excerpt_fr: string;
@@ -323,6 +342,8 @@ export interface PhotoAlbum {
   date: string;
   project_id?: string;
   photo_count?: number;
+  media_count?: number;
+  created_at?: string;
 }
 
 export type MediaTargetModule =
