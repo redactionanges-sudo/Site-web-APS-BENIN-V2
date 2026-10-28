@@ -12,42 +12,156 @@ interface EngagementRecord {
 const DATA_DIR = path.join(process.cwd(), 'data');
 const METRICS_FILE = path.join(DATA_DIR, 'engagement_metrics.json');
 
-function ensureMetricsFile(): Record<string, EngagementRecord> {
+// Mémoire locale pour les environnements serverless à système de fichiers en lecture seule
+let inMemoryMetrics: Record<string, EngagementRecord> = {};
+
+function readLocalMetrics(): Record<string, EngagementRecord> {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (fs.existsSync(METRICS_FILE)) {
+      const raw = fs.readFileSync(METRICS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        inMemoryMetrics = { ...inMemoryMetrics, ...parsed };
+      }
     }
-    if (!fs.existsSync(METRICS_FILE)) {
-      const initialSeed: Record<string, EngagementRecord> = {
-        'news:news-1': { views: 428, likes: 64, updated_at: new Date().toISOString() },
-        'news:news-2': { views: 312, likes: 45, updated_at: new Date().toISOString() },
-        'news:news-3': { views: 254, likes: 38, updated_at: new Date().toISOString() },
-        'project:proj-1': { views: 890, likes: 112, updated_at: new Date().toISOString() },
-        'project:proj-2': { views: 654, likes: 87, updated_at: new Date().toISOString() },
-        'project:proj-3': { views: 520, likes: 73, updated_at: new Date().toISOString() },
-        'project:proj-4': { views: 410, likes: 59, updated_at: new Date().toISOString() },
-        'project:act-1': { views: 285, likes: 41, updated_at: new Date().toISOString() },
-        'project:act-2': { views: 198, likes: 29, updated_at: new Date().toISOString() },
-      };
-      fs.writeFileSync(METRICS_FILE, JSON.stringify(initialSeed, null, 2), 'utf-8');
-      return initialSeed;
-    }
-    const raw = fs.readFileSync(METRICS_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('Error reading engagement metrics:', err);
-    return {};
+  } catch {
+    // Ignore read errors
   }
+  return inMemoryMetrics;
 }
 
-function saveMetricsFile(metrics: Record<string, EngagementRecord>) {
+function saveLocalMetrics(metrics: Record<string, EngagementRecord>) {
+  inMemoryMetrics = metrics;
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(METRICS_FILE, JSON.stringify(metrics, null, 2), 'utf-8');
+  } catch {
+    // Ignore read-only filesystem errors (e.g. Vercel)
+  }
+}
+
+/**
+ * Récupère le dictionnaire des likes réels depuis Supabase site_settings.seo.likes
+ */
+async function getStoredLikes(): Promise<Record<string, number>> {
+  if (adminSupabase) {
+    try {
+      const { data, error } = await adminSupabase
+        .from('site_settings')
+        .select('id, seo')
+        .eq('id', 'aps-settings-primary')
+        .maybeSingle();
+
+      if (!error && data?.seo?.likes && typeof data.seo.likes === 'object') {
+        return data.seo.likes;
+      }
+    } catch {
+      // Fallback local
+    }
+  }
+  const local = readLocalMetrics();
+  const likesMap: Record<string, number> = {};
+  for (const [k, v] of Object.entries(local)) {
+    likesMap[k] = v.likes || 0;
+  }
+  return likesMap;
+}
+
+/**
+ * Enregistre le nouveau nombre de likes réels
+ */
+async function saveStoredLikes(key: string, newCount: number): Promise<void> {
+  if (adminSupabase) {
+    try {
+      const { data } = await adminSupabase
+        .from('site_settings')
+        .select('id, seo')
+        .eq('id', 'aps-settings-primary')
+        .maybeSingle();
+
+      if (data) {
+        const seo = data.seo || {};
+        const likes = { ...(seo.likes || {}), [key]: newCount };
+        await adminSupabase
+          .from('site_settings')
+          .update({ seo: { ...seo, likes } })
+          .eq('id', 'aps-settings-primary');
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  const local = readLocalMetrics();
+  local[key] = {
+    views: local[key]?.views || 0,
+    likes: newCount,
+    updated_at: new Date().toISOString(),
+  };
+  saveLocalMetrics(local);
+}
+
+/**
+ * Calcule le nombre RÉEL de vues issues de la table officielle analytics_events
+ * RÈGLE ABSOLUE : Zéro chiffre fictif. Si aucun événement, retourne 0.
+ */
+async function getRealViewsFromSupabase(
+  type: string,
+  id: string,
+  slug?: string | null
+): Promise<number> {
+  if (!adminSupabase) return 0;
+
+  try {
+    const table = type === 'project' ? 'projects' : 'news';
+    let resolvedId = id;
+    let resolvedSlug = slug || '';
+
+    // Si le slug n'est pas fourni, résolution rapide depuis la table
+    if (!resolvedSlug) {
+      const { data } = await adminSupabase
+        .from(table)
+        .select('id, slug')
+        .or(`id.eq.${id},slug.eq.${id}`)
+        .maybeSingle();
+
+      if (data) {
+        resolvedId = data.id || id;
+        resolvedSlug = data.slug || '';
+      }
+    }
+
+    const prefix = type === 'project' ? '/projets/' : '/actualites/';
+    const filterConditions = new Set<string>();
+
+    if (resolvedSlug) {
+      filterConditions.add(`path.eq.${prefix}${resolvedSlug}`);
+      filterConditions.add(`path.eq.${prefix}${encodeURIComponent(resolvedSlug)}`);
+      filterConditions.add(`target_id.eq.${resolvedSlug}`);
+    }
+    if (resolvedId) {
+      filterConditions.add(`path.eq.${prefix}${resolvedId}`);
+      filterConditions.add(`target_id.eq.${resolvedId}`);
+    }
+
+    if (filterConditions.size === 0) return 0;
+
+    const { count, error } = await adminSupabase
+      .from('analytics_events')
+      .select('*', { count: 'exact', head: true })
+      .or(Array.from(filterConditions).join(','));
+
+    if (error) {
+      console.warn('Error fetching views from analytics_events:', error.message);
+      return 0;
+    }
+
+    return count ?? 0;
   } catch (err) {
-    console.error('Error saving engagement metrics:', err);
+    console.warn('Exception querying analytics views:', err);
+    return 0;
   }
 }
 
@@ -55,71 +169,78 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get('type') || 'news';
   const id = searchParams.get('id');
+  const slug = searchParams.get('slug');
+  const idsParam = searchParams.get('ids');
+
+  // Support de requêtes par lots (batch) pour les grilles d'actualités et projets
+  if (idsParam) {
+    const ids = idsParam.split(',').map((s) => s.trim()).filter(Boolean);
+    const likesMap = await getStoredLikes();
+    const results: Record<string, { views: number; likes: number }> = {};
+
+    await Promise.all(
+      ids.map(async (itemId) => {
+        const key = `${type}:${itemId}`;
+        const realViews = await getRealViewsFromSupabase(type, itemId);
+        results[itemId] = {
+          views: realViews,
+          likes: likesMap[key] || 0,
+        };
+      })
+    );
+
+    return NextResponse.json({
+      success: true,
+      batch: true,
+      results,
+    });
+  }
 
   if (!id) {
     return NextResponse.json({ error: 'Identifiant requis' }, { status: 400 });
   }
 
   const key = `${type}:${id}`;
-  const metrics = ensureMetricsFile();
-  const item = metrics[key] || { views: 1, likes: 0, updated_at: new Date().toISOString() };
+  const realViews = await getRealViewsFromSupabase(type, id, slug);
+  const likesMap = await getStoredLikes();
+  const realLikes = likesMap[key] || 0;
 
   return NextResponse.json({
     success: true,
     key,
-    views: item.views || 0,
-    likes: item.likes || 0,
+    views: realViews,
+    likes: realLikes,
   });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { type = 'news', id, action = 'view' } = body;
+    const { type = 'news', id, slug, action = 'view' } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Identifiant requis' }, { status: 400 });
     }
 
     const key = `${type}:${id}`;
-    const metrics = ensureMetricsFile();
+    const likesMap = await getStoredLikes();
+    let currentLikes = likesMap[key] || 0;
 
-    if (!metrics[key]) {
-      metrics[key] = {
-        views: action === 'view' ? 1 : 0,
-        likes: action === 'like' ? 1 : 0,
-        updated_at: new Date().toISOString(),
-      };
-    } else {
-      if (action === 'view') {
-        metrics[key].views = (metrics[key].views || 0) + 1;
-      } else if (action === 'like') {
-        metrics[key].likes = (metrics[key].likes || 0) + 1;
-      } else if (action === 'unlike') {
-        metrics[key].likes = Math.max(0, (metrics[key].likes || 1) - 1);
-      }
-      metrics[key].updated_at = new Date().toISOString();
+    if (action === 'like') {
+      currentLikes += 1;
+      await saveStoredLikes(key, currentLikes);
+    } else if (action === 'unlike') {
+      currentLikes = Math.max(0, currentLikes - 1);
+      await saveStoredLikes(key, currentLikes);
     }
 
-    saveMetricsFile(metrics);
-
-    if (adminSupabase && (action === 'like' || action === 'unlike')) {
-      const targetTable = type === 'project' ? 'projects' : 'news';
-      try {
-        await adminSupabase
-          .from(targetTable)
-          .update({ likes_count: metrics[key].likes })
-          .eq('id', id);
-      } catch {
-        // Ignorer en mode local sans base connectée
-      }
-    }
+    const realViews = await getRealViewsFromSupabase(type, id, slug);
 
     return NextResponse.json({
       success: true,
       key,
-      views: metrics[key].views,
-      likes: metrics[key].likes,
+      views: realViews,
+      likes: currentLikes,
     });
   } catch (err: any) {
     console.error('Error handling interaction:', err);

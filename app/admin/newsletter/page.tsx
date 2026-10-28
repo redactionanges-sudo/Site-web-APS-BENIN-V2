@@ -43,7 +43,7 @@ export default function AdminNewsletterPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setSubscribers(data.subscribers || []);
+        setSubscribers(data.items || data.subscribers || []);
         setTotal(data.total || 0);
         setActiveCount(data.activeCount || 0);
         setUnsubscribedCount(data.unsubscribedCount || 0);

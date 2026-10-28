@@ -43,7 +43,11 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    ...data,
+    items: data.items,
+    subscribers: data.items,
+    total: data.total,
+    activeCount: data.activeCount,
+    unsubscribedCount: data.unsubscribedCount,
     emailProvider,
   });
 }

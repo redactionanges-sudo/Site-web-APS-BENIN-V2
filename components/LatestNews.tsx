@@ -11,10 +11,24 @@ import { OptimizedImage } from '@/components/OptimizedImage';
 export const LatestNews: React.FC = () => {
   const { language, t } = useLanguage();
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [metrics, setMetrics] = useState<Record<string, { views: number; likes: number }>>({});
 
   useEffect(() => {
     supabaseStore.getNews().then((items) => {
-      setNews(items.filter((n) => n.status === 'published').slice(0, 3));
+      const published = items.filter((n) => n.status === 'published').slice(0, 3);
+      setNews(published);
+
+      if (published.length > 0) {
+        const ids = published.map((n) => n.id).join(',');
+        fetch(`/api/interactions?type=news&ids=${encodeURIComponent(ids)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.results) {
+              setMetrics(data.results);
+            }
+          })
+          .catch(() => {});
+      }
     });
   }, []);
 
@@ -108,13 +122,19 @@ export const LatestNews: React.FC = () => {
                   </Link>
 
                   <div className="flex items-center gap-2.5 text-[11px] text-gray-400 font-semibold">
-                    <span className="flex items-center gap-1" title={`${item.views_count || 120} vues`}>
+                    <span
+                      className="flex items-center gap-1"
+                      title={`${metrics[item.id]?.views ?? item.views_count ?? 0} vue${(metrics[item.id]?.views ?? item.views_count ?? 0) > 1 ? 's' : ''}`}
+                    >
                       <Eye className="w-3 h-3 text-gray-400" />
-                      <span>{item.views_count || 120}</span>
+                      <span>{metrics[item.id]?.views ?? item.views_count ?? 0}</span>
                     </span>
-                    <span className="flex items-center gap-1 text-rose-500/80" title={`${item.likes_count || 18} mentions j'aime`}>
+                    <span
+                      className="flex items-center gap-1 text-rose-500/80"
+                      title={`${metrics[item.id]?.likes ?? item.likes_count ?? 0} mention${(metrics[item.id]?.likes ?? item.likes_count ?? 0) > 1 ? 's' : ''} j'aime`}
+                    >
                       <Heart className="w-3 h-3 fill-rose-500/80 text-rose-500/80" />
-                      <span>{item.likes_count || 18}</span>
+                      <span>{metrics[item.id]?.likes ?? item.likes_count ?? 0}</span>
                     </span>
                   </div>
                 </div>

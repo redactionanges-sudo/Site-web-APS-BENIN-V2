@@ -12,11 +12,25 @@ import { OptimizedImage } from '@/components/OptimizedImage';
 export const FeaturedProjects: React.FC = () => {
   const { language, t } = useLanguage();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [metrics, setMetrics] = useState<Record<string, { views: number; likes: number }>>({});
 
   useEffect(() => {
     supabaseStore.getProjects().then((items) => {
       const featured = items.filter((p) => p.is_featured);
-      setProjects(featured.length > 0 ? featured.slice(0, 3) : items.slice(0, 3));
+      const list = featured.length > 0 ? featured.slice(0, 3) : items.slice(0, 3);
+      setProjects(list);
+
+      if (list.length > 0) {
+        const ids = list.map((p) => p.id).join(',');
+        fetch(`/api/interactions?type=project&ids=${encodeURIComponent(ids)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.results) {
+              setMetrics(data.results);
+            }
+          })
+          .catch(() => {});
+      }
     });
   }, []);
 
@@ -124,13 +138,19 @@ export const FeaturedProjects: React.FC = () => {
                     </span>
                     <span className="text-gray-300">•</span>
                     <div className="flex items-center gap-2 text-[11px] text-gray-400 font-semibold">
-                      <span className="flex items-center gap-1" title={`${proj.views_count || 180} vues`}>
+                      <span
+                        className="flex items-center gap-1"
+                        title={`${metrics[proj.id]?.views ?? proj.views_count ?? 0} vue${(metrics[proj.id]?.views ?? proj.views_count ?? 0) > 1 ? 's' : ''}`}
+                      >
                         <Eye className="w-3 h-3 text-gray-400" />
-                        <span>{proj.views_count || 180}</span>
+                        <span>{metrics[proj.id]?.views ?? proj.views_count ?? 0}</span>
                       </span>
-                      <span className="flex items-center gap-1 text-rose-500/80" title={`${proj.likes_count || 24} mentions j'aime`}>
+                      <span
+                        className="flex items-center gap-1 text-rose-500/80"
+                        title={`${metrics[proj.id]?.likes ?? proj.likes_count ?? 0} mention${(metrics[proj.id]?.likes ?? proj.likes_count ?? 0) > 1 ? 's' : ''} j'aime`}
+                      >
                         <Heart className="w-3 h-3 fill-rose-500/80 text-rose-500/80" />
-                        <span>{proj.likes_count || 24}</span>
+                        <span>{metrics[proj.id]?.likes ?? proj.likes_count ?? 0}</span>
                       </span>
                     </div>
                   </div>

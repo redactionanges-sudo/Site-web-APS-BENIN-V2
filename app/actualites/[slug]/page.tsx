@@ -163,8 +163,8 @@ export default function NewsDetailPage({ params }: PageProps) {
               type="news"
               id={article.id}
               title={getLocalizedText(article.title_fr, article.title_en, language)}
-              initialViews={article.views_count || 120}
-              initialLikes={article.likes_count || 18}
+              initialViews={article.views_count ?? 0}
+              initialLikes={article.likes_count ?? 0}
             />
 
             {/* Rich content */}

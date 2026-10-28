@@ -19,8 +19,8 @@ export function AnalyticsTracker() {
   useEffect(() => {
     if (!pathname) return;
 
-    // Do not track internal admin API calls or dashboard views as public visitor stats
-    if (pathname.startsWith('/api')) return;
+    // Do not track internal admin pages or internal API calls as public visitor stats
+    if (pathname.startsWith('/admin') || pathname.startsWith('/api')) return;
 
     const timer = setTimeout(() => {
       trackPageView(pathname, document.title);

@@ -1,41 +1,138 @@
 import fs from 'fs';
 import path from 'path';
-import { NewsletterSubscriber, NewsletterStatus } from '@/types';
+import { NewsletterSubscriber } from '@/types';
 import { adminSupabase } from '@/lib/server-auth';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const SUBSCRIBERS_FILE = path.join(DATA_DIR, 'newsletter_subscribers.json');
 
-function ensureDataDir() {
+// Mémoire cache pour les environnements serverless à système de fichiers en lecture seule
+let inMemorySubscribersCache: NewsletterSubscriber[] | null = null;
+
+function readLocalFallback(): NewsletterSubscriber[] {
+  if (inMemorySubscribersCache !== null) {
+    return inMemorySubscribersCache;
+  }
+  try {
+    if (fs.existsSync(SUBSCRIBERS_FILE)) {
+      const raw = fs.readFileSync(SUBSCRIBERS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        inMemorySubscribersCache = parsed;
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore read errors in read-only environments
+  }
+  inMemorySubscribersCache = [];
+  return [];
+}
+
+function writeLocalFallback(subscribers: NewsletterSubscriber[]): void {
+  inMemorySubscribersCache = subscribers;
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    if (!fs.existsSync(SUBSCRIBERS_FILE)) {
-      fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify([], null, 2), 'utf-8');
+    fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(subscribers, null, 2), 'utf-8');
+  } catch {
+    // Ignore read-only filesystem errors (e.g. Vercel / serverless runtime)
+  }
+}
+
+/**
+ * Récupère la liste réelle des abonnés depuis Supabase.
+ * Tente d'abord la table 'newsletter_subscribers', et si absente, utilise le stockage
+ * persistant JSONB dans 'site_settings' (champ seo.newsletter_subscribers) sans modification de schéma.
+ */
+async function loadSubscribersFromSupabase(): Promise<NewsletterSubscriber[] | null> {
+  if (!adminSupabase) return null;
+
+  // 1. Tenter la table dédiée si elle existe
+  try {
+    const { data, error } = await adminSupabase
+      .from('newsletter_subscribers')
+      .select('*')
+      .order('subscribed_at', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      return data as NewsletterSubscriber[];
+    }
+  } catch {
+    // Table absente
+  }
+
+  // 2. Utiliser le conteneur JSONB persistant existant dans 'site_settings'
+  try {
+    const { data: row, error } = await adminSupabase
+      .from('site_settings')
+      .select('seo')
+      .eq('id', 'aps-settings-primary')
+      .single();
+
+    if (!error && row && row.seo && Array.isArray(row.seo.newsletter_subscribers)) {
+      return row.seo.newsletter_subscribers as NewsletterSubscriber[];
     }
   } catch (err) {
-    console.error('Error creating data directory for newsletter:', err);
+    console.warn('Could not read newsletter subscribers from site_settings:', err);
   }
+
+  return null;
 }
 
-function readLocalSubscribers(): NewsletterSubscriber[] {
-  ensureDataDir();
-  try {
-    const raw = fs.readFileSync(SUBSCRIBERS_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
+/**
+ * Sauvegarde les abonnés dans la source de vérité Supabase.
+ */
+async function saveSubscribersToSupabase(subscribers: NewsletterSubscriber[], singleSubscriber?: NewsletterSubscriber): Promise<boolean> {
+  if (!adminSupabase) return false;
 
-function writeLocalSubscribers(subscribers: NewsletterSubscriber[]): void {
-  ensureDataDir();
+  let saved = false;
+
+  // 1. Tenter la table dédiée si présente
+  if (singleSubscriber) {
+    try {
+      const { error } = await adminSupabase
+        .from('newsletter_subscribers')
+        .upsert([singleSubscriber]);
+      if (!error) saved = true;
+    } catch {
+      // Table absente
+    }
+  }
+
+  // 2. Persistance garantie dans 'site_settings.seo.newsletter_subscribers' sans modification de schéma
   try {
-    fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify(subscribers, null, 2), 'utf-8');
+    const { data: row, error: fetchErr } = await adminSupabase
+      .from('site_settings')
+      .select('seo')
+      .eq('id', 'aps-settings-primary')
+      .single();
+
+    if (!fetchErr && row) {
+      const currentSeo = row.seo || {};
+      const updatedSeo = {
+        ...currentSeo,
+        newsletter_subscribers: subscribers,
+        newsletter_updated_at: new Date().toISOString(),
+      };
+
+      const { error: updateErr } = await adminSupabase
+        .from('site_settings')
+        .update({ seo: updatedSeo, updated_at: new Date().toISOString() })
+        .eq('id', 'aps-settings-primary');
+
+      if (!updateErr) {
+        saved = true;
+      } else {
+        console.error('Erreur mise à jour site_settings.seo.newsletter_subscribers:', updateErr);
+      }
+    }
   } catch (err) {
-    console.error('Error writing local newsletter subscribers:', err);
+    console.error('Exception saveSubscribersToSupabase:', err);
   }
+
+  return saved;
 }
 
 export function isValidEmail(email: string): boolean {
@@ -83,8 +180,13 @@ export async function subscribeNewsletter(
     };
   }
 
-  const subscribers = readLocalSubscribers();
-  const existingIndex = subscribers.findIndex((s) => s.email === cleanEmail);
+  // 1. Charger la liste depuis Supabase (avec fallback local)
+  let subscribers = await loadSubscribersFromSupabase();
+  if (!subscribers) {
+    subscribers = readLocalFallback();
+  }
+
+  const existingIndex = subscribers.findIndex((s) => s.email.toLowerCase() === cleanEmail);
 
   let resultStatus: 'created' | 'already_active' | 'reactivated' = 'created';
   let targetSubscriber: NewsletterSubscriber;
@@ -127,16 +229,9 @@ export async function subscribeNewsletter(
     resultStatus = 'created';
   }
 
-  writeLocalSubscribers(subscribers);
-
-  // Essai de persistance Supabase si la table existe
-  if (adminSupabase) {
-    try {
-      await adminSupabase.from('newsletter_subscribers').upsert([targetSubscriber]);
-    } catch {
-      // Table distante pas encore migrée : le fallback local garantit la persistance
-    }
-  }
+  // 2. Persister à la fois dans Supabase et en fallback local
+  writeLocalFallback(subscribers);
+  await saveSubscribersToSupabase(subscribers, targetSubscriber);
 
   return {
     success: true,
@@ -144,11 +239,11 @@ export async function subscribeNewsletter(
     messageFr:
       resultStatus === 'reactivated'
         ? 'Votre abonnement à la newsletter d’APS-Bénin a été réactivé avec succès.'
-        : 'Merci pour votre inscription à la newsletter officielle d’APS-Bénin !',
+        : 'Merci pour votre inscription à la newsletter officielle d’APS-BÉNIN !',
     messageEn:
       resultStatus === 'reactivated'
         ? 'Your subscription to the APS-Benin newsletter has been successfully reactivated.'
-        : 'Thank you for subscribing to the official APS-Benin newsletter!',
+        : 'Thank you for subscribing to the official APS-BENIN newsletter!',
     subscriber: targetSubscriber,
   };
 }
@@ -162,8 +257,13 @@ export async function unsubscribeNewsletter(email: string): Promise<{
   messageEn: string;
 }> {
   const cleanEmail = (email || '').trim().toLowerCase();
-  const subscribers = readLocalSubscribers();
-  const existingIndex = subscribers.findIndex((s) => s.email === cleanEmail);
+
+  let subscribers = await loadSubscribersFromSupabase();
+  if (!subscribers) {
+    subscribers = readLocalFallback();
+  }
+
+  const existingIndex = subscribers.findIndex((s) => s.email.toLowerCase() === cleanEmail);
 
   if (existingIndex < 0) {
     return {
@@ -173,25 +273,16 @@ export async function unsubscribeNewsletter(email: string): Promise<{
     };
   }
 
-  subscribers[existingIndex] = {
+  const updatedSubscriber: NewsletterSubscriber = {
     ...subscribers[existingIndex],
     status: 'unsubscribed',
     unsubscribed_at: new Date().toISOString(),
   };
 
-  writeLocalSubscribers(subscribers);
+  subscribers[existingIndex] = updatedSubscriber;
 
-  if (adminSupabase) {
-    try {
-      await adminSupabase
-        .from('newsletter_subscribers')
-        .update({
-          status: 'unsubscribed',
-          unsubscribed_at: new Date().toISOString(),
-        })
-        .eq('email', cleanEmail);
-    } catch {}
-  }
+  writeLocalFallback(subscribers);
+  await saveSubscribersToSupabase(subscribers, updatedSubscriber);
 
   return {
     success: true,
@@ -214,25 +305,13 @@ export async function getNewsletterSubscribers(options: {
   activeCount: number;
   unsubscribedCount: number;
 }> {
-  let subscribers = readLocalSubscribers();
+  let subscribers = await loadSubscribersFromSupabase();
 
-  // Si Supabase est disponible, tente de lire la table distante
-  if (adminSupabase) {
-    try {
-      const { data, error } = await adminSupabase
-        .from('newsletter_subscribers')
-        .select('*')
-        .order('subscribed_at', { ascending: false });
-      if (!error && Array.isArray(data) && data.length > 0) {
-        // Fusionne les données distantes et locales
-        const map = new Map<string, NewsletterSubscriber>();
-        subscribers.forEach((s) => map.set(s.email, s));
-        data.forEach((s: any) => map.set(s.email, s));
-        subscribers = Array.from(map.values()).sort(
-          (a, b) => new Date(b.subscribed_at).getTime() - new Date(a.subscribed_at).getTime()
-        );
-      }
-    } catch {}
+  if (!subscribers || subscribers.length === 0) {
+    subscribers = readLocalFallback();
+  } else {
+    // Mettre à jour le cache local avec les données fraîches de Supabase
+    writeLocalFallback(subscribers);
   }
 
   const activeCount = subscribers.filter((s) => s.status === 'active').length;
@@ -251,7 +330,7 @@ export async function getNewsletterSubscribers(options: {
 
   const total = filtered.length;
   const page = options.page || 1;
-  const limit = options.limit || 20;
+  const limit = options.limit || 50;
   const start = (page - 1) * limit;
   const items = filtered.slice(start, start + limit);
 

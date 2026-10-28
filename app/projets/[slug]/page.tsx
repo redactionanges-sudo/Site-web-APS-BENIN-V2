@@ -315,8 +315,8 @@ export default function ProjectDetailPage({ params }: PageProps) {
                   type="project"
                   id={project.id}
                   title={getLocalizedText(project.title_fr, project.title_en, language)}
-                  initialViews={project.views_count || 180}
-                  initialLikes={project.likes_count || 24}
+                  initialViews={project.views_count ?? 0}
+                  initialLikes={project.likes_count ?? 0}
                 />
                 {/* Contexte & Problématique (Project specific) */}
                 {!isActivity && (Boolean(project.context_fr || project.context_en || project.problem_fr || project.problem_en)) && (
