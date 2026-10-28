@@ -6,6 +6,7 @@ import { AuthProvider } from '@/lib/auth';
 import { ScrollToTop } from '@/components/ScrollToTop';
 import { AfricanPatternCanvas } from '@/components/AfricanPatternCanvas';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
+import { FixedSocialBar } from '@/components/FixedSocialBar';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -51,6 +52,7 @@ export default function RootLayout({
           <LanguageProvider>
             <div className="relative z-10 flex flex-col min-h-screen">
               {children}
+              <FixedSocialBar />
               <ScrollToTop />
             </div>
           </LanguageProvider>

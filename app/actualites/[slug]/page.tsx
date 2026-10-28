@@ -24,6 +24,7 @@ import {
   Download,
 } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
+import { ContentEngagementBar } from '@/components/ContentEngagementBar';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -156,6 +157,15 @@ export default function NewsDetailPage({ params }: PageProps) {
             <div className="p-6 rounded-xl bg-purple-50/60 border-l-4 border-[#92278F] text-sm sm:text-base text-gray-800 font-medium leading-relaxed italic">
               {getLocalizedText(article.summary_fr, article.summary_en, language)}
             </div>
+
+            {/* Engagement Bar: Vues, J'aime et Partage */}
+            <ContentEngagementBar
+              type="news"
+              id={article.id}
+              title={getLocalizedText(article.title_fr, article.title_en, language)}
+              initialViews={article.views_count || 120}
+              initialLikes={article.likes_count || 18}
+            />
 
             {/* Rich content */}
             <div className="text-gray-700 leading-relaxed text-base">

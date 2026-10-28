@@ -34,6 +34,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { ContentEngagementBar } from '@/components/ContentEngagementBar';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -309,6 +310,14 @@ export default function ProjectDetailPage({ params }: PageProps) {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
               {/* Content Column */}
               <div className="lg:col-span-8 space-y-10">
+                {/* Engagement Bar: Vues, J'aime et Partage */}
+                <ContentEngagementBar
+                  type="project"
+                  id={project.id}
+                  title={getLocalizedText(project.title_fr, project.title_en, language)}
+                  initialViews={project.views_count || 180}
+                  initialLikes={project.likes_count || 24}
+                />
                 {/* Contexte & Problématique (Project specific) */}
                 {!isActivity && (Boolean(project.context_fr || project.context_en || project.problem_fr || project.problem_en)) && (
                   <div className="space-y-4">

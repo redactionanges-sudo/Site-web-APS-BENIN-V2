@@ -6,6 +6,7 @@ import { Footer } from '@/components/Footer';
 import { useLanguage } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { useSiteSettings, sanitizePhoneForTel } from '@/hooks/useSiteSettings';
+import { HeadquartersMap } from '@/components/HeadquartersMap';
 import {
   MapPin,
   Phone,
@@ -501,6 +502,13 @@ export default function ContactPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Section Carte Interactive du Siège Social */}
+        <section className="py-12 bg-gray-50/70 border-t border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8">
+            <HeadquartersMap />
           </div>
         </section>
       </main>

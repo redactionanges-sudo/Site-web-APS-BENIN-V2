@@ -182,6 +182,8 @@ export interface ProjectItem {
   photos: string[];
   videos: string[];
   documents: Array<{ title: string; url: string; size?: string }>;
+  views_count?: number;
+  likes_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -206,6 +208,8 @@ export interface NewsItem {
   video_url?: string;
   documents: Array<{ title: string; url: string }>;
   status: NewsStatus;
+  views_count?: number;
+  likes_count?: number;
   published_at: string;
   created_at: string;
   seo_title?: string;
@@ -632,6 +636,20 @@ export interface InstitutionalPage {
   updated_at?: string;
 }
 
+export type NewsletterStatus = 'active' | 'unsubscribed';
 
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  status: NewsletterStatus;
+  subscribed_at: string;
+  unsubscribed_at?: string;
+  consent_given: boolean;
+  consent_ip?: string;
+  source?: string;
+}
 
-
+export interface ContentMetrics {
+  views: number;
+  likes: number;
+}

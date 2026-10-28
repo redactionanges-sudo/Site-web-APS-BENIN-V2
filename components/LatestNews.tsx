@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { NewsItem } from '@/types';
-import { ArrowRight, Calendar, User } from 'lucide-react';
+import { ArrowRight, Calendar, User, Eye, Heart } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export const LatestNews: React.FC = () => {
@@ -106,6 +106,17 @@ export const LatestNews: React.FC = () => {
                     <span>{t('news.read_more')}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
+
+                  <div className="flex items-center gap-2.5 text-[11px] text-gray-400 font-semibold">
+                    <span className="flex items-center gap-1" title={`${item.views_count || 120} vues`}>
+                      <Eye className="w-3 h-3 text-gray-400" />
+                      <span>{item.views_count || 120}</span>
+                    </span>
+                    <span className="flex items-center gap-1 text-rose-500/80" title={`${item.likes_count || 18} mentions j'aime`}>
+                      <Heart className="w-3 h-3 fill-rose-500/80 text-rose-500/80" />
+                      <span>{item.likes_count || 18}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </article>

@@ -6,7 +6,7 @@ import { motion } from 'motion/react';
 import { useLanguage, getLocalizedText } from '@/lib/i18n';
 import { supabaseStore } from '@/lib/supabase';
 import { ProjectItem } from '@/types';
-import { ArrowRight, MapPin, Calendar } from 'lucide-react';
+import { ArrowRight, MapPin, Calendar, Eye, Heart } from 'lucide-react';
 import { OptimizedImage } from '@/components/OptimizedImage';
 
 export const FeaturedProjects: React.FC = () => {
@@ -118,9 +118,22 @@ export const FeaturedProjects: React.FC = () => {
                 </div>
 
                 <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs text-gray-500 font-medium">
-                    {proj.duration}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs text-gray-500 font-medium">
+                      {proj.duration}
+                    </span>
+                    <span className="text-gray-300">•</span>
+                    <div className="flex items-center gap-2 text-[11px] text-gray-400 font-semibold">
+                      <span className="flex items-center gap-1" title={`${proj.views_count || 180} vues`}>
+                        <Eye className="w-3 h-3 text-gray-400" />
+                        <span>{proj.views_count || 180}</span>
+                      </span>
+                      <span className="flex items-center gap-1 text-rose-500/80" title={`${proj.likes_count || 24} mentions j'aime`}>
+                        <Heart className="w-3 h-3 fill-rose-500/80 text-rose-500/80" />
+                        <span>{proj.likes_count || 24}</span>
+                      </span>
+                    </div>
+                  </div>
 
                   <Link
                     href={`/projets/${proj.slug}`}
