@@ -107,7 +107,7 @@ export default function AdminNewsletterPage() {
   };
 
   return (
-    <AdminAuthGuard requiredRole="editor">
+    <AdminAuthGuard>
       <div className="flex-1 flex flex-col min-w-0 bg-[#FAF8FB] min-h-screen">
         <AdminHeader
           title="Abonnés à la Newsletter"

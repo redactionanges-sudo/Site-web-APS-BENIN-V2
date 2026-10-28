@@ -105,12 +105,14 @@ export async function POST(req: NextRequest) {
 
     if (adminSupabase && (action === 'like' || action === 'unlike')) {
       const targetTable = type === 'project' ? 'projects' : 'news';
-      adminSupabase
-        .from(targetTable)
-        .update({ likes_count: metrics[key].likes })
-        .eq('id', id)
-        .then(() => {})
-        .catch(() => {});
+      try {
+        await adminSupabase
+          .from(targetTable)
+          .update({ likes_count: metrics[key].likes })
+          .eq('id', id);
+      } catch {
+        // Ignorer en mode local sans base connectée
+      }
     }
 
     return NextResponse.json({

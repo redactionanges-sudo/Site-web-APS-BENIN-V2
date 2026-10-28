@@ -209,7 +209,7 @@ export const HeadquartersMap: React.FC<HeadquartersMapProps> = ({
               <ExternalLink className="w-3 h-3 text-gray-500" />
             </a>
 
-            <CallHeadquartersCTA variant="secondary" />
+            <CallHeadquartersCTA variant="contact" />
           </div>
         </div>
       </div>
